@@ -870,7 +870,7 @@ GameServer.prototype.splitCells = function(client) {
         var angle = Math.atan2(deltaX, deltaY);
     	
         var size = cell.getSize();
-        var spawnOffset = Math.max(18, Math.min(42, size * 0.22));
+        var spawnOffset = Math.max(22, Math.min(52, size * 0.28));
 
         var startPos = {
             x: cell.position.x + (spawnOffset * Math.sin(angle)),
@@ -882,19 +882,7 @@ GameServer.prototype.splitCells = function(client) {
 
         var split = new Entity.PlayerCell(this.getNextNodeId(), client, startPos, newMass);
         split.setAngle(angle);
-        var splitSpeed = 40 + (cell.getSpeed() * 4);
-        var splitTicks = 20;
-
-        // semakin besar mass, speed turun pelan-pelan
-        var reduce = Math.min(cell.mass / 15000, 1);
-
-        // max turun 25% di 15k mass
-        splitSpeed *= (1 - (reduce * 0.50));
-
-        // range ikut turun pelan, dari 20 tick ke minimal 17 tick
-        splitTicks = Math.round(20 - (reduce * 3));
-
-        split.setMoveEngineData(splitSpeed, splitTicks);
+        split.setMoveEngineData(38 + (cell.getSpeed() * 4), 18);
         split.calcMergeTime(this.config.playerRecombineTime);
 
         this.setAsMovingNode(split);
