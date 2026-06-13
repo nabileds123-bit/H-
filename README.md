@@ -46,6 +46,6 @@ Currently, Ogar3 listens on this port(for now):
 Please note that on some systems, you may have to run the process as root or otherwise elevate your privileges to allow the process to listen on the needed ports.
 
 ## Configuring Ogar3
-Use gameserver.ini in src to modify Ogar3's configurations field.
+Use gameserver.ini in the main project folder to modify Ogar3's configuration.
 
 

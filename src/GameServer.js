@@ -1,6 +1,7 @@
 // Library imports
 var WebSocket = require('ws');
 var fs = require("fs");
+var path = require("path");
 var ini = require('./modules/ini.js');
 
 // Project imports
@@ -9,6 +10,7 @@ var PlayerTracker = require('./PlayerTracker');
 var PacketHandler = require('./PacketHandler');
 var Entity = require('./entity');
 var Gamemode = require('./gamemodes');
+var configPath = path.join(__dirname, '..', 'gameserver.ini');
 
 // GameServer implementation
 function GameServer(mult, prt) {
@@ -856,41 +858,33 @@ GameServer.prototype.splitCells = function(client) {
     for (var i = 0; i < len; i++) {
     	
         if (client.cells.length >= this.config.playerMaxCells) {
-            // Player cell limit
             continue;
         }
         
         var cell = client.cells[i];
-        if (!cell) {
-            continue;
-        } if (cell.mass < this.config.playerMinMassSplit) {
-            continue;
-        }
-			
-        // Get angle
+        if (!cell) continue;
+        if (cell.mass < this.config.playerMinMassSplit) continue;
+
         var deltaY = client.mouse.y - cell.position.y;
         var deltaX = client.mouse.x - cell.position.x;
-        var angle = Math.atan2(deltaX,deltaY);
+        var angle = Math.atan2(deltaX, deltaY);
     	
-        // Get starting position
         var size = cell.getSize();
+        var spawnOffset = Math.max(22, Math.min(52, size * 0.28));
+
         var startPos = {
-            x: cell.position.x + ( (size + this.config.ejectMass) * Math.sin(angle) ), 
-            y: cell.position.y + ( (size + this.config.ejectMass) * Math.cos(angle) )
+            x: cell.position.x + (spawnOffset * Math.sin(angle)),
+            y: cell.position.y + (spawnOffset * Math.cos(angle))
         };
-        // Calculate mass of splitting cell
+
         var newMass = cell.mass / 2;
         cell.mass = newMass;
-        // Create cell
-        split = new Entity.PlayerCell(this.getNextNodeId(), client, startPos, newMass);
+
+        var split = new Entity.PlayerCell(this.getNextNodeId(), client, startPos, newMass);
         split.setAngle(angle);
-        split.setMoveEngineData(40 + (cell.getSpeed() * 4), 20);
+        split.setMoveEngineData(38 + (cell.getSpeed() * 4), 18);
         split.calcMergeTime(this.config.playerRecombineTime);
-    	split.firstSplit = true;
-	   setTimeout(function(){split.firstSplit = false;},1000)
-	   /* split.hasAte = true;
-			setTimeout(function(){split.hasAte = false},100);*/
-        // Add to moving cells list
+
         this.setAsMovingNode(split);
         this.addNode(split);
     }
@@ -1035,7 +1029,12 @@ GameServer.prototype.getCellsInRange = function(cell) {
                 multiplier = 1.33;
                 break;
             case 0: // Players
-                multiplier = check.owner == cell.owner ? 1.00 : multiplier;
+                if (check.owner == cell.owner) {
+                    if (cell.recombineTicks > 0 || check.recombineTicks > 0) {
+                        continue;
+                    }
+                    multiplier = 1.00;
+                }
                 // Can't eat team members
                 if (this.gameMode.haveTeams) {
                     if (!check.owner) { // Error check
@@ -1129,13 +1128,13 @@ GameServer.prototype.updateCells = function() {
 
 GameServer.prototype.loadConfig = function() {
     try {
-        this.config = ini.parse(fs.readFileSync('./gameserver.ini', 'utf-8'));
+        this.config = ini.parse(fs.readFileSync(configPath, 'utf-8'));
     } catch (err) {
         // No config
         console.log("[Game] Config not found... Generating new config");
     	
         // Create a new config
-        fs.writeFileSync('./gameserver.ini', ini.stringify(this.config));
+        fs.writeFileSync(configPath, ini.stringify(this.config));
     }
 }
 

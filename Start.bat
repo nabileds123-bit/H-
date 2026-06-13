@@ -1,6 +1,7 @@
 @echo off
+cd /d "%~dp0"
 :loop
-node src/index.js
+node src\index.js --game
 if errorlevel 1 (
 if not errorlevel 3 (
 GOTO END;
