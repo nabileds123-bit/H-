@@ -14,6 +14,7 @@ function PlayerTracker(gameServer, socket) {
     this.mouse = {x: 0, y: 0};
     this.tickLeaderboard = 0; // 
     this.tickViewBox = 0;
+    this.isPaused = false;
     
     this.team = 0;
     this.spectate = false;
@@ -81,23 +82,30 @@ PlayerTracker.prototype.getTeam = function() {
 // Functions
 
 PlayerTracker.prototype.update = function() {
+    if (this.isPaused) {
+        this.socket.packetHandler.pressSpace = false;
+        this.socket.packetHandler.pressW = false;
+        this.socket.packetHandler.merg = false;
+        this.socket.packetHandler.massSize = false;
+    }
+
 	// Actions buffer
-    if (this.socket.packetHandler.pressSpace) {
+    if (!this.isPaused && this.socket.packetHandler.pressSpace) {
         // Split cell
         this.gameServer.splitCells(this);
         this.socket.packetHandler.pressSpace = false;
     }
-	  if (this.socket.packetHandler.massSize ) {
+	  if (!this.isPaused && this.socket.packetHandler.massSize ) {
         // Split cell
         this.gameServer.gainMass(this);
         this.socket.packetHandler.massSize = false;
     }
-	 if (this.socket.packetHandler.merg ) {
+	 if (!this.isPaused && this.socket.packetHandler.merg ) {
         // Split cell
         this.gameServer.mergeCells(this);
         this.socket.packetHandler.merg = false;
     }
-    if (this.socket.packetHandler.pressW) {
+    if (!this.isPaused && this.socket.packetHandler.pressW) {
         // Eject mass
         this.gameServer.ejectMass(this);
         this.socket.packetHandler.pressW = false;

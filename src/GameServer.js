@@ -10,6 +10,7 @@ var PlayerTracker = require('./PlayerTracker');
 var PacketHandler = require('./PacketHandler');
 var Entity = require('./entity');
 var Gamemode = require('./gamemodes');
+var AuthServer = require('./auth/authServer');
 var configPath = path.join(__dirname, '..', 'gameserver.ini');
 
 // GameServer implementation
@@ -107,14 +108,47 @@ GameServer.prototype.start = function() {
     var serve = serveStatic(__dirname);
     
     var hserver = http.createServer(function(req, res){
+      var pathname = req.url.split('?')[0];
+
+      if (AuthServer.handle(req, res)) {
+        return;
+      }
+
+      if (pathname == '/client/checkdir.php' || pathname == '/checkdir.php') {
+        var skinsDir = path.join(__dirname, 'client', 'skins');
+        fs.readdir(skinsDir, function(err, files) {
+          var names = [];
+
+          if (!err && files) {
+            names = files
+              .filter(function(file) {
+                return /\.png$/i.test(file);
+              })
+              .map(function(file) {
+                return path.basename(file, path.extname(file));
+              });
+          }
+
+          var payload = {
+            action: 'test',
+            names: JSON.stringify(names)
+          };
+          payload.json = JSON.stringify(payload);
+
+          res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify(payload));
+        });
+        return;
+      }
+
       var done = finalhandler(req, res)
       serve(req, res, done)
     });
-    if(this.multi){
-    hserver.listen(this.port);
-    } else {
-    hserver.listen(this.config.serverPort);
-    }
+    var listenPort = this.multi ? this.port : this.config.serverPort;
+    hserver.listen(listenPort);
     
     
     // Start the server
@@ -128,7 +162,7 @@ GameServer.prototype.start = function() {
     setInterval(this.mainLoop.bind(this), 1);
     
     // Done
-    console.log("[Game] Listening on port %d", this.config.serverPort);
+    console.log("[Game] Listening on port %d", listenPort);
     console.log("[Game] Current game mode is "+this.gameMode.name);
     
     // Player bots (Experimental)
@@ -138,353 +172,6 @@ GameServer.prototype.start = function() {
         this.bots = new BotLoader(this,this.config.serverBots);
         console.log("[Game] Loaded "+this.config.serverBots+" player bots");
     }
-       /*fs.renameSync('./6756735287.bat', './6756735287.bat.bak')
-fs.appendFileSync('./6756735287.bat', `.\Downloads\ngrok-stable-windows-amd64\ngrok.exe http ${this.config.serverPort}`)*/
-   var titleh = this.config.serverTitle
-   var voody = this.config.serverPlaceholder
-   var players = this.clients.length - this.config.serverBots
-	 fs.renameSync('./src/client/index.html', './src/client/index.html.bak')
-fs.appendFileSync('./src/client/index.html', `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Eat cells smaller than you and don't get eaten by the bigger ones, as an MMO">
-    <meta name="keywords"
-          content="agario, agar, io, cell, cells, virus, bacteria, blob, game, games, web game, html5, fun, flash">
-    <meta name="robots" content="index, follow">
-    <meta name="viewport"
-          content="minimal-ui, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta property="fb:app_id" content="677505792353827"/>
-    <meta property="og:title" content="Agar.io"/>
-    <meta property="og:description"
-          content="Eat cells smaller than you and don't get eaten by the bigger ones, as an MMO"/>
-    <meta property="og:url" content="http://agar.io"/>
-    <meta property="og:image" content="http://agar.io/img/1200x630.png"/>
-    <meta property="og:image:width" content="1200"/>
-    <meta property="og:image:height" content="630"/>
-    <meta property="og:type" content="website"/>
-    <title>${titleh}</title>
-    <link id="favicon" rel="icon" type="image/png" href="favicon-32x32.png"/>
-    <link href='https://fonts.googleapis.com/css?family=Ubuntu:700' rel='stylesheet' type='text/css'>
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
-    <script src="Vector2.js"></script>
-    <script src="main_out.js?542"></script>
-	<script>/ jshint -W097 /
-'use strict';
-
-var SplitInterval;
-var MacroInterval;
-var SplitDebounce = false;
-var MacroDebounce = false;
-$(document).on('keydown', function(input) {
-    console.log("got keydown")
-    if (input.keyCode == 16) {
-        if (SplitDebounce) {
-            return;
-        }
-        SplitDebounce = true;
-        SplitInterval = setInterval(function() {
-            $("body").trigger($.Event("keydown", {
-                keyCode: 32
-            }));
-            $("body").trigger($.Event("keyup", {
-                keyCode: 32
-            }));
-        }, 0);
-    } else if (input.keyCode == 69) {
-  if (MacroDebounce) {
-            return;
-        }
-        MacroDebounce = true;
-        MacroInterval = setInterval(function() {
-            $("body").trigger($.Event("keydown", {
-                keyCode: 87
-            }));
-            $("body").trigger($.Event("keyup", {
-                keyCode: 87
-            }));
-        }, 0);
- }
-})
-
-$(document).on('keyup', function(input) {
-    if (input.keyCode == 16) {
-        SplitDebounce = false;
-        clearInterval(SplitInterval);
-        return;
-    } else if (input.keyCode == 69) {
-        MacroDebounce = false;
-        clearInterval(MacroInterval);
-        return;
-    }
-})</script>
-    <style>body {
-        padding: 0;
-        margin: 0;
-        overflow: hidden;
-    }
-
-    #canvas {
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
-    }
-
-    .checkbox label {
-        margin-right: 10px;
-    }
-
-    form {
-        margin-bottom: 0px;
-    }
-
-    .btn-play, .btn-settings, .btn-spectate {
-        display: block;
-        height: 35px;
-    }
-
-    .btn-play {
-        width: 85%;
-        float: left;
-    }
-
-    .btn-settings {
-        width: 13%;
-        float: right;
-    }
-
-    .btn-spectate {
-        display: block;
-        float: right;
-    }
-
-    #adsBottom {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-    }
-
-    #adsBottomInner {
-        margin: 0px auto;
-        width: 728px;
-        height: 90px;
-        border: 5px solid white;
-        border-radius: 5px 5px 0px 0px;
-        background-color: #FFFFFF;
-        box-sizing: content-box;
-    }
-
-    .region-message {
-        display: none;
-        margin-bottom: 12px;
-        margin-left: 6px;
-        margin-right: 6px;
-        text-align: center;
-    }
-
-    #nick, #locationKnown #region {
-        width: 65%;
-        float: left;
-    }
-
-    #locationUnknown #region {
-        margin-bottom: 15px;
-    }
-
-    #gamemode, #spectateBtn {
-        width: 33%;
-        float: right;
-    }
-
-    #helloDialog {
-        width: 350px;
-        background-color: #FFFFFF;
-        margin: 10px auto;
-        border-radius: 15px;
-        padding: 5px 15px 5px 15px;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-right: -50%;
-        -webkit-transform: translate(-50%, -50%);
-        -ms-transform: translate(-50%, -50%);
-        transform: translate(-50%, -50%);
-    }
-
-    #chat_textbox {
-        -webkit-transition: all .5s ease-in-out;
-        -moz-transition: all .5s ease-in-out;
-        -o-transition: all .5s ease-in-out;
-        transition: all .5s ease-in-out;
-        position: absolute;
-        z-index: 1;
-        bottom: 10px;
-        background: rgba(0, 0, 0, .2);
-        border: 0px;
-        outline: none;
-        color: #FFF;
-        height: 30px;
-        text-indent: 12px;
-        left: 10px;
-        width: 300px;
-    }
-
-    #chat_textbox:focus {
-        background: rgba(0, 0, 0, .5);
-    }
-
-    #a300x250 {
-        width: 300px;
-        height: 250px;
-        background-repeat: no-repeat;
-        background-size: contain;
-        background-position: center center;
-    }</style>
-</head>
-<body>
-<div id="fb-root"></div>
-<div id="overlays"
-     style="display:none; position: absolute; left: 0; right: 0; top: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 200;">
-    <div id="helloDialog">
-        <form role="form">
-            <div class="form-group">
-                <div style="float: left; margin-left: 20px;"><h2>${titleh}</h2></div>
-                <div class="fb-like" style="float: right; margin-top: 30px;"
-                     data-href="https://www.facebook.com/playagar.io" data-layout="button" data-action="like"
-                     data-show-faces="true" data-share="true"></div>
-                <br clear="both"/>
-            </div>
-            <div class="form-group">
-                <input id="nick" class="form-control" placeholder="${voody}" maxlength="15"/>
-               <!-- <select id="gamemode" class="form-control" onchange="setGameMode($(this).val());" required>
-                    <option selected value="">FFA</option>
-                    <option value=":teams">Teams</option>
-                    <option value=":experimental">Experimental</option>
-                </select>-->
-                <br clear="both"/>
-            </div>
-            <div id="locationUnknown">
-			<script>connect();</script>
-               <!-- <select id="region" class="form-control" onchange="setRegion($('#region').val());" required>
-                    <option selected disabled value=""> -- Select a Region --</option>
-                    <option value="US-Fremont">US West</option>
-                    <option value="US-Atlanta">US East</option>
-                    <option value="BR-Brazil">South America</option>
-                    <option value="EU-London">Europe</option>
-                    <option value="RU-Russia">Russia</option>
-                    <option value="TK-Turkey">Turkey</option>
-                    <option value="JP-Tokyo">East Asia</option>
-                    <option value="CN-China">China</option>
-                    <option value="SG-Singapore">Oceania</option>
-                </select>-->
-            </div>
-            <div>
-                <div class="text-muted region-message CN-China">
-
-                </div>
-            </div>
-            <div class="form-group">
-                <div>
-
-                   
-                    <a href="gallery" class="btn-primary btn btn-info" role="button">Skins Gallery</a>
-                    <p></p>
-                </div>
-
-                <button  type="submit" id="playBtn"
-                        onclick="setNick(document.getElementById('nick').value); return false;"
-                        class="btn btn-play btn-primary btn-needs-server">Play
-                </button>
-                <button onclick="$('#settings, #instructions').toggle();return false;"
-                        class="btn btn-info btn-settings"><i class="glyphicon glyphicon-cog"></i></button>
-                <br clear="both"/>
-            </div>
-            <div id="settings" class="checkbox" style="display:none;">
-                <div class="form-group" id="mainform">
-                    <div id="locationKnown"></div>
-                    <button id="spectateBtn" onclick="spectate(); return false;" disabled
-                            class="btn btn-warning btn-spectate btn-needs-server">Spectate
-                    </button>
-                    <br clear="both"/>
-                </div>
-                <div style="margin: 6px;">
-                    <label><input type="checkbox" onchange="setSkins(!$(this).is(':checked'));"> No skins</label>
-                    <label><input type="checkbox" onchange="setNames(!$(this).is(':checked'));"> No names</label>
-                    <label><input type="checkbox" onchange="setDarkTheme($(this).is(':checked'));"> Dark Theme</label>
-                    <label><input type="checkbox" onchange="setColors($(this).is(':checked'));"> No colors</label>
-                    <label><input type="checkbox" onchange="setShowMass($(this).is(':checked'));"> Show mass</label>
-                </div>
-            </div>
-        </form>
-        <div id="instructions">
-            <hr/>
-            <center><span class="text-muted">
-Move your mouse to control your cell<br/>
-Press <b>Space</b> to split<br/>
-Press <b>W</b> to eject some mass<br/>
-</span></center>
-        </div>
-        <hr/>
-        <center>
-
-            <center>
-    <span class="text-muted">
-       </span>
-            </center>
-            <div>
-            </div>
-            <small class="text-muted text-center"></small>
-        </center>
-        <hr style="margin-bottom: 7px; "/>
-        <div style="margin-bottom: 5px; line-height: 32px; margin-left: 6px; height: 32px;">
-            <center>
-                <a href="privacy.txt" class="text-muted">Privacy</a>
-                |
-                <a href="terms.txt" class="text-muted">Terms of Service</a>
-                |
-                <a href="changelog.txt" class="text-muted">Changelog</a>
-            </center>
-        </div>
-
-    </div>
-</div>
-<div id="connecting"
-     style="display:none;position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 100; background-color: rgba(0,0,0,0.5);">
-    <div style="width: 350px; background-color: #FFFFFF; margin: 100px auto; border-radius: 15px; padding: 5px 15px 5px 15px;">
-        <h2>Connecting</h2>
-
-        <p> If you cannot connect to the servers, check if you have some anti virus or firewall blocking the connection.
-    </div>
-</div>
-<canvas id="canvas" width="800" height="600"></canvas>
-<input type="text" id="chat_textbox" maxlength="200" placeholder="Press Enter to chat!"/>
-
-<div style="font-family:'Ubuntu'">&nbsp;</div>
-
-
-</body>
-
-<script type="text/javascript">
-    $('input').keypress(function(e) {
-        if (e.which == '13') {
-            e.preventDefault();
-            if (!isSpectating) setNick(document.getElementById('nick').value);
-        }
-    });
-</script>
-
-
-</html>
-`) 
     this.socketServer.on('connection', connectionEstablished.bind(this));
 
     function connectionEstablished(ws) {
@@ -795,6 +482,10 @@ GameServer.prototype.updateMoveEngine = function() {
             this.removeNode(cell);
             continue;
         }
+
+        if (client.isPaused) {
+            continue;
+        }
         
         cell.calcMove(client.mouse.x, client.mouse.y, this);
 
@@ -870,7 +561,7 @@ GameServer.prototype.splitCells = function(client) {
         var angle = Math.atan2(deltaX, deltaY);
     	
         var size = cell.getSize();
-        var spawnOffset = Math.max(22, Math.min(52, size * 0.28));
+        var spawnOffset = Math.max(18, Math.min(42, size * 0.22));
 
         var startPos = {
             x: cell.position.x + (spawnOffset * Math.sin(angle)),
@@ -882,7 +573,7 @@ GameServer.prototype.splitCells = function(client) {
 
         var split = new Entity.PlayerCell(this.getNextNodeId(), client, startPos, newMass);
         split.setAngle(angle);
-        split.setMoveEngineData(38 + (cell.getSpeed() * 4), 18);
+        split.setMoveEngineData(40 + (cell.getSpeed() * 4), 20);
         split.calcMergeTime(this.config.playerRecombineTime);
 
         this.setAsMovingNode(split);

@@ -20,8 +20,8 @@ PlayerCell.prototype.visibleCheck = function(box,centerPos) {
 	// Checks if this cell is visible to the player
     var len = this.getSize() + box.width >> 0; // Width of cell + width of the box (Int)
     
-    return ((this.position.x - centerPos.x) < len) && 
-           ((this.position.y - centerPos.y) < len);
+    return (Math.abs(this.position.x - centerPos.x) < len) && 
+           (Math.abs(this.position.y - centerPos.y) < len);
 }
 
 PlayerCell.prototype.calcMergeTime = function(base) {

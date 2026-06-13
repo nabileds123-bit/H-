@@ -1,4 +1,17 @@
 var Packet = require('./packet');
+var userStore = require('./auth/userStore');
+
+function hexToColor(hex) {
+    var match = /^#?([a-f0-9]{6})$/i.exec(hex || '');
+    if (!match) return null;
+
+    var value = parseInt(match[1], 16);
+    return {
+        r: (value >> 16) & 255,
+        g: (value >> 8) & 255,
+        b: value & 255
+    };
+}
 
 function PacketHandler(gameServer, socket) {
     this.gameServer = gameServer;
@@ -27,6 +40,7 @@ PacketHandler.prototype.handleMessage = function(message) {
     var buffer = stobuf(message);
     var view = new DataView(buffer);
     var packetId = view.getUint8(0, true);
+    var client = this.socket.playerTracker;
 
     switch (packetId) {
         case 0:
@@ -51,24 +65,50 @@ PacketHandler.prototype.handleMessage = function(message) {
             break;
         case 16:
             // Mouse Move
-            var client = this.socket.playerTracker;
+            if (client.isPaused) {
+                break;
+            }
             client.mouse.x = view.getFloat64(1, true);
             client.mouse.y = view.getFloat64(9, true);
             break;
 
 		case 17: 
             // Space Press - Split cell
+            if (client.isPaused) {
+                break;
+            }
             this.pressSpace = true;
             break;
 		    	 case 87:
+            if (client.isPaused) {
+                break;
+            }
 this.massSize = true;
 		    break;
 		     case 52:
+            if (client.isPaused) {
+                break;
+            }
 this.merg = true;
 		    break;
         case 21: 
             // W Press - Eject mass
+            if (client.isPaused) {
+                break;
+            }
             this.pressW = true;
+            break;
+        case 90:
+            // Pause game input while menu overlay is open
+            client.isPaused = true;
+            this.pressSpace = false;
+            this.pressW = false;
+            this.merg = false;
+            this.massSize = false;
+            break;
+        case 91:
+            // Resume game input after menu overlay is closed
+            client.isPaused = false;
             break;
         case 42:
             var message = "";
@@ -121,6 +161,30 @@ default:
 
 PacketHandler.prototype.setNickname = function(newNick) {
     var client = this.socket.playerTracker;
+    var parts = String(newNick || '').split('|');
+    var nick = parts[0];
+    var token = parts[1];
+    var user = token ? userStore.findBySessionToken(token) : null;
+
+    if (user) {
+        nick = user.username;
+        client.authUser = {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            cellColor: user.cellColor || '#000000'
+        };
+
+        if (user.cellColor && user.cellColor !== '#000000') {
+            var color = hexToColor(user.cellColor);
+            if (color) {
+                client.setColor(color);
+            }
+        } else {
+            client.setColor(this.gameServer.getRandomColor());
+        }
+    }
+
     if (client.cells.length < 1) {
         // If client has no cells... then spawn a player
         this.gameServer.spawnPlayer(client);
@@ -128,6 +192,6 @@ PacketHandler.prototype.setNickname = function(newNick) {
         // Turn off spectate mode
         client.spectate = false;
     }
-	client.setName(newNick);
+	client.setName(nick);
 }
 

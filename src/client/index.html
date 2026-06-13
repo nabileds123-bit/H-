@@ -24,6 +24,7 @@
     <link id="favicon" rel="icon" type="image/png" href="favicon-32x32.png"/>
     <link href='https://fonts.googleapis.com/css?family=Ubuntu:700' rel='stylesheet' type='text/css'>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="Vector2.js"></script>
     <script src="main_out.js?542"></script>
@@ -36,6 +37,13 @@ var SplitDebounce = false;
 var MacroDebounce = false;
 $(document).on('keydown', function(input) {
     console.log("got keydown")
+    if ($("#overlays").is(":visible")) {
+        clearInterval(SplitInterval);
+        clearInterval(MacroInterval);
+        SplitDebounce = false;
+        MacroDebounce = false;
+        return;
+    }
     if (input.keyCode == 16) {
         if (SplitDebounce) {
             return;
@@ -61,7 +69,7 @@ $(document).on('keydown', function(input) {
             $("body").trigger($.Event("keyup", {
                 keyCode: 87
             }));
-        }, 0);
+        }, 90);
  }
 })
 
@@ -100,19 +108,44 @@ $(document).on('keyup', function(input) {
         margin-bottom: 0px;
     }
 
-    .btn-play, .btn-settings, .btn-spectate {
-        display: block;
-        height: 35px;
+    .btn-play,.btn-settings,.btn-spectate,.btn-friend { display:block; height:35px; }
+
+    .btn-row {
+        display: flex;
+        width: 100%;
+        gap: 6px;
+        align-items: stretch;
     }
 
     .btn-play {
-        width: 85%;
-        float: left;
+        flex: 1 1 auto;
+        width: auto;
+        float: none;
     }
 
     .btn-settings {
-        width: 13%;
-        float: right;
+        width: 42px;
+        float: none;
+    }
+
+    .btn-friend {
+        display: none;
+        width: 42px;
+        float: none;
+        margin-left: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .is-authenticated .btn-friend {
+        display: block;
+    }
+
+    .btn-row .btn-friend,
+    .btn-row .btn-settings {
+        flex: 0 0 42px;
+        width: 42px;
+        float: none;
     }
 
     .btn-spectate {
@@ -146,7 +179,7 @@ $(document).on('keyup', function(input) {
     }
 
     #nick, #locationKnown #region {
-        width: 65%;
+        width: 64%;
         float: left;
     }
 
@@ -155,12 +188,13 @@ $(document).on('keyup', function(input) {
     }
 
     #gamemode, #spectateBtn {
-        width: 33%;
+        width: 34%;
         float: right;
     }
 
     #helloDialog {
-        width: 350px;
+        width: 380px;
+        height: 550px;
         background-color: #FFFFFF;
         margin: 10px auto;
         border-radius: 15px;
@@ -172,6 +206,25 @@ $(document).on('keyup', function(input) {
         -webkit-transform: translate(-50%, -50%);
         -ms-transform: translate(-50%, -50%);
         transform: translate(-50%, -50%);
+        overflow: visible;
+        box-sizing: border-box;
+    }
+
+    #dialogContent {
+        height: 485px;
+        overflow-y: visible;
+        overflow-x: visible;
+        padding-right: 2px;
+    }
+
+    #dialogFooter {
+        position: absolute;
+        left: 15px;
+        right: 15px;
+        bottom: 5px;
+        margin-bottom: 0;
+        line-height: 32px;
+        height: 32px;
     }
 
     #chat_textbox {
@@ -202,14 +255,1199 @@ $(document).on('keyup', function(input) {
         background-repeat: no-repeat;
         background-size: contain;
         background-position: center center;
+    }
+
+    .mode-footer-link:focus,
+    .mode-footer-link:active {
+        outline: none;
+        box-shadow: none;
+        text-decoration: none;
+    }
+
+    #dialogFooter:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: -16px;
+        border-top: 1px solid #eee;
+    }
+
+    #communityDropup {
+        display: none;
+        position: absolute;
+        z-index: 600;
+        width: 170px;
+        padding: 5px 0;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, .15);
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    #communityDropup.is-open {
+        display: block;
+    }
+
+    #communityDropup a {
+        display: block;
+        padding: 7px 12px;
+        border-bottom: 1px solid #e5e5e5;
+        color: #333;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    #communityDropup a:last-child {
+        border-bottom: 0;
+    }
+
+    #communityDropup a:hover,
+    #communityDropup a:focus {
+        background: #f5f5f5;
+        color: #262626;
+        outline: none;
+    }
+
+    #communityDropup .dropup-icon {
+        display: inline-block;
+        width: 18px;
+        margin-right: 8px;
+        text-align: center;
+        color: #000;
+    }
+
+    #guildDialog,
+    #notificationDialog,
+    #highScoreDialog {
+        display: none;
+        width: 380px;
+        height: 550px;
+        background-color: #fff;
+        margin: 10px auto;
+        border-radius: 15px;
+        padding: 5px 15px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin-right: -50%;
+        transform: translate(-50%, -50%);
+        z-index: 270;
+        box-sizing: border-box;
+    }
+
+    #guildDialog.is-open {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #notificationDialog.is-open {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #highScoreDialog.is-open {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #guildDialog .dialog-brand,
+    #notificationDialog .dialog-brand,
+    #highScoreDialog .dialog-brand {
+        color: #337ab7;
+        text-decoration: none;
+    }
+
+    #guildDialog .dialog-brand:hover,
+    #notificationDialog .dialog-brand:hover,
+    #highScoreDialog .dialog-brand:hover {
+        color: #23527c;
+        text-decoration: underline;
+    }
+
+    #guildDialog .spa-page-body,
+    #notificationDialog .spa-page-body,
+    #highScoreDialog .spa-page-body {
+        flex: 1;
+        min-height: 0;
+        padding-bottom: 10px;
+        font-size: 13px;
+        color: #333;
+    }
+
+    #guildDialog .dialog-footer,
+    #notificationDialog .dialog-footer,
+    #highScoreDialog .dialog-footer {
+        position: absolute;
+        left: 15px;
+        right: 15px;
+        bottom: 5px;
+        margin-bottom: 0;
+        height: 32px;
+        padding-top: 0;
+        text-align: center;
+        line-height: 32px;
+    }
+
+    #guildDialog .dialog-footer:before,
+    #notificationDialog .dialog-footer:before,
+    #highScoreDialog .dialog-footer:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: -16px;
+        border-top: 1px solid #eee;
+    }
+
+    #guildListView {
+        display: flex;
+        flex-direction: column;
+        height: 452px;
+        min-height: 0;
+    }
+
+    #highScoreView {
+        display: flex;
+        flex-direction: column;
+        height: 452px;
+        min-height: 0;
+    }
+
+    .highscore-filters {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 20px;
+    }
+
+    .highscore-filters .form-control {
+        height: 34px;
+        font-size: 14px;
+    }
+
+    .highscore-mode {
+        flex: 1 1 auto;
+    }
+
+    .highscore-period {
+        flex: 0 0 122px;
+    }
+
+    .highscore-date {
+        margin: 0 0 8px 0;
+        text-align: center;
+        color: #222;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .highscore-head,
+    .highscore-row {
+        display: grid;
+        grid-template-columns: 34px 1fr 58px 34px;
+        align-items: center;
+        min-height: 36px;
+        border-bottom: 1px solid #eee;
+        color: #333;
+        font-size: 13px;
+    }
+
+    .highscore-head {
+        min-height: 30px;
+        font-weight: 700;
+    }
+
+    .highscore-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .highscore-row {
+        color: #333;
+    }
+
+    .highscore-row.is-top {
+        background: #fff39a;
+    }
+
+    .highscore-rank {
+        text-align: center;
+    }
+
+    .highscore-medal {
+        font-size: 16px;
+    }
+
+    .highscore-medal.gold {
+        color: #d9ad21;
+    }
+
+    .highscore-medal.silver {
+        color: #b7b7b7;
+    }
+
+    .highscore-medal.bronze {
+        color: #c47b32;
+    }
+
+    .highscore-nick {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 700;
+    }
+
+    .highscore-time {
+        text-align: left;
+    }
+
+    .highscore-flag {
+        text-align: center;
+        line-height: 1;
+    }
+
+    .country-flag {
+        display: inline-block;
+        width: 20px;
+        height: 13px;
+        border: 1px solid rgba(0, 0, 0, .18);
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .12);
+        vertical-align: middle;
+    }
+
+    .flag-id {
+        background: linear-gradient(to bottom, #ce1126 0 50%, #fff 50% 100%);
+    }
+
+    .flag-pe {
+        background: linear-gradient(to right, #d91023 0 33%, #fff 33% 67%, #d91023 67% 100%);
+    }
+
+    .flag-ec {
+        background: linear-gradient(to bottom, #fcd116 0 50%, #003893 50% 75%, #ce1126 75% 100%);
+    }
+
+    .guild-search {
+        height: 34px;
+        margin-bottom: 10px;
+    }
+
+    .guild-period-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+        margin: 0 0 8px 0;
+        color: #aaa;
+        font-size: 12px;
+    }
+
+    .guild-period-tab {
+        border: 0;
+        background: transparent;
+        color: #999;
+        padding: 0;
+    }
+
+    .guild-period-tab.active {
+        color: #337ab7;
+        font-weight: bold;
+    }
+
+    .guild-table-head {
+        display: grid;
+        grid-template-columns: 34px 1fr 34px 48px;
+        align-items: center;
+        min-height: 28px;
+        border-bottom: 1px solid #e5e5e5;
+        color: #333;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .guild-table-name {
+        text-align: center;
+    }
+
+    .guild-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        border-bottom: 1px solid #eee;
+    }
+
+    .guild-row {
+        display: grid;
+        grid-template-columns: 34px 1fr 34px 48px;
+        align-items: center;
+        min-height: 54px;
+        border-bottom: 1px solid #eee;
+        color: #555;
+    }
+
+    .guild-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 1px solid #cfcfcf;
+        background: #2f2f2f;
+        object-fit: cover;
+    }
+
+    .guild-icon-fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .guild-name {
+        min-width: 0;
+        color: #337ab7;
+        font-size: 14px;
+        line-height: 1.2;
+        text-align: left;
+        word-break: break-word;
+    }
+
+    .guild-tag {
+        color: #777;
+        font-size: 12px;
+    }
+
+    .guild-members,
+    .guild-status {
+        text-align: center;
+        color: #777;
+        font-size: 13px;
+    }
+
+    .guild-top1-time {
+        text-align: right;
+        color: #777;
+        font-size: 13px;
+        padding-right: 2px;
+        white-space: nowrap;
+    }
+
+    .guild-empty {
+        padding: 24px 8px;
+        text-align: center;
+        color: #777;
+    }
+
+    .guild-create-link-wrap {
+        padding: 14px 0 6px 0;
+        text-align: center;
+    }
+
+    #guildCreateDialog {
+        display: none;
+        position: absolute;
+        top: 47%;
+        left: 50%;
+        z-index: 300;
+        width: 400px;
+        min-height: 0;
+        padding: 0;
+        border: 1px solid rgba(0, 0, 0, .2);
+        border-radius: 6px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, .45);
+        transform: translate(-50%, -50%);
+    }
+
+    #guildCreateDialog.is-open {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #guildCreateDialog .guild-create-header {
+        position: relative;
+        padding: 17px 36px 17px 15px;
+        border-bottom: 1px solid #e5e5e5;
+        color: #333;
+        font-size: 18px;
+        line-height: 1.1;
+    }
+
+    #guildCreateDialog .guild-create-close {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #c7c7c7;
+        font-size: 28px;
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    #guildCreateDialog .guild-create-close:hover {
+        color: #999;
+    }
+
+    #guildCreateForm {
+        display: flex;
+        flex-direction: column;
+        padding: 18px 15px 16px 15px;
+    }
+
+    #guildCreateDialog .guild-create-fields {
+        flex: 1;
+    }
+
+    #guildCreateDialog .guild-create-price {
+        margin: 0 0 6px 0;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    #guildCreateDialog .guild-form-label {
+        margin: 13px 0 5px 0;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    #guildCreateDialog .form-control {
+        height: 34px;
+        margin-bottom: 0;
+    }
+
+    #guildCreateLogo {
+        width: 100%;
+        height: 34px;
+        padding: 6px 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #fff;
+    }
+
+    #guildCreateDialog .guild-upload-warning {
+        margin: 18px 0 6px 0;
+        color: #f00;
+        text-align: center;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    #guildCreateStatus {
+        display: none;
+        margin-top: 8px;
+        font-size: 12px;
+        text-align: center;
+    }
+
+    #guildCreateDialog .guild-create-actions {
+        margin: 14px -15px -16px -15px;
+        padding: 16px 15px 16px 15px;
+        border-top: 1px solid #e5e5e5;
+    }
+
+    #guildCreateSubmit {
+        height: 35px;
+        border-color: #428bca;
+        border-radius: 4px;
+        background-color: #428bca;
+    }
+
+    #battleLiveDialog {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        z-index: 310;
+        width: 746px;
+        min-height: 594px;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, .18);
+        border-radius: 4px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
+        transform: translate(-50%, -50%);
+        overflow: hidden;
+    }
+
+    #battleLiveDialog.is-open {
+        display: block;
+    }
+
+    .battle-live-header {
+        position: relative;
+        padding: 16px 42px 16px 12px;
+        border-bottom: 1px solid #e5e5e5;
+        color: #111;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    #battleLiveClose {
+        position: absolute;
+        top: 10px;
+        right: 14px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #c7c7c7;
+        font-size: 28px;
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    #battleLiveClose:hover,
+    #battleLiveClose:focus {
+        color: #999;
+        outline: none;
+    }
+
+    .battle-live-list {
+        padding: 14px 14px 18px 14px;
+    }
+
+    .battle-live-row {
+        display: grid;
+        grid-template-columns: 74px 1fr 64px 1fr 74px;
+        align-items: center;
+        min-height: 61px;
+        border-bottom: 1px solid #dcdcdc;
+        background: #f8f8f8;
+        color: #222;
+        font-size: 12px;
+    }
+
+    .battle-live-row:nth-child(even) {
+        background: #fff;
+    }
+
+    .battle-live-tier {
+        color: #e7d56b;
+        font-size: 24px;
+        font-weight: 900;
+        text-align: center;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, .25);
+    }
+
+    .battle-live-tier.is-empty {
+        color: #bfbfbf;
+    }
+
+    .battle-live-team-left {
+        text-align: right;
+    }
+
+    .battle-live-team-right {
+        text-align: left;
+    }
+
+    .battle-live-score {
+        text-align: center;
+    }
+
+    .battle-live-score strong {
+        display: block;
+        font-size: 18px;
+        line-height: 1.1;
+    }
+
+    .battle-live-time {
+        display: block;
+        margin-top: 8px;
+        color: #bbb;
+        font-size: 11px;
+    }
+
+    @media (max-width: 780px) {
+        #battleLiveDialog {
+            left: 10px;
+            right: 10px;
+            top: 10px;
+            bottom: 10px;
+            width: auto;
+            min-height: 0;
+            transform: none;
+        }
+
+        .battle-live-row {
+            grid-template-columns: 38px 1fr 48px 1fr 38px;
+            font-size: 11px;
+        }
+    }
+
+    .auth-actions {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+        margin-top: 8px;
+    }
+
+    .auth-actions .auth-action {
+        display: table-cell;
+        padding-right: 6px;
+    }
+
+    .auth-actions .auth-action:last-child {
+        padding-right: 0;
+    }
+
+    .auth-actions .btn {
+        width: 100%;
+        height: 35px;
+    }
+
+    .btn-register-switch {
+        background-color: #6bb7d6;
+        border-color: #5aa9ca;
+        color: #fff;
+    }
+
+    .btn-register-switch:hover,
+    .btn-register-switch:focus {
+        background-color: #5aa9ca;
+        border-color: #4c9abc;
+        color: #fff;
+    }
+
+    .mode-button {
+        background: #fff;
+        color: #555;
+        border: 1px solid #aaa;
+        font-weight: 600;
+        min-width: 92px;
+        height: 34px;
+        padding: 6px 12px;
+        font-size: 12px;
+        line-height: 1.4;
+        margin: 0 2px;
+    }
+
+    #modeButtonWrap {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+
+    #modeButtonWrap.is-battle {
+        gap: 6px;
+    }
+
+    #modeButtonWrap.is-battle .mode-button {
+        flex: 0 0 auto;
+        min-width: 92px;
+        height: 34px;
+        padding: 6px 12px;
+        font-size: 12px;
+        margin: 0 2px;
+    }
+
+    #modeButtonWrap.is-battle #battleSpectateBtn {
+        width: 34%;
+        min-width: 0;
+        height: 34px;
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .mode-button:focus,
+    .mode-button:active {
+        outline: none;
+        box-shadow: inset 0 0 0 2px #6bb7d6;
+    }
+
+    .mode-button.is-selected {
+        border-color: #337ab7;
+        color: #337ab7;
+        box-shadow: inset 0 0 0 1px #337ab7;
+    }
+
+    .battle-spectate-button {
+        display: none;
+        color: #fff;
+        background-color: #5cb85c;
+        border-color: #4cae4c;
+    }
+
+    .battle-spectate-button:hover,
+    .battle-spectate-button:focus {
+        color: #fff;
+        background-color: #449d44;
+        border-color: #398439;
+    }
+
+    .invite-panel {
+        margin: 10px 6px 4px 6px;
+        padding: 8px;
+        border: 1px solid #ddd;
+        background: #f8f8f8;
+        font-size: 12px;
+    }
+
+    .invite-description {
+        margin: 0 0 6px 0;
+        color: #666;
+    }
+
+    .invite-link {
+        padding: 6px;
+        background: #fff;
+        border: 1px solid #ddd;
+        color: #337ab7;
+        word-break: break-all;
+    }
+
+    .account-actions {
+        margin: 16px 0 14px 0;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .account-table {
+        width: 100%;
+        margin-bottom: 16px;
+        border-top: 1px solid #ddd;
+    }
+
+    #accountView {
+        min-height: 455px;
+        position: relative;
+        padding-bottom: 58px;
+    }
+
+    .account-table .account-row {
+        display: table;
+        width: 100%;
+        min-height: 40px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .account-table .account-row.account-row-odd {
+        background: #f8f8f8;
+    }
+
+    .account-table .account-row.account-row-even {
+        background: #fff;
+    }
+
+    .account-table .account-label,
+    .account-table .account-value {
+        display: table-cell;
+        padding: 9px 10px;
+        vertical-align: middle;
+        font-size: 14px;
+    }
+
+    .account-table .account-label {
+        width: 84px;
+        color: #333;
+    }
+
+    .account-table .account-value {
+        color: #333;
+    }
+
+    .account-free {
+        color: #555;
+    }
+
+    .account-premium {
+        color: #36bd45;
+    }
+
+    .account-skin-list {
+        min-height: 24px;
+    }
+
+    .account-skin-preview {
+        width: 42px;
+        height: 42px;
+        border: 1px solid #777;
+        background: #111;
+        padding: 2px;
+        margin-right: 6px;
+    }
+
+    .account-upload {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 12px;
+        width: 100%;
+        margin: 0;
+        font-weight: 700;
+        height: 36px;
+        padding: 7px 10px;
+        font-size: 14px;
+    }
+
+    .cell-color-control {
+        position: relative;
+        display: inline-block;
+        margin-left: 10px;
+        vertical-align: middle;
+        height: 24px;
+    }
+
+    #cellColorPalette {
+        display: none;
+        position: absolute;
+        left: 0;
+        top: 28px;
+        z-index: 500;
+        padding: 6px 7px;
+        background: #fff;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+        white-space: nowrap;
+    }
+
+    #cellColorPalette.is-open {
+        display: block;
+    }
+
+    #profileCellColor {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        border: 1px solid #fff;
+        box-shadow: 0 0 0 1px #888;
+        vertical-align: middle;
+        cursor: pointer;
+    }
+
+    .cell-color-swatch {
+        width: 24px;
+        height: 28px;
+        border: 1px solid #fff;
+        box-shadow: none;
+        padding: 0;
+        margin: 0 2px;
+        vertical-align: middle;
+    }
+
+    .cell-color-swatch.is-selected {
+        box-shadow: 0 0 0 2px #337ab7;
+    }
+
+    .skin-upload-title {
+        margin: 18px 0 7px 0;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    .skin-upload-hint {
+        margin: 6px 0 10px 0;
+        color: #888;
+        font-size: 12px;
+    }
+
+    .skin-upload-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .skin-upload-actions .btn {
+        height: 35px;
+        font-weight: 700;
+    }
+
+    #skinUploadSubmit {
+        flex: 1 1 auto;
+    }
+
+    #skinUploadBack {
+        flex: 0 0 100px;
+        background-color: #5bc0de;
+        border-color: #46b8da;
+        color: #fff;
+    }
+
+    .skin-preview-wrap {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .skin-preview-frame {
+        position: relative;
+        display: inline-block;
+        width: 230px;
+        height: 230px;
+    }
+
+    #skinPreview {
+        width: 230px;
+        height: 230px;
+        border-radius: 50%;
+        border: 1px solid #d5d5d5;
+        background: #fff;
+        box-shadow: 0 0 0 3px #f3f3f3;
+        object-fit: cover;
+        display: none;
+    }
+
+    #skinPreviewEmpty {
+        width: 230px;
+        height: 230px;
+        margin: 0 auto;
+        border-radius: 50%;
+        border: 1px solid #d5d5d5;
+        background: #fafafa;
+        color: #aaa;
+        line-height: 230px;
+    }
+
+    #skinPreviewName {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #fff;
+        font-size: 22px;
+        font-weight: 900;
+        line-height: 1.1;
+        text-align: center;
+        text-transform: uppercase;
+        text-shadow: -1px -1px 0 #555, 1px -1px 0 #555, -1px 1px 0 #555, 1px 1px 0 #555, 0 2px 4px rgba(0, 0, 0, .55);
+        pointer-events: none;
+        word-break: break-word;
+    }
+
+    .xp-panel {
+        --xp-star-size: 52px;
+        display: none;
+        position: absolute;
+        left: 30px;
+        right: 10px;
+        bottom: 64px;
+        margin: 0;
+        padding-right: calc((var(--xp-star-size) / 2) + 2px);
+    }
+
+    .xp-panel.is-visible {
+        display: block;
+    }
+
+    .xp-container {
+        position: relative;
+        height: 30px;
+        background: #f5f5f5;
+        border-radius: 5px;
+        border: 2px solid #154865;
+    }
+
+    #indexXpBar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 0%;
+        max-width: 100%;
+        border-radius: 3px;
+        background: repeating-linear-gradient(
+            -45deg,
+            rgb(91, 158, 190),
+            rgb(91, 158, 190) 10px,
+            rgb(116, 171, 208) 10px,
+            rgb(116, 171, 208) 20px
+        );
+        transition: width .25s ease;
+        z-index: 0;
+    }
+
+    #indexXpText {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 900;
+        white-space: nowrap;
+        font-family: Arial, sans-serif;
+        text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 -1px 0 #000, 0 1px 0 #000;
+    }
+
+    .xp-star {
+        position: absolute;
+        top: 50%;
+        right: calc(var(--xp-star-size) / -2);
+        width: var(--xp-star-size);
+        height: var(--xp-star-size);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: translateY(-50%);
+        background: url('../img/star.png') center/contain no-repeat;
+        color: #333;
+        font-size: 15px;
+        font-weight: 900;
+        font-family: Arial, sans-serif;
+        text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45));
+        z-index: 3;
+    }
+
+    #friendInviteModal {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: calc(50% + 205px);
+        width: 310px;
+        min-height: 468px;
+        background: #fff;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+        transform: translateY(-50%);
+        z-index: 260;
+        overflow: hidden;
+    }
+
+    #friendInviteModal.is-open {
+        display: block;
+    }
+
+    .friend-invite-title {
+        margin: 0;
+        padding: 16px 14px 14px 14px;
+        border-bottom: 1px solid #eee;
+        color: #333;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .friend-invite-list {
+        margin: 26px 14px 8px 14px;
+        min-height: 330px;
+        border: 1px solid #ddd;
+        background: #fff;
+    }
+
+    .friend-invite-row {
+        display: table;
+        width: 100%;
+        height: 44px;
+        table-layout: fixed;
+        border-bottom: 1px solid #eee;
+        color: #999;
+        font-size: 13px;
+    }
+
+    .friend-invite-row:last-child {
+        border-bottom: 0;
+    }
+
+    .friend-avatar,
+    .friend-name,
+    .friend-tag,
+    .friend-mode,
+    .friend-online {
+        display: table-cell;
+        vertical-align: middle;
+    }
+
+    .friend-avatar {
+        width: 44px;
+        text-align: center;
+    }
+
+    .friend-avatar span {
+        display: inline-block;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 32px;
+        text-align: center;
+    }
+
+    .friend-avatar-blue span {
+        background: #8ec8e4;
+    }
+
+    .friend-avatar-red span {
+        background: #ef8f95;
+    }
+
+    .friend-name {
+        width: auto;
+        color: #888;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .friend-tag {
+        width: 42px;
+        text-align: center;
+    }
+
+    .friend-mode {
+        width: 34px;
+        text-align: center;
+    }
+
+    .friend-online {
+        width: 24px;
+        text-align: center;
+    }
+
+    .friend-online-dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #72cf00;
+    }
+
+    .friend-invite-footer {
+        padding: 4px 0 16px 0;
+        text-align: center;
+    }
+
+    .friend-invite-footer a {
+        color: #6aa8d7;
+        font-size: 14px;
+        text-decoration: none;
+    }
+
+    .friend-invite-footer .fa {
+        margin-right: 4px;
+    }
+
+    @media (max-width: 760px) {
+        #friendInviteModal {
+            left: 10px;
+            right: 10px;
+            top: auto;
+            bottom: 10px;
+            width: auto;
+            min-height: 360px;
+            transform: none;
+        }
     }</style>
 </head>
 <body>
 <div id="fb-root"></div>
 <div id="overlays"
-     style="display:none; position: absolute; left: 0; right: 0; top: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 200;">
+     style="display:none; position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/img/bg.png') center center / cover no-repeat; z-index: 200;">
     <div id="helloDialog">
-        <form role="form">
+        <div id="dialogContent">
+        <form id="homeView" role="form">
             <div class="form-group">
                 <div style="float: left; margin-left: 20px;"><h2>Bubble.am</h2></div>
                 <div class="fb-like" style="float: right; margin-top: 30px;"
@@ -219,27 +1457,28 @@ $(document).on('keyup', function(input) {
             </div>
             <div class="form-group">
                 <input id="nick" class="form-control" placeholder="Nick" maxlength="15"/>
-               <!-- <select id="gamemode" class="form-control" onchange="setGameMode($(this).val());" required>
-                    <option selected value="">FFA</option>
+               <select id="gamemode" class="form-control" required>
+                    <option selected value=":x5">FFA</option>
+                    <option value=":battle">Battle</option>
                     <option value=":teams">Teams</option>
                     <option value=":experimental">Experimental</option>
-                </select>-->
+                </select>
                 <br clear="both"/>
             </div>
             <div id="locationUnknown">
 			<script>connect();</script>
-               <!-- <select id="region" class="form-control" onchange="setRegion($('#region').val());" required>
-                    <option selected disabled value=""> -- Select a Region --</option>
+               <select id="region" class="form-control" required>
+                    <option disabled value=""> -- Select a Region --</option>
                     <option value="US-Fremont">US West</option>
                     <option value="US-Atlanta">US East</option>
                     <option value="BR-Brazil">South America</option>
-                    <option value="EU-London">Europe</option>
+                    <option selected value="EU-London">Europe</option>
                     <option value="RU-Russia">Russia</option>
                     <option value="TK-Turkey">Turkey</option>
                     <option value="JP-Tokyo">East Asia</option>
                     <option value="CN-China">China</option>
                     <option value="SG-Singapore">Oceania</option>
-                </select>-->
+                </select>
             </div>
             <div>
                 <div class="text-muted region-message CN-China">
@@ -247,49 +1486,222 @@ $(document).on('keyup', function(input) {
                 </div>
             </div>
             <div class="form-group">
-                <div>
-
-                   
-                    <a href="gallery" class="btn-primary btn btn-info" role="button">Skins Gallery</a>
-                    <p></p>
+                <div id="modeButtonWrap">
+                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":hardcore" data-battle-mode=":battle:1v1" data-invite-mode="MegaSplit">Mega Split</button>
+                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":x5" data-battle-mode=":battle:2v2" data-invite-mode="Hardcore">Hardcore</button>
+                    <button type="button" id="battleSpectateBtn" class="btn btn-success mode-button battle-spectate-button">Spectate</button>
                 </div>
 
-                <button  type="submit" id="playBtn"
-                        onclick="setNick(document.getElementById('nick').value); return false;"
-                        class="btn btn-play btn-primary btn-needs-server">Play
-                </button>
-                <button onclick="$('#settings, #instructions').toggle();return false;"
-                        class="btn btn-info btn-settings"><i class="glyphicon glyphicon-cog"></i></button>
-                <br clear="both"/>
+                <div class="btn-row">
+                    <button  type="submit" id="playBtn"
+                            onclick="setNick(document.getElementById('nick').value); return false;"
+                            class="btn btn-play btn-primary btn-needs-server">Play
+                    </button>
+                    <button type="button" id="friendPlayBtn" class="btn btn-success btn-friend" title="Play with Friends">
+                        <i class="fa fa-user-plus"></i>
+                    </button>
+                    <button onclick="$('#settings, #instructions').toggle();return false;"
+                            class="btn btn-info btn-settings"><i class="glyphicon glyphicon-cog"></i></button>
+                </div>
             </div>
             <div id="settings" class="checkbox" style="display:none;">
                 <div class="form-group" id="mainform">
                     <div id="locationKnown"></div>
-                    <button id="spectateBtn" onclick="spectate(); return false;" disabled
+                    <button id="spectateBtn" type="button"
                             class="btn btn-warning btn-spectate btn-needs-server">Spectate
                     </button>
                     <br clear="both"/>
                 </div>
                 <div style="margin: 6px;">
-                    <label><input type="checkbox" onchange="setSkins(!$(this).is(':checked'));"> No skins</label>
-                    <label><input type="checkbox" onchange="setNames(!$(this).is(':checked'));"> No names</label>
-                    <label><input type="checkbox" onchange="setDarkTheme($(this).is(':checked'));"> Dark Theme</label>
-                    <label><input type="checkbox" onchange="setColors($(this).is(':checked'));"> No colors</label>
-                    <label><input type="checkbox" onchange="setShowMass($(this).is(':checked'));"> Show mass</label>
+                    <label><input id="noSkinsCheckbox" type="checkbox"> No skins</label>
+                    <label><input id="noNamesCheckbox" type="checkbox"> No names</label>
+                    <label><input id="darkThemeCheckbox" type="checkbox"> Dark Theme</label>
+                    <label><input id="noColorsCheckbox" type="checkbox"> No colors</label>
+                    <label><input id="showMassCheckbox" type="checkbox"> Show mass</label>
+                </div>
+                <div id="inviteFriendsPanel" class="invite-panel">
+                    <p class="invite-description">Share this link so your friends can join the same server.</p>
+                    <div id="inviteLinkText" class="invite-link">Join a server first to generate an invite link.</div>
                 </div>
             </div>
         </form>
+        <div id="loginView" style="display:none;">
+            <div class="form-group">
+                <a href="#home" class="dialog-brand" style="font-size:14px;" onclick="$('#loginView, #registerView, #forgotPasswordView').hide(); $('#homeView, #instructions').show();">Bubble.am</a>
+                <span style="font-size:14px; color:#000;"> &raquo; Login</span>
+            </div>
+            <div class="form-group">
+                <input id="loginName" class="form-control" placeholder="Username" maxlength="15"/>
+            </div>
+            <div class="form-group">
+                <input id="loginPassword" type="password" class="form-control" placeholder="Password"/>
+            </div>
+            <div class="text-left" style="margin-top:-8px; margin-bottom:10px;">
+                <a href="#forgot-password" style="color:#00437e;" onclick="$('#loginView, #homeView, #instructions, #registerView').hide(); $('#forgotPasswordView').show(); $('#forgotPasswordEmail').focus();">Forgot Password</a>
+            </div>
+            <div class="auth-actions">
+                <div class="auth-action">
+                    <button type="button" id="loginSubmit" class="btn btn-primary">Login</button>
+                </div>
+                <div class="auth-action">
+                    <button type="button" class="btn btn-register-switch" onclick="$('#loginView, #homeView, #instructions').hide(); $('#registerView').show(); $('#registerName').focus();">Register</button>
+                </div>
+            </div>
+            <br clear="both"/>
+            <p id="loginStatus" class="text-muted text-center" style="margin-top:10px;"></p>
+        </div>
+        <div id="registerView" style="display:none;">
+            <div class="form-group">
+                <a href="#home" class="dialog-brand" style="font-size:14px;" onclick="$('#loginView, #registerView, #forgotPasswordView').hide(); $('#homeView, #instructions').show();">Bubble.am</a>
+                <span style="font-size:14px; color:#000;"> &raquo; Register</span>
+            </div>
+            <div class="form-group">
+                <input id="registerName" class="form-control" placeholder="Username" maxlength="15"/>
+            </div>
+            <div class="form-group">
+                <input id="registerEmail" type="email" class="form-control" placeholder="Email"/>
+            </div>
+            <div class="form-group">
+                <input id="registerPassword" type="password" class="form-control" placeholder="Password"/>
+            </div>
+            <div class="auth-actions">
+                <div class="auth-action">
+                    <button type="button" id="registerSubmit" class="btn btn-success">Register</button>
+                </div>
+            </div>
+            <br clear="both"/>
+            <p id="registerStatus" class="text-muted text-center" style="margin-top:10px;"></p>
+        </div>
+        <div id="forgotPasswordView" style="display:none;">
+            <div class="form-group">
+                <a href="#home" class="dialog-brand" style="font-size:14px;" onclick="$('#loginView, #registerView, #forgotPasswordView').hide(); $('#homeView, #instructions').show();">Bubble.am</a>
+                <span style="font-size:14px; color:#000;"> &raquo; Forgot Password</span>
+            </div>
+            <div class="form-group">
+                <input id="forgotPasswordEmail" type="email" class="form-control" placeholder="Email"/>
+            </div>
+            <div class="auth-actions">
+                <div class="auth-action">
+                    <button type="button" id="forgotPasswordSubmit" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+            <br clear="both"/>
+            <p id="forgotPasswordStatus" class="text-muted text-center" style="margin-top:10px;"></p>
+        </div>
+        <div id="resetPasswordView" style="display:none;">
+            <div class="form-group">
+                <a href="#home" class="dialog-brand" style="font-size:14px;" onclick="$('#loginView, #registerView, #forgotPasswordView, #resetPasswordView').hide(); $('#homeView, #instructions').show();">Bubble.am</a>
+                <span style="font-size:14px; color:#000;"> &raquo; Reset Password</span>
+            </div>
+            <div class="form-group">
+                <input id="resetPasswordNew" type="password" class="form-control" placeholder="New Password"/>
+            </div>
+            <div class="auth-actions">
+                <div class="auth-action">
+                    <button type="button" id="resetPasswordSubmit" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+            <br clear="both"/>
+            <p id="resetPasswordStatus" class="text-muted text-center" style="margin-top:10px;"></p>
+        </div>
+        <div id="accountView" style="display:none;">
+            <div class="form-group">
+                <a href="#home" class="dialog-brand" style="font-size:14px;" onclick="$('#loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView').hide(); $('#homeView, #instructions').show();">Bubble.am</a>
+                <span style="font-size:14px; color:#000;"> &raquo; Account</span>
+            </div>
+            <hr/>
+            <div class="account-actions">
+                <strong>Account details</strong> |
+                <a href="#change-password" id="changePasswordLink" class="text-primary">Change Password</a> |
+                <a href="#logout" id="logoutLink" class="text-primary">Logout</a>
+            </div>
+            <div class="account-table">
+                <div class="account-row">
+                    <div class="account-label">Account:</div>
+                    <div class="account-value"><span id="accountType" class="account-free">Free</span> <a href="#buy-premium" id="buyPremiumLink">(Buy Premium)</a></div>
+                </div>
+                <div class="account-row">
+                    <div class="account-label">Nick:</div>
+                    <div class="account-value"><span id="accountNick">-</span><span class="cell-color-control"><span id="profileCellColor" title="Change cell color" style="background-color: rgb(214, 16, 23);"></span><span id="cellColorPalette"><button type="button" class="cell-color-swatch" data-color="#000000" title="Random color" style="background-color:#000;"></button><button type="button" class="cell-color-swatch" data-color="#6FCA36" style="background-color: rgb(111, 202, 54);"></button><button type="button" class="cell-color-swatch" data-color="#4379EF" style="background-color: rgb(67, 121, 239);"></button><button type="button" class="cell-color-swatch" data-color="#98B6FD" style="background-color: rgb(152, 182, 253);"></button><button type="button" class="cell-color-swatch" data-color="#36D2D6" style="background-color: rgb(54, 210, 214);"></button><button type="button" class="cell-color-swatch" data-color="#6DE5B7" style="background-color: rgb(109, 229, 183);"></button><button type="button" class="cell-color-swatch" data-color="#41B136" style="background-color: rgb(65, 177, 54);"></button><button type="button" class="cell-color-swatch" data-color="#FBD348" style="background-color: rgb(251, 211, 72);"></button><button type="button" class="cell-color-swatch" data-color="#FFAE6A" style="background-color: rgb(255, 174, 106);"></button><button type="button" class="cell-color-swatch is-selected" data-color="#D61017" style="background-color: rgb(214, 16, 23);"></button><button type="button" class="cell-color-swatch" data-color="#D9A5FC" style="background-color: rgb(217, 165, 252);"></button></span></span></div>
+                </div>
+                <div id="accountSkinRow" class="account-row" style="display:none;">
+                    <div class="account-label">Skin:</div>
+                    <div class="account-value">
+                        <div id="accountPlayerSkin" class="account-skin-list"></div>
+                        <div id="accountGuildSkin" class="account-skin-list"></div>
+                    </div>
+                </div>
+                <div class="account-row">
+                    <div class="account-label">Level:</div>
+                    <div class="account-value">1</div>
+                </div>
+                <div class="account-row">
+                    <div class="account-label">Points:</div>
+                    <div class="account-value">0</div>
+                </div>
+                <div class="account-row">
+                    <div class="account-label">Guild:</div>
+                    <div class="account-value">N/A <a href="#join-guild" id="joinGuildLink">Join Guild</a></div>
+                </div>
+                <div class="account-row">
+                    <div class="account-value" style="display:block; width:auto;">Last Login - <span id="accountLastLogin">-</span></div>
+                </div>
+            </div>
+            <button type="button" id="openUploadSkin" class="btn btn-warning account-upload">Upload your skin (required. 150 points)</button>
+        </div>
+        <div id="uploadSkinView" style="display:none;">
+            <div class="form-group">
+                <a href="#home" class="dialog-brand" style="font-size:14px;" onclick="$('#loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide(); $('#homeView, #instructions').show();">Bubble.am</a>
+                <span style="font-size:14px; color:#888;"> &raquo; Account</span>
+            </div>
+            <hr/>
+            <div class="skin-upload-title">Upload Skin</div>
+            <div class="form-group">
+                <input id="skinFileInput" type="file" accept=".png,image/png"/>
+            </div>
+            <p class="skin-upload-hint">We recommend to upload 500x500 PNG images.</p>
+            <div class="skin-upload-actions">
+                <button type="button" id="skinUploadSubmit" class="btn btn-primary">Submit</button>
+                <button type="button" id="skinUploadBack" class="btn btn-info">Back</button>
+            </div>
+            <div class="skin-preview-wrap">
+                <div class="skin-preview-frame">
+                    <img id="skinPreview" alt="Skin preview"/>
+                    <p id="skinPreviewEmpty" class="text-muted">No skin selected</p>
+                    <span id="skinPreviewName"></span>
+                </div>
+            </div>
+            <p id="skinUploadStatus" class="text-muted text-center" style="margin-top:10px;"></p>
+        </div>
+        <div id="changePasswordView" style="display:none;">
+            <div class="form-group">
+                <a href="#home" class="dialog-brand" style="font-size:14px;" onclick="$('#loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView').hide(); $('#homeView, #instructions').show();">Bubble.am</a>
+                <span style="font-size:14px; color:#000;"> &raquo; Change Password</span>
+            </div>
+            <div class="form-group">
+                <input id="changePasswordCurrent" type="password" class="form-control" placeholder="Current Password"/>
+            </div>
+            <div class="form-group">
+                <input id="changePasswordNew" type="password" class="form-control" placeholder="New Password"/>
+            </div>
+            <div class="auth-actions">
+                <div class="auth-action">
+                    <button type="button" id="changePasswordSubmit" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+            <br clear="both"/>
+            <p id="changePasswordStatus" class="text-muted text-center" style="margin-top:10px;"></p>
+        </div>
         <div id="instructions">
             <hr/>
             <center><span class="text-muted">
-Move your mouse to control your cell<br/>
-Press <b>Space</b> to split<br/>
-Press <b>W</b> to eject some mass<br/>
-</span></center>
+                Move your mouse to control your cell<br/>
+                Press <b>Space</b> to split<br/>
+                Press <b>W</b> to eject some mass<br/>
+            </span></center>
         </div>
         <hr/>
         <center>
-
             <center>
     <span class="text-muted">
        </span>
@@ -298,17 +1710,231 @@ Press <b>W</b> to eject some mass<br/>
             </div>
             <small class="text-muted text-center"></small>
         </center>
-        <hr style="margin-bottom: 7px; "/>
-        <div style="margin-bottom: 5px; line-height: 32px; margin-left: 6px; height: 32px;">
+        <div id="helloXpPanel" class="xp-panel">
+            <div class="xp-container">
+                <div id="indexXpBar"></div>
+                <span id="indexXpText">0/0 XP</span>
+                <div id="indexXpLevel" class="xp-star">1</div>
+            </div>
+        </div>
+        </div>
+        <div id="dialogFooter" style="margin-left: 6px;">
             <center>
-                <a href="privacy.txt" class="text-muted">Privacy</a>
+                <a href="#home" class="mode-footer-link" style="color:#337ab7; font-weight:500;" onclick="$('.mode-footer-link').removeClass('text-muted').css('color','#337ab7'); $(this).addClass('text-muted').css('color',''); $('#loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide(); $('#homeView, #instructions').show();">Home</a>
                 |
-                <a href="terms.txt" class="text-muted">Terms of Service</a>
+                <a href="#login" id="authFooterLink" class="mode-footer-link" style="color:#337ab7; font-weight:500;" onclick="$('.mode-footer-link').removeClass('text-muted').css('color','#337ab7'); $(this).addClass('text-muted').css('color',''); $('#homeView, #instructions, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide(); $('#loginView').show(); $('#loginName').focus();">Login</a>
                 |
-                <a href="changelog.txt" class="text-muted">Changelog</a>
+                <a href="#community" id="communityFooterLink" class="mode-footer-link" style="color:#337ab7; font-weight:500;">Community</a>
+                |
+                <a href="https://discord.gg/EDbdRsnKWU" class="mode-footer-link" style="color:#337ab7; font-weight:500;">About</a>
             </center>
         </div>
 
+    </div>
+    <div id="friendInviteModal">
+        <h3 class="friend-invite-title">Invite friends to <span id="friendInviteMode">FFA - MegaSplit</span></h3>
+        <div class="friend-invite-list">
+        </div>
+        <div class="friend-invite-footer">
+            <a href="#friends" id="friendInviteFriendsLink"><i class="fa fa-users"></i>Friends</a>
+        </div>
+    </div>
+    <div id="guildDialog">
+        <div class="form-group">
+            <a href="#home" class="dialog-brand guild-home-link" style="font-size:14px;">Bubble.am</a>
+            <span style="font-size:14px; color:#888;"> &raquo; Guilds</span>
+        </div>
+        <div class="spa-page-body">
+            <div id="guildListView">
+                <input id="guildSearch" type="text" class="form-control guild-search" placeholder="Search">
+                <div class="guild-period-tabs">
+                    <button type="button" class="guild-period-tab active" data-guild-period="week">This Week</button>
+                    <span>|</span>
+                    <button type="button" class="guild-period-tab" data-guild-period="month">This Month</button>
+                    <span>|</span>
+                    <button type="button" class="guild-period-tab" data-guild-period="global">Global</button>
+                </div>
+                <div class="guild-table-head">
+                    <span></span>
+                    <span class="guild-table-name">Guild name</span>
+                    <span>*</span>
+                    <span>?</span>
+                </div>
+                <div id="guildList" class="guild-list">
+                    <div class="guild-empty">Belum ada guild.</div>
+                </div>
+                <div class="guild-create-link-wrap">
+                    <a href="#create-guild" id="guildCreateLink" class="text-primary">Create new Guild</a>
+                </div>
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <center>
+                <a href="#home" class="mode-footer-link guild-home-link" style="color:#337ab7; font-weight:500;">Home</a>
+                |
+                <a href="#account" class="mode-footer-link" id="guildAccountLink" style="color:#337ab7; font-weight:500;">Account</a>
+                |
+                <a href="#community" class="mode-footer-link" id="guildCommunityLink" style="color:#337ab7; font-weight:500;">Community</a>
+                |
+                <a href="https://discord.gg/EDbdRsnKWU" class="mode-footer-link" style="color:#337ab7; font-weight:500;">About</a>
+            </center>
+        </div>
+    </div>
+    <div id="guildCreateDialog">
+        <div class="guild-create-header">
+            Create new Guild
+            <button id="guildCreateClose" class="guild-create-close" type="button" aria-label="Close">&times;</button>
+        </div>
+        <form id="guildCreateForm" class="spa-page-body">
+            <div class="guild-create-fields">
+                <div class="guild-create-price">Price: 50 Pt.</div>
+                <div class="guild-form-label">Prefix</div>
+                <input id="guildCreateTag" type="text" class="form-control" maxlength="4" autocomplete="off" required>
+                <div class="guild-form-label">Guild name</div>
+                <input id="guildCreateName" type="text" class="form-control" maxlength="32" autocomplete="off" required>
+                <div class="guild-form-label">Type</div>
+                <select id="guildCreateType" class="form-control" required>
+                    <option value="private">Private</option>
+                    <option value="public">Public</option>
+                </select>
+                <div class="guild-form-label">Upload skin</div>
+                <input id="guildCreateLogo" type="file" accept=".png,image/png">
+                <div id="guildCreateWarning" class="guild-upload-warning">You can upload only Clip art images.</div>
+                <div id="guildCreateStatus"></div>
+            </div>
+            <div class="guild-create-actions">
+                <button id="guildCreateSubmit" type="submit" class="btn btn-primary btn-block">Submit</button>
+            </div>
+        </form>
+    </div>
+    <div id="notificationDialog">
+        <div class="form-group">
+            <a href="#home" class="dialog-brand notification-home-link" style="font-size:14px;">Bubble.am</a>
+            <span style="font-size:14px; color:#888;"> &raquo; Notifications</span>
+        </div>
+        <div class="spa-page-body">
+            <div id="notificationView">
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <center>
+                <a href="#home" class="mode-footer-link notification-home-link" style="color:#337ab7; font-weight:500;">Home</a>
+                |
+                <a href="#account" class="mode-footer-link" id="notificationAccountLink" style="color:#337ab7; font-weight:500;">Account</a>
+                |
+                <a href="#community" class="mode-footer-link" id="notificationCommunityLink" style="color:#337ab7; font-weight:500;">Community</a>
+                |
+                <a href="https://discord.gg/EDbdRsnKWU" class="mode-footer-link" style="color:#337ab7; font-weight:500;">About</a>
+            </center>
+        </div>
+    </div>
+    <div id="highScoreDialog">
+        <div class="form-group">
+            <a href="#home" class="dialog-brand highscore-home-link" style="font-size:14px;">Bubble.am</a>
+            <span style="font-size:14px; color:#888;"> &raquo; Leaderboard</span>
+        </div>
+        <div class="spa-page-body">
+            <div id="highScoreView">
+                <div class="highscore-filters">
+                    <select id="highScoreMode" class="form-control highscore-mode">
+                        <option>FFA - Hardcore</option>
+                        <option>FFA - MegaSplit</option>
+                        <option>1vs1</option>
+                        <option>2vs2</option>
+                    </select>
+                    <select id="highScorePeriod" class="form-control highscore-period">
+                        <option>Today</option>
+                        <option>This Week</option>
+                        <option>This Month</option>
+                        <option>Global</option>
+                    </select>
+                </div>
+                <div class="highscore-date">29/07/2020</div>
+                <div class="highscore-head">
+                    <div class="highscore-rank">#</div>
+                    <div>Nick</div>
+                    <div>TOP 1</div>
+                    <div></div>
+                </div>
+                <div class="highscore-list">
+                </div>
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <center>
+                <a href="#home" class="mode-footer-link highscore-home-link" style="color:#337ab7; font-weight:500;">Home</a>
+                |
+                <a href="#account" class="mode-footer-link" id="highScoreAccountLink" style="color:#337ab7; font-weight:500;">Account</a>
+                |
+                <a href="#community" class="mode-footer-link" id="highScoreCommunityLink" style="color:#337ab7; font-weight:500;">Community</a>
+                |
+                <a href="https://discord.gg/EDbdRsnKWU" class="mode-footer-link" style="color:#337ab7; font-weight:500;">About</a>
+            </center>
+        </div>
+    </div>
+    <div id="battleLiveDialog">
+        <div class="battle-live-header">
+            Battle Live
+            <button id="battleLiveClose" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="battle-live-list">
+            <div class="battle-live-row">
+                <div class="battle-live-tier">IV</div>
+                <div class="battle-live-team-left">Cluster, Agro</div>
+                <div class="battle-live-score"><strong>1:0</strong><span class="battle-live-time">01:25</span></div>
+                <div class="battle-live-team-right">NzR, Gmacho</div>
+                <div class="battle-live-tier">VI</div>
+            </div>
+            <div class="battle-live-row">
+                <div class="battle-live-tier">IV</div>
+                <div class="battle-live-team-left">J e s i c a, NaPersonal</div>
+                <div class="battle-live-score"><strong>1:0</strong><span class="battle-live-time">01:07</span></div>
+                <div class="battle-live-team-right">Esay, Prostowryj</div>
+                <div class="battle-live-tier is-empty">I</div>
+            </div>
+            <div class="battle-live-row">
+                <div class="battle-live-tier">IV</div>
+                <div class="battle-live-team-left">Skowy</div>
+                <div class="battle-live-score"><strong>0:0</strong><span class="battle-live-time">01:56</span></div>
+                <div class="battle-live-team-right">jeferson OwO</div>
+                <div class="battle-live-tier is-empty">I</div>
+            </div>
+            <div class="battle-live-row">
+                <div class="battle-live-tier">IV</div>
+                <div class="battle-live-team-left">im not in love, Gwiazdka</div>
+                <div class="battle-live-score"><strong>0:0</strong><span class="battle-live-time">01:52</span></div>
+                <div class="battle-live-team-right">SenSei, Fantazia</div>
+                <div class="battle-live-tier is-empty">I</div>
+            </div>
+            <div class="battle-live-row">
+                <div class="battle-live-tier">IV</div>
+                <div class="battle-live-team-left">b pro, Naofumi81</div>
+                <div class="battle-live-score"><strong>0:0</strong><span class="battle-live-time">00:11</span></div>
+                <div class="battle-live-team-right">Radi, WieszakSSJ</div>
+                <div class="battle-live-tier is-empty">I</div>
+            </div>
+            <div class="battle-live-row">
+                <div class="battle-live-tier"></div>
+                <div class="battle-live-team-left">ROBAK181818, XaMMo492</div>
+                <div class="battle-live-score"><strong>1:0</strong><span class="battle-live-time">03:59</span></div>
+                <div class="battle-live-team-right">FMB, COME Canibales</div>
+                <div class="battle-live-tier is-empty">I</div>
+            </div>
+            <div class="battle-live-row">
+                <div class="battle-live-tier"></div>
+                <div class="battle-live-team-left">TokoSoP, PembasmiLONTE1</div>
+                <div class="battle-live-score"><strong>1:0</strong><span class="battle-live-time">01:20</span></div>
+                <div class="battle-live-team-right">MENINGGAL, RICKY nih TODD</div>
+                <div class="battle-live-tier is-empty">I</div>
+            </div>
+            <div class="battle-live-row">
+                <div class="battle-live-tier is-empty">I</div>
+                <div class="battle-live-team-left">Leakzy</div>
+                <div class="battle-live-score"><strong>0:0</strong><span class="battle-live-time">00:00</span></div>
+                <div class="battle-live-team-right">FabianWillma</div>
+                <div class="battle-live-tier"></div>
+            </div>
+        </div>
     </div>
 </div>
 <div id="connecting"
@@ -321,8 +1947,853 @@ Press <b>W</b> to eject some mass<br/>
 </div>
 <canvas id="canvas" width="800" height="600"></canvas>
 <input type="text" id="chat_textbox" maxlength="200" placeholder="Press Enter to chat!"/>
+<div id="communityDropup">
+    <a href="#notification" data-route="notification"><span class="dropup-icon glyphicon glyphicon-bell"></span><span>Notifications</span></a>
+    <a href="#friends" data-route="friends"><span class="dropup-icon fa fa-user-plus"></span><span>Friends</span></a>
+    <a href="#high-score" data-route="high-score"><span class="dropup-icon glyphicon glyphicon-stats"></span><span>Highscore</span></a>
+    <a href="#guild" data-route="guild"><span class="dropup-icon glyphicon glyphicon-tower"></span><span>Guilds</span></a>
+</div>
 
 <div style="font-family:'Ubuntu'">&nbsp;</div>
+
+<script>
+$(function () {
+    var resetToken = null;
+    var authToken = localStorage.getItem('authToken');
+    var authUser = localStorage.getItem('authUser');
+    var inviteSubMode = localStorage.getItem('inviteSubMode') || 'MegaSplit';
+
+    function showAuthStatus(selector, message, isError) {
+        $(selector)
+            .removeClass('text-danger text-success text-muted')
+            .addClass(isError ? 'text-danger' : 'text-success')
+            .text(message);
+    }
+
+    function postAuth(path, payload, callback) {
+        $.ajax({
+            url: path,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function (response) {
+                callback(null, response);
+            },
+            error: function (xhr) {
+                var response = xhr.responseJSON || {};
+                callback(response.message || 'Request failed.');
+            }
+        });
+    }
+
+    function showHomeView() {
+        $('#loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide();
+        $('#homeView, #instructions').show();
+        $('#helloDialog').show();
+        $('#guildDialog').removeClass('is-open');
+        $('#guildCreateDialog').removeClass('is-open');
+        $('#notificationDialog').removeClass('is-open');
+        $('#highScoreDialog').removeClass('is-open');
+        updatePlayerExpVisibility();
+    }
+
+    function updateAccountRows() {
+        $('#accountView .account-row')
+            .removeClass('account-row-odd account-row-even')
+            .filter(':visible')
+            .each(function (index) {
+                $(this).addClass(index % 2 === 0 ? 'account-row-odd' : 'account-row-even');
+            });
+    }
+
+    function formatLoginTime(value) {
+        if (!value) return '-';
+
+        var date = new Date(parseInt(value, 10));
+        if (isNaN(date.getTime())) return '-';
+
+        return date.toLocaleString();
+    }
+
+    function showAccountView() {
+        $('#homeView, #instructions, #loginView, #registerView, #forgotPasswordView, #resetPasswordView, #changePasswordView, #uploadSkinView').hide();
+        $('#accountNick').text(authUser || '-');
+        $('#accountLastLogin').text(formatLoginTime(localStorage.getItem('authLastLogin')));
+        $('#accountSkinRow').hide();
+        $('#accountPlayerSkin, #accountGuildSkin').empty();
+        $('#cellColorPalette').removeClass('is-open');
+        $('#accountView').show();
+        updatePlayerExpVisibility();
+        updateAccountRows();
+    }
+
+    function showChangePasswordView() {
+        $('#homeView, #instructions, #loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #uploadSkinView').hide();
+        $('#changePasswordStatus').removeClass('text-danger text-success').addClass('text-muted').text('');
+        $('#changePasswordCurrent, #changePasswordNew').val('');
+        $('#changePasswordView').show();
+        updatePlayerExpVisibility();
+        $('#changePasswordCurrent').focus();
+    }
+
+    function showUploadSkinView() {
+        $('#homeView, #instructions, #loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView').hide();
+        $('#skinFileInput').val('');
+        $('#skinPreview').hide().removeAttr('src');
+        $('#skinPreviewEmpty').show();
+        $('#skinPreviewName').text(authUser || $('#accountNick').text() || '');
+        $('#skinUploadStatus').removeClass('text-danger text-success').addClass('text-muted').text('');
+        $('#uploadSkinView').show();
+        updatePlayerExpVisibility();
+    }
+
+    function closeCommunityDropup() {
+        $('#communityDropup').removeClass('is-open').removeAttr('style');
+    }
+
+    function closeFriendInviteModal() {
+        $('#friendInviteModal').removeClass('is-open');
+    }
+
+    function closeBattleLiveDialog() {
+        $('#battleLiveDialog').removeClass('is-open');
+    }
+
+    function openBattleLiveDialog() {
+        closeCommunityDropup();
+        closeFriendInviteModal();
+        $('#battleLiveDialog').addClass('is-open');
+    }
+
+    function openGuildDialog() {
+        closeCommunityDropup();
+        closeFriendInviteModal();
+        closeBattleLiveDialog();
+        $('#overlays').show();
+        $('#helloDialog').hide();
+        $('#notificationDialog').removeClass('is-open');
+        $('#highScoreDialog').removeClass('is-open');
+        $('#guildCreateDialog').removeClass('is-open');
+        $('#guildDialog').addClass('is-open');
+        updatePlayerExpVisibility();
+        $('#guildSearch').focus();
+    }
+
+    function openNotificationDialog() {
+        closeCommunityDropup();
+        closeFriendInviteModal();
+        closeBattleLiveDialog();
+        $('#overlays').show();
+        $('#helloDialog').hide();
+        $('#guildDialog').removeClass('is-open');
+        $('#guildCreateDialog').removeClass('is-open');
+        $('#highScoreDialog').removeClass('is-open');
+        $('#notificationDialog').addClass('is-open');
+        updatePlayerExpVisibility();
+    }
+
+    function openHighScoreDialog() {
+        closeCommunityDropup();
+        closeFriendInviteModal();
+        closeBattleLiveDialog();
+        $('#overlays').show();
+        $('#helloDialog').hide();
+        $('#guildDialog').removeClass('is-open');
+        $('#guildCreateDialog').removeClass('is-open');
+        $('#notificationDialog').removeClass('is-open');
+        $('#highScoreDialog').addClass('is-open');
+        updatePlayerExpVisibility();
+        $('#highScoreMode').focus();
+    }
+
+    function closeGuildCreateDialog() {
+        $('#guildCreateDialog').removeClass('is-open');
+    }
+
+    function openGuildCreateDialog() {
+        $('#guildCreateStatus').hide().removeClass('text-danger text-success').text('');
+        $('#guildCreateDialog').addClass('is-open');
+        $('#guildCreateTag').focus();
+    }
+
+    function getGuildCreateLogoFile() {
+        var input = $('#guildCreateLogo')[0];
+        return input && input.files && input.files[0] ? input.files[0] : null;
+    }
+
+    function getGuildCreateLogoError(file) {
+        if (!file) return '';
+        if (!/\.png$/i.test(file.name) || file.type !== 'image/png') {
+            return 'Guild skin must be a PNG file.';
+        }
+        return '';
+    }
+
+    function getFriendInviteModeText() {
+        var mode = $('#gamemode option:selected').text() || 'FFA';
+        return mode + ' - ' + inviteSubMode;
+    }
+
+    function isLoggedIn() {
+        return !!(authToken && authUser);
+    }
+
+    function updateBattleModeLock() {
+        var locked = !isLoggedIn();
+        $('#gamemode option[value=":battle"]')
+            .prop('disabled', locked)
+            .attr('title', locked ? 'Login required to play Battle.' : '');
+
+        if (locked && $('#gamemode').val() === ':battle') {
+            $('#gamemode').val(':x5');
+            if (typeof window.setGameMode === 'function') {
+                window.setGameMode(':x5');
+            }
+        }
+    }
+
+    function getSelectedGameModeGroup() {
+        var value = $('#gamemode').val() || ':x5';
+        return value === ':battle' ? 'battle' : 'ffa';
+    }
+
+    function renderModeButtons() {
+        var isBattle = getSelectedGameModeGroup() === 'battle';
+        var buttons = $('.mode-button').not('#battleSpectateBtn');
+
+        $('#modeButtonWrap').toggleClass('is-battle', isBattle);
+
+        buttons.eq(0)
+            .text(isBattle ? '1vs1' : 'Mega Split')
+            .attr('data-invite-mode', isBattle ? '1vs1' : 'MegaSplit');
+
+        buttons.eq(1)
+            .text(isBattle ? '2vs2' : 'Hardcore')
+            .attr('data-invite-mode', isBattle ? '2vs2' : 'Hardcore');
+
+        $('#battleSpectateBtn').toggle(isBattle);
+
+        if (isBattle && inviteSubMode !== '1vs1' && inviteSubMode !== '2vs2') {
+            setInviteSubMode('1vs1');
+            return;
+        }
+
+        if (!isBattle && inviteSubMode !== 'MegaSplit' && inviteSubMode !== 'Hardcore') {
+            setInviteSubMode('MegaSplit');
+            return;
+        }
+
+        updateInviteModeSelection();
+        updateFriendInviteTitle();
+    }
+
+    function updateFriendInviteTitle() {
+        $('#friendInviteMode').text(getFriendInviteModeText());
+    }
+
+    function updateInviteModeSelection() {
+        $('.mode-button').removeClass('is-selected');
+        $('.mode-button').filter(function () {
+            return String($(this).attr('data-invite-mode')) === inviteSubMode;
+        }).addClass('is-selected');
+    }
+
+    function setInviteSubMode(value) {
+        inviteSubMode = value || 'MegaSplit';
+        localStorage.setItem('inviteSubMode', inviteSubMode);
+        updateInviteModeSelection();
+        updateFriendInviteTitle();
+    }
+
+    function openFriendInviteModal() {
+        updateFriendInviteTitle();
+        $('#friendInviteModal').addClass('is-open');
+    }
+
+    function positionCommunityDropup($sourceLink) {
+        var $link = $sourceLink && $sourceLink.length ? $sourceLink : $('#communityFooterLink');
+        var $dropup = $('#communityDropup');
+        var linkOffset = $link.offset();
+
+        $dropup
+            .css({
+                left: -9999,
+                top: -9999,
+                display: 'block'
+            });
+
+        $dropup.css({
+            left: Math.round(linkOffset.left + ($link.outerWidth() / 2) - ($dropup.outerWidth() / 2)),
+            top: Math.round(linkOffset.top - $dropup.outerHeight() - 6),
+            display: ''
+        });
+    }
+
+    function openCommunityDropup($sourceLink) {
+        positionCommunityDropup($sourceLink);
+        $('#communityDropup').addClass('is-open');
+    }
+
+    function getStoredNumber(key, fallback) {
+        var value = parseInt(localStorage.getItem(key), 10);
+        return isNaN(value) ? fallback : value;
+    }
+
+    function callGameSetter(name, value) {
+        if (typeof window[name] === 'function') {
+            window[name](value);
+        }
+    }
+
+    function initPersistedCheckboxes() {
+        var settings = [
+            {
+                selector: '#noSkinsCheckbox',
+                key: 'settingNoSkins',
+                apply: function (checked) {
+                    callGameSetter('setSkins', !checked);
+                }
+            },
+            {
+                selector: '#noNamesCheckbox',
+                key: 'settingNoNames',
+                apply: function (checked) {
+                    callGameSetter('setNames', !checked);
+                }
+            },
+            {
+                selector: '#darkThemeCheckbox',
+                key: 'settingDarkTheme',
+                apply: function (checked) {
+                    callGameSetter('setDarkTheme', checked);
+                }
+            },
+            {
+                selector: '#noColorsCheckbox',
+                key: 'settingNoColors',
+                apply: function (checked) {
+                    callGameSetter('setColors', checked);
+                }
+            },
+            {
+                selector: '#showMassCheckbox',
+                key: 'settingShowMass',
+                apply: function (checked) {
+                    callGameSetter('setShowMass', checked);
+                }
+            }
+        ];
+
+        settings.forEach(function (setting) {
+            var $checkbox = $(setting.selector);
+            var checked = localStorage.getItem(setting.key) === 'true';
+
+            $checkbox.prop('checked', checked);
+            setting.apply(checked);
+
+            $checkbox.on('change', function () {
+                var isChecked = this.checked;
+                localStorage.setItem(setting.key, isChecked ? 'true' : 'false');
+                setting.apply(isChecked);
+            });
+        });
+    }
+
+    function updatePlayerExpHud() {
+        var xp = Math.max(0, getStoredNumber('authXp', 0));
+        var xpMax = Math.max(0, getStoredNumber('authXpMax', 0));
+        var level = Math.max(1, getStoredNumber('authLevel', 1));
+        var progress = xpMax > 0 ? Math.max(0, Math.min(100, (xp / xpMax) * 100)) : 0;
+
+        $('#indexXpText').text(xp + '/' + xpMax + ' XP');
+        $('#indexXpLevel').text(level);
+        $('#indexXpBar').css('width', progress + '%');
+    }
+
+    function updatePlayerExpVisibility() {
+        if (isLoggedIn() && $('#homeView').is(':visible')) {
+            updatePlayerExpHud();
+            $('#helloXpPanel').addClass('is-visible');
+        } else {
+            $('#helloXpPanel').removeClass('is-visible');
+        }
+    }
+
+    function applyAuthState() {
+        updateBattleModeLock();
+        if (!isLoggedIn()) return;
+
+        $('#nick')
+            .val(authUser)
+            .prop('readonly', true)
+            .attr('title', 'Nickname follows your account while logged in.');
+
+        $('#homeView').addClass('is-authenticated');
+        updatePlayerExpVisibility();
+
+        $('#authFooterLink')
+            .attr('href', '#account')
+            .removeAttr('onclick')
+            .text('Account')
+            .off('click')
+            .on('click', function () {
+                $('.mode-footer-link').removeClass('text-muted').css('color', '#337ab7');
+                $(this).addClass('text-muted').css('color', '');
+                closeCommunityDropup();
+                showAccountView();
+                return false;
+            });
+    }
+
+    $('#communityFooterLink').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        $('.mode-footer-link').removeClass('text-muted').css('color', '#337ab7');
+        $(this).addClass('text-muted').css('color', '');
+        closeFriendInviteModal();
+
+        if ($('#communityDropup').hasClass('is-open')) {
+            closeCommunityDropup();
+        } else {
+            openCommunityDropup($(this));
+        }
+    });
+
+    $('.mode-footer-link').not('#communityFooterLink, #authFooterLink').on('click', function () {
+        setTimeout(updatePlayerExpVisibility, 0);
+    });
+
+    $('#authFooterLink').on('click', function () {
+        setTimeout(updatePlayerExpVisibility, 0);
+    });
+
+    $('#communityDropup').on('click', function (event) {
+        event.stopPropagation();
+    });
+
+    $('#communityDropup a').on('click', function () {
+        closeCommunityDropup();
+    });
+
+    $('#communityDropup a[data-route="guild"], #joinGuildLink').on('click', function (event) {
+        event.preventDefault();
+        openGuildDialog();
+    });
+
+    $('#communityDropup a[data-route="notification"]').on('click', function (event) {
+        event.preventDefault();
+        openNotificationDialog();
+    });
+
+    $('#communityDropup a[data-route="high-score"]').on('click', function (event) {
+        event.preventDefault();
+        openHighScoreDialog();
+    });
+
+    $('.guild-home-link').on('click', function (event) {
+        event.preventDefault();
+        showHomeView();
+    });
+
+    $('.highscore-home-link').on('click', function (event) {
+        event.preventDefault();
+        showHomeView();
+    });
+
+    $('.notification-home-link').on('click', function (event) {
+        event.preventDefault();
+        showHomeView();
+    });
+
+    $('#guildAccountLink').on('click', function (event) {
+        event.preventDefault();
+        $('#guildCreateDialog').removeClass('is-open');
+        $('#guildDialog').removeClass('is-open');
+        $('#helloDialog').show();
+        if (authToken && authUser) {
+            showAccountView();
+        } else {
+            $('#homeView, #instructions, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide();
+            $('#loginView').show();
+            updatePlayerExpVisibility();
+        }
+    });
+
+    $('#guildCommunityLink').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeFriendInviteModal();
+        if ($('#communityDropup').hasClass('is-open')) {
+            closeCommunityDropup();
+        } else {
+            openCommunityDropup($(this));
+        }
+    });
+
+    $('#highScoreAccountLink').on('click', function (event) {
+        event.preventDefault();
+        $('#highScoreDialog').removeClass('is-open');
+        $('#helloDialog').show();
+        if (authToken && authUser) {
+            showAccountView();
+        } else {
+            $('#homeView, #instructions, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide();
+            $('#loginView').show();
+            updatePlayerExpVisibility();
+        }
+    });
+
+    $('#highScoreCommunityLink').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeFriendInviteModal();
+        if ($('#communityDropup').hasClass('is-open')) {
+            closeCommunityDropup();
+        } else {
+            openCommunityDropup($(this));
+        }
+    });
+
+    $('#notificationAccountLink').on('click', function (event) {
+        event.preventDefault();
+        $('#notificationDialog').removeClass('is-open');
+        $('#helloDialog').show();
+        if (authToken && authUser) {
+            showAccountView();
+        } else {
+            $('#homeView, #instructions, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide();
+            $('#loginView').show();
+            updatePlayerExpVisibility();
+        }
+    });
+
+    $('#notificationCommunityLink').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeFriendInviteModal();
+        if ($('#communityDropup').hasClass('is-open')) {
+            closeCommunityDropup();
+        } else {
+            openCommunityDropup($(this));
+        }
+    });
+
+    $('.guild-period-tab').on('click', function () {
+        $('.guild-period-tab').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    $('#guildCreateLink').on('click', function (event) {
+        event.preventDefault();
+        openGuildCreateDialog();
+    });
+
+    $('#guildCreateClose').on('click', function (event) {
+        event.preventDefault();
+        closeGuildCreateDialog();
+    });
+
+    $('#guildCreateDialog').on('click', function (event) {
+        event.stopPropagation();
+    });
+
+    $('#guildCreateLogo').on('change', function () {
+        var status = $('#guildCreateStatus');
+        var error = getGuildCreateLogoError(getGuildCreateLogoFile());
+
+        if (error) {
+            this.value = '';
+            status.removeClass('text-success').addClass('text-danger').text(error).show();
+            return;
+        }
+
+        status.hide().removeClass('text-danger text-success').text('');
+    });
+
+    $('#guildCreateForm').on('submit', function (event) {
+        event.preventDefault();
+
+        var status = $('#guildCreateStatus');
+        var tag = String($('#guildCreateTag').val() || '').trim().toUpperCase();
+        var name = String($('#guildCreateName').val() || '').trim();
+        var type = String($('#guildCreateType').val() || '').trim();
+        var logoError = getGuildCreateLogoError(getGuildCreateLogoFile());
+
+        if (!tag) {
+            status.removeClass('text-success').addClass('text-danger').text('Prefix wajib diisi.').show();
+            return;
+        }
+
+        if (!name) {
+            status.removeClass('text-success').addClass('text-danger').text('Guild name wajib diisi.').show();
+            return;
+        }
+
+        if (!type) {
+            status.removeClass('text-success').addClass('text-danger').text('Type wajib dipilih.').show();
+            return;
+        }
+
+        if (logoError) {
+            status.removeClass('text-success').addClass('text-danger').text(logoError).show();
+            return;
+        }
+
+        status.removeClass('text-danger').addClass('text-success').text('Create guild backend is not ready yet.').show();
+    });
+
+    $('#battleSpectateBtn').on('click', function () {
+        openBattleLiveDialog();
+        return false;
+    });
+
+    $('#spectateBtn').on('click', function () {
+        if (typeof window.spectate === 'function') {
+            window.spectate();
+        }
+        return false;
+    });
+
+    $('#battleLiveClose').on('click', function () {
+        closeBattleLiveDialog();
+    });
+
+    $('#battleLiveDialog').on('click', function (event) {
+        event.stopPropagation();
+    });
+
+    $('#friendPlayBtn').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCommunityDropup();
+
+        if ($('#friendInviteModal').hasClass('is-open')) {
+            closeFriendInviteModal();
+        } else {
+            openFriendInviteModal();
+        }
+    });
+
+    $('.mode-button').on('click', function () {
+        if (this.id === 'battleSpectateBtn') return;
+
+        var selectedGroup = getSelectedGameModeGroup();
+        var modeValue = selectedGroup === 'battle' ? $(this).data('battle-mode') : $(this).data('ffa-mode');
+
+        if (typeof window.setGameMode === 'function') {
+            window.setGameMode(modeValue);
+        }
+
+        setInviteSubMode($(this).attr('data-invite-mode') || $.trim($(this).text()).replace(/\s+/g, ''));
+    });
+
+    $('#gamemode').on('change', function () {
+        var baseMode = $(this).val();
+
+        if (baseMode === ':battle' && !isLoggedIn()) {
+            alert('Please login to play Battle.');
+            $(this).val(':x5');
+            baseMode = ':x5';
+        }
+
+        if (typeof window.setGameMode === 'function') {
+            window.setGameMode(baseMode);
+        }
+
+        renderModeButtons();
+    });
+
+    $('#friendInviteModal').on('click', function (event) {
+        event.stopPropagation();
+    });
+
+    $('#friendInviteFriendsLink').on('click', function () {
+        closeFriendInviteModal();
+    });
+
+    $(document).on('click', function () {
+        closeCommunityDropup();
+        closeFriendInviteModal();
+        closeBattleLiveDialog();
+    });
+
+    $(window).on('resize scroll', function () {
+        closeCommunityDropup();
+        closeFriendInviteModal();
+        closeBattleLiveDialog();
+    });
+
+    $('#registerSubmit').on('click', function () {
+        postAuth('/api/auth/register', {
+            username: $('#registerName').val(),
+            email: $('#registerEmail').val(),
+            password: $('#registerPassword').val()
+        }, function (err, response) {
+            showAuthStatus('#registerStatus', err || response.message, !!err);
+        });
+    });
+
+    $('#loginSubmit').on('click', function () {
+        postAuth('/api/auth/login', {
+            username: $('#loginName').val(),
+            password: $('#loginPassword').val()
+        }, function (err, response) {
+            if (!err && response.token) {
+                localStorage.setItem('authToken', response.token);
+                localStorage.setItem('authUser', response.user.username);
+                localStorage.setItem('authLastLogin', response.user.lastLoginAt || Date.now());
+                localStorage.setItem('cellColor', response.user.cellColor || '#000000');
+                localStorage.setItem('authXp', response.user.xp || localStorage.getItem('authXp') || 0);
+                localStorage.setItem('authXpMax', response.user.xpMax || localStorage.getItem('authXpMax') || 0);
+                localStorage.setItem('authLevel', response.user.level || localStorage.getItem('authLevel') || 1);
+                window.location.reload();
+                return;
+            }
+
+            showAuthStatus('#loginStatus', err || response.message, !!err);
+        });
+    });
+
+    $('#forgotPasswordSubmit').on('click', function () {
+        postAuth('/api/auth/forgot-password', {
+            email: $('#forgotPasswordEmail').val()
+        }, function (err, response) {
+            showAuthStatus('#forgotPasswordStatus', err || response.message, !!err);
+        });
+    });
+
+    $('#resetPasswordSubmit').on('click', function () {
+        postAuth('/api/auth/reset-password', {
+            token: resetToken,
+            password: $('#resetPasswordNew').val()
+        }, function (err, response) {
+            showAuthStatus('#resetPasswordStatus', err || response.message, !!err);
+        });
+    });
+
+    $('#changePasswordLink').on('click', function () {
+        showChangePasswordView();
+        return false;
+    });
+
+    $('#changePasswordSubmit').on('click', function () {
+        postAuth('/api/auth/change-password', {
+            token: localStorage.getItem('authToken'),
+            currentPassword: $('#changePasswordCurrent').val(),
+            newPassword: $('#changePasswordNew').val()
+        }, function (err, response) {
+            showAuthStatus('#changePasswordStatus', err || response.message, !!err);
+        });
+    });
+
+    $('#openUploadSkin').on('click', function () {
+        showUploadSkinView();
+        return false;
+    });
+
+    $('#skinUploadBack').on('click', function () {
+        showAccountView();
+        return false;
+    });
+
+    $('#skinFileInput').on('change', function () {
+        var file = this.files && this.files[0];
+
+        if (!file) {
+            $('#skinPreview').hide().removeAttr('src');
+            $('#skinPreviewEmpty').show();
+            return;
+        }
+
+        if (!/\.png$/i.test(file.name) || file.type !== 'image/png') {
+            this.value = '';
+            $('#skinPreview').hide().removeAttr('src');
+            $('#skinPreviewEmpty').show();
+            showAuthStatus('#skinUploadStatus', 'Skin file must be .png.', true);
+            return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function (event) {
+            $('#skinPreview').attr('src', event.target.result).show();
+            $('#skinPreviewEmpty').hide();
+            $('#skinUploadStatus').removeClass('text-danger text-success').addClass('text-muted').text('');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    $('#skinUploadSubmit').on('click', function () {
+        var file = $('#skinFileInput')[0].files[0];
+
+        if (!file) {
+            showAuthStatus('#skinUploadStatus', 'Please select a .png skin first.', true);
+            return;
+        }
+
+        showAuthStatus('#skinUploadStatus', 'Upload backend is not ready yet.', true);
+    });
+
+    $('#profileCellColor').on('click', function () {
+        $('#cellColorPalette').toggleClass('is-open');
+    });
+
+    $('#cellColorPalette .cell-color-swatch').on('click', function () {
+        var color = $(this).data('color');
+
+        $('#cellColorPalette .cell-color-swatch').removeClass('is-selected');
+        $(this).addClass('is-selected');
+        $('#profileCellColor').css('background-color', color);
+        localStorage.setItem('cellColor', color);
+
+        if (localStorage.getItem('authToken')) {
+            postAuth('/api/auth/cell-color', {
+                token: localStorage.getItem('authToken'),
+                color: color
+            }, function (err) {
+                if (err) {
+                    $('#cellColorPalette .cell-color-swatch').removeClass('is-selected');
+                    showAuthStatus('#skinUploadStatus', err, true);
+                }
+            });
+        }
+    });
+
+    var savedCellColor = localStorage.getItem('cellColor');
+    if (savedCellColor) {
+        $('#profileCellColor').css('background-color', savedCellColor);
+        $('#cellColorPalette .cell-color-swatch').removeClass('is-selected');
+        $('#cellColorPalette .cell-color-swatch[data-color="' + savedCellColor + '"]').addClass('is-selected');
+    }
+
+    resetToken = new URLSearchParams(window.location.search).get('resetToken');
+    if (resetToken) {
+        $('#overlays').show();
+        $('#homeView, #instructions, #loginView, #registerView, #forgotPasswordView, #changePasswordView, #uploadSkinView').hide();
+        $('#resetPasswordView').show();
+        $('#resetPasswordNew').focus();
+    }
+
+    $('#logoutLink').on('click', function () {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        localStorage.removeItem('authLastLogin');
+        $('#helloXpPanel').removeClass('is-visible');
+        window.location.reload();
+        return false;
+    });
+
+    $('.dialog-brand').on('click', function () {
+        showHomeView();
+    });
+
+    updateBattleModeLock();
+    updateInviteModeSelection();
+    renderModeButtons();
+    updateFriendInviteTitle();
+    initPersistedCheckboxes();
+    applyAuthState();
+});
+</script>
 
 
 </body>

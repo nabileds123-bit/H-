@@ -1,15 +1,19 @@
 // ===== Ogar3 Server Starter with Enhanced Commands =====
 
+require('dotenv').config();
+
 let runMaster = false;
 let runGame = true;
+let runMulti = false;
 
 // Parse arguments
 process.argv.forEach(arg => {
     if (arg === "--master") runMaster = true;
     if (arg === "--game") runGame = true;
+    if (arg === "--multi") runMulti = true;
     if (arg === "--help") {
         console.log("========================= HELP =========================");
-        console.log("Usage: node index.js [--master] [--game]");
+        console.log("Usage: node index.js [--master] [--game] [--multi]");
         console.log("");
         console.log("Available Console Commands:");
         console.log("  playerlist                : Show list of players");
@@ -43,9 +47,11 @@ if (runMaster) {
 if (runGame) {
     const GameServer = require('./GameServer');
     game = new GameServer(false);
-    game2 = new GameServer(true, 81);
     game.start();
-    game2.start();
+    if (runMulti) {
+        game2 = new GameServer(true, 81);
+        game2.start();
+    }
 }
 
 // ===== Rainbow Support =====

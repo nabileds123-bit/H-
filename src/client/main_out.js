@@ -88,23 +88,31 @@
         var spacePressed = false,
             qPressed = false,
             wPressed = false;
+        function isGamePaused() {
+            return wjQuery("#overlays").is(":visible");
+        }
+
+        function sendPauseState(paused) {
+            sendUint8(paused ? 90 : 91);
+        }
+
         wHandle.onkeydown = function (event) {
             switch (event.keyCode) {
                 case 32: // split
-                    if ((!spacePressed) && (!isTyping)) {
+                    if ((!spacePressed) && (!isTyping) && !isGamePaused()) {
                         sendMouseMove();
                         sendUint8(17);
                         spacePressed = true;
                     }
                     break;
                 case 81: // key q pressed
-                    if ((!qPressed) && (!isTyping)) {
+                    if ((!qPressed) && (!isTyping) && !isGamePaused()) {
                         sendUint8(18);
                         qPressed = true;
                     }
                     break;
                 case 87: // eject mass
-                    if ((!wPressed) && (!isTyping)) {
+                    if ((!wPressed) && (!isTyping) && !isGamePaused()) {
                         sendMouseMove();
                         sendUint8(21);
                         wPressed = true;
@@ -112,6 +120,8 @@
                     break;
                 case 27: // quit
                     showOverlays(true);
+                    sendPauseState(true);
+                    wPressed = qPressed = spacePressed = false;
                     wHandle.isSpectating = false;
                     break;
 
@@ -160,12 +170,15 @@
         } else {
             setInterval(drawGameScene, 1E3 / 60);
         }
-        setInterval(sendMouseMove, 40);
+        setInterval(function () {
+            if (!isGamePaused()) {
+                sendMouseMove();
+            }
+        }, 40);
         if (w) {
             wjQuery("#region").val(w);
         }
         Ha();
-        setRegion(wjQuery("#region").val());
         null == ws && w && showConnecting();
         wjQuery("#overlays").show();
 
@@ -339,6 +352,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         hasOverlay = false;
         wjQuery("#adsBottom").hide();
         wjQuery("#overlays").hide();
+        sendUint8(91);
         Ha()
     }
 
@@ -358,6 +372,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     function showOverlays(arg) {
         hasOverlay = true;
         userNickName = null;
+        sendUint8(90);
         wjQuery("#overlays").fadeIn(arg ? 200 : 3E3);
         arg || wjQuery("#adsBottom").fadeIn(3E3)
     }
@@ -369,19 +384,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function attemptConnection() {
         console.log("Find " + w + gameMode);
-        wjQuery.ajax("main.php", {
-            error: function () {
-                setTimeout(attemptConnection, 1E3)
-            },
-            success: function () {
-                wsConnect("ws://" + CONNECTION_URL)
-            },
-            dataType: "text",
-            method: "POST",
-            cache: false,
-            crossDomain: true,
-            data: w + gameMode || "?"
-        })
+        wsConnect("ws://" + CONNECTION_URL)
     }
 
     function showConnecting() {
@@ -445,6 +448,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         msg.setUint32(1, 1332175218, true);
         wsSend(msg);
         sendNickName();
+        if (wHandle.isSpectating) {
+            sendUint8(1);
+        }
     }
 
     function onWsClose() {
@@ -757,9 +763,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function sendNickName() {
         if (wsIsOpen() && null != userNickName) {
-            var msg = prepareData(1 + 2 * userNickName.length);
+            var authToken = null != wHandle.localStorage ? wHandle.localStorage.authToken : null;
+            var nickPayload = authToken ? userNickName + "|" + authToken : userNickName;
+            var msg = prepareData(1 + 2 * nickPayload.length);
             msg.setUint8(0, 0);
-            for (var i = 0; i < userNickName.length; ++i) msg.setUint16(1 + 2 * i, userNickName.charCodeAt(i), true);
+            for (var i = 0; i < nickPayload.length; ++i) msg.setUint16(1 + 2 * i, nickPayload.charCodeAt(i), true);
             wsSend(msg)
         }
     }
@@ -1119,7 +1127,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         posX = nodeX = ~~((leftPos + rightPos) / 2),
         posY = nodeY = ~~((topPos + bottomPos) / 2),
         posSize = 1,
-        gameMode = "",
+        gameMode = ":x5",
         teamScores = null,
         ma = false,
         hasOverlay = true,
@@ -1143,7 +1151,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     wHandle.isSpectating = false;
     wHandle.setNick = function (arg) {
         hideOverlays();
-        userNickName = arg;
+        var authUser = null != wHandle.localStorage ? wHandle.localStorage.authUser : null;
+        userNickName = authUser || arg;
         sendNickName();
         userScore = 0
     };
@@ -1166,7 +1175,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     wHandle.spectate = function () {
         userNickName = null;
         wHandle.isSpectating = true;
-        sendUint8(1);
+        if (wsIsOpen()) {
+            sendUint8(1);
+        } else {
+            wsConnect();
+        }
         hideOverlays()
     };
     wHandle.setGameMode = function (arg) {
@@ -1202,7 +1215,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     //This part is for loading custon skins
     var data = {"action": "test"};
-    var response = null;
+    var response = [];
     wjQuery.ajax({
         type: "POST",
         dataType: "json",
@@ -1211,6 +1224,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         success: function (data) {
             //alert(data["names"]);
             response = JSON.parse(data["names"]);
+        },
+        error: function () {
+            response = [];
         }
     });
 
@@ -1227,9 +1243,15 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             success: function (data) {
                 //alert(data["names"]);
                 response = JSON.parse(data["names"]);
+            },
+            error: function () {
+                response = [];
             }
         });
         //console.log(response);
+        if (!response || !response.length) {
+            return;
+        }
         for (var i = 0; i < response.length; i++) {
             //console.log(response[insert]);
             if (-1 == knownNameDict.indexOf(response[i])) {
@@ -1740,7 +1762,6 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         favCanvas.height = 32;
         var ctx = favCanvas.getContext("2d");
         renderFavicon();
-        setInterval(renderFavicon, 1E3);
         setInterval(drawChatBoard, 1E3);
     });
     wHandle.onload = gameLoop
