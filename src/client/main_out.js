@@ -142,6 +142,7 @@
                         qPressed = true;
                     }
                     break;
+                case 69: // eject mass
                 case 87: // eject mass
                     if ((!wPressed) && (!isTyping) && !isGamePaused()) {
                         sendMouseMove();
@@ -181,6 +182,7 @@
                 case 32:
                     spacePressed = false;
                     break;
+                case 69:
                 case 87:
                     wPressed = false;
                     break;
