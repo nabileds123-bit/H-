@@ -951,8 +951,13 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-member-row {
-        background: #fff !important;
+        background: #fff;
         border-bottom: 1px solid #eee;
+    }
+
+    .guild-member-row[data-member-role="leader"] {
+        background: #fff09a;
+        border-bottom-color: #f0e188;
     }
 
     .guild-member-role {
@@ -989,8 +994,8 @@ $(document).on('keyup', function(input) {
         display: inline-block;
         padding: 3px 8px;
         border-radius: 3px;
-        background: transparent;
-        color: #555;
+        background: #ffe27a;
+        color: #5c4a00;
         font-size: 12px;
         font-weight: bold;
         line-height: 1;
