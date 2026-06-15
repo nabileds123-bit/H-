@@ -2824,6 +2824,7 @@ $(function () {
     var battleStartLoading = false;
     var battleStartTimer = null;
     var guildViewerRole = 'leader';
+    var guildList = [];
     var guildMembers = [];
 
     function getCurrentGuildViewerName() {
@@ -3200,6 +3201,8 @@ $(function () {
         $('#guildCreateDialog').removeClass('is-open');
         $('#guildDialog').addClass('is-open');
         showGuildListView();
+        ensureCurrentGuildInList();
+        renderGuildList();
         updatePlayerExpVisibility();
         $('#guildSearch').focus();
     }
@@ -3220,6 +3223,7 @@ $(function () {
         $('#guildBreadcrumbDetail').hide();
         $('#guildDetailView').hide();
         $('#guildListView').css('display', 'flex');
+        renderGuildList();
     }
 
     function getGuildActionHtml(member) {
@@ -3261,6 +3265,113 @@ $(function () {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    function loadGuildList() {
+        try {
+            guildList = JSON.parse(localStorage.getItem('guildList') || '[]') || [];
+            if (!Array.isArray(guildList)) {
+                guildList = [];
+            }
+        } catch (err) {
+            guildList = [];
+        }
+    }
+
+    function saveGuildList() {
+        localStorage.setItem('guildList', JSON.stringify(guildList));
+    }
+
+    function normalizeGuildItem(guild) {
+        var tag = String(guild.tag || '').trim().toUpperCase();
+        var name = String(guild.name || '').trim() || (tag ? tag + ' Guild' : 'Guild');
+
+        return {
+            id: guild.id || tag.toLowerCase() || ('guild-' + Date.now()),
+            name: name,
+            tag: tag,
+            type: guild.type || 'private',
+            leader: guild.leader || getCurrentGuildViewerName(),
+            members: parseInt(guild.members, 10) || 1,
+            logo: guild.logo || '',
+            top1: guild.top1 || '-',
+            createdAt: guild.createdAt || Date.now(),
+            updatedAt: Date.now()
+        };
+    }
+
+    function upsertGuildListItem(guild) {
+        var item = normalizeGuildItem(guild);
+        var found = false;
+
+        guildList = guildList.map(function(existing) {
+            if (String(existing.tag || '').toUpperCase() !== item.tag) {
+                return existing;
+            }
+
+            found = true;
+            return $.extend({}, existing, item);
+        });
+
+        if (!found) {
+            guildList.unshift(item);
+        }
+
+        saveGuildList();
+        renderGuildList();
+        return item;
+    }
+
+    function ensureCurrentGuildInList() {
+        var tag = String(localStorage.getItem('authGuildTag') || '').trim().toUpperCase();
+        if (!tag) return;
+
+        var exists = guildList.some(function(guild) {
+            return String(guild.tag || '').toUpperCase() === tag;
+        });
+
+        if (!exists) {
+            upsertGuildListItem({
+                name: tag + ' Guild',
+                tag: tag,
+                type: 'private',
+                logo: localStorage.getItem('authGuildSkinUrl') || '',
+                leader: getCurrentGuildViewerName()
+            });
+        }
+    }
+
+    function getGuildIconHtml(guild) {
+        if (guild.logo) {
+            return '<img class="guild-icon" src="' + escapeHtml(guild.logo) + '" alt="' + escapeHtml(guild.tag) + '">';
+        }
+
+        return '<span class="guild-icon guild-icon-fallback">' + escapeHtml(String(guild.tag || '?').slice(0, 2)) + '</span>';
+    }
+
+    function renderGuildList() {
+        var query = String($('#guildSearch').val() || '').trim().toLowerCase();
+        var items = guildList.filter(function(guild) {
+            if (!query) return true;
+            return String(guild.name || '').toLowerCase().indexOf(query) !== -1 ||
+                String(guild.tag || '').toLowerCase().indexOf(query) !== -1;
+        });
+
+        if (!items.length) {
+            $('#guildList').html('<div class="guild-empty">Belum ada guild.</div>');
+            return;
+        }
+
+        $('#guildList').html(items.map(function(guild) {
+            return [
+                '<div class="guild-row" data-guild-name="' + escapeHtml(guild.name) + '" data-guild-tag="' + escapeHtml(guild.tag) + '" data-guild-logo="' + escapeHtml(guild.logo || '') + '">',
+                getGuildIconHtml(guild),
+                '<div><div class="guild-name">' + escapeHtml(guild.name) + '</div><div class="guild-tag">' + escapeHtml(guild.tag) + '</div></div>',
+                '<div class="guild-members">' + escapeHtml(guild.members || 1) + '</div>',
+                '<div class="guild-top1-time">' + escapeHtml(guild.top1 || '-') + '</div>',
+                '</div>'
+            ].join('');
+        }).join(''));
     }
 
     function renderGuildMembers() {
@@ -3899,7 +4010,11 @@ $(function () {
 
     $('#guildList').on('click', '.guild-row', function (event) {
         event.preventDefault();
-        openGuildDetailView($(this).find('.guild-name').text(), $(this).find('.guild-tag').text());
+        openGuildDetailView($(this).data('guild-name'), $(this).data('guild-tag'), $(this).data('guild-logo'));
+    });
+
+    $('#guildSearch').on('input', function () {
+        renderGuildList();
     });
 
     $('#guildMemberList').on('click', '[data-guild-action]', function (event) {
@@ -4020,6 +4135,13 @@ $(function () {
 
         if (!logoFile) {
             status.removeClass('text-danger').addClass('text-success').text('Opening guild detail preview.').show();
+            upsertGuildListItem({
+                name: name,
+                tag: tag,
+                type: type,
+                logo: '',
+                leader: getCurrentGuildViewerName()
+            });
             closeGuildCreateDialog();
             openGuildDetailView(name, tag, '');
             return;
@@ -4046,6 +4168,13 @@ $(function () {
                 }
 
                 storeAuthUser(response.user);
+                upsertGuildListItem({
+                    name: name,
+                    tag: tag,
+                    type: type,
+                    logo: response.url || '',
+                    leader: getCurrentGuildViewerName()
+                });
                 status.removeClass('text-danger').addClass('text-success').text(response.message || 'Guild skin uploaded.').show();
                 closeGuildCreateDialog();
                 openGuildDetailView(name, tag, response.url || '');
@@ -4403,6 +4532,7 @@ $(function () {
         showHomeView();
     });
 
+    loadGuildList();
     updateBattleModeLock();
     updateInviteModeSelection();
     initRegionSelection();
