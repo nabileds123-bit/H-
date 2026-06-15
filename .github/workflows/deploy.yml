@@ -10,43 +10,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Parse deploy secret
-        id: deploy_secret
-        shell: bash
+      - name: Deploy via SSH
+        env:
+          MAIN_SECRET: ${{ secrets.MAIN }}
         run: |
-          set -euo pipefail
+          set -e
 
-          secret_file="$(mktemp)"
-          cat > "$secret_file" <<'DEPLOY_SECRET'
-          ${{ secrets.MAIN }}
-          DEPLOY_SECRET
+          echo "$MAIN_SECRET" > main.secret
 
-          awk -F= '/^VPS_HOST=/{print "vps_host="$2}' "$secret_file" >> "$GITHUB_OUTPUT"
-          awk -F= '/^VPS_USER=/{print "vps_user="$2}' "$secret_file" >> "$GITHUB_OUTPUT"
-          awk -F= '/^VPS_PORT=/{print "vps_port="$2}' "$secret_file" >> "$GITHUB_OUTPUT"
+          VPS_HOST=$(grep '^VPS_HOST=' main.secret | cut -d= -f2-)
+          VPS_USER=$(grep '^VPS_USER=' main.secret | cut -d= -f2-)
+          VPS_PORT=$(grep '^VPS_PORT=' main.secret | cut -d= -f2-)
 
-          {
-            echo "vps_ssh_key<<SSH_KEY"
-            awk '
-              /^VPS_SSH_KEY<<EOF$/ {capture=1; next}
-              /^EOF$/ && capture {capture=0; next}
-              capture {print}
-            ' "$secret_file"
-            echo "SSH_KEY"
-          } >> "$GITHUB_OUTPUT"
+          mkdir -p ~/.ssh
+          awk '/^VPS_SSH_KEY<<EOF$/{flag=1;next}/^EOF$/{flag=0}flag' main.secret > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
 
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ steps.deploy_secret.outputs.vps_host }}
-          username: ${{ steps.deploy_secret.outputs.vps_user }}
-          key: ${{ steps.deploy_secret.outputs.vps_ssh_key }}
-          port: ${{ steps.deploy_secret.outputs.vps_port }}
-          script: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" <<'EOSSH'
             set -e
-            cd /var/www/bubblev2
-            git fetch origin main
+
+            APP_DIR="/var/www/bubblev2"
+            APP_NAME="bubblev2"
+            REPO_URL="https://github.com/nabileds123-bit/COBA.git"
+
+            apt update -y
+            apt install -y git curl
+
+            if ! command -v node >/dev/null 2>&1; then
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt install -y nodejs
+            fi
+
+            if ! command -v pm2 >/dev/null 2>&1; then
+              npm install -g pm2
+            fi
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              rm -rf "$APP_DIR"
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git fetch --all
             git reset --hard origin/main
             npm install --production
-            pm2 restart bubblev2 || pm2 start ecosystem.config.js
+
+            if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
+              pm2 restart "$APP_NAME"
+            else
+              pm2 start ecosystem.config.js
+            fi
+
             pm2 save
+          EOSSH
