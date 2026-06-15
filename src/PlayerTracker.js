@@ -16,6 +16,9 @@ function PlayerTracker(gameServer, socket) {
     this.tickLeaderboard = 0; // 
     this.tickViewBox = 0;
     this.isPaused = false;
+    this.matchFoodEaten = 0;
+    this.matchCellsEaten = 0;
+    this.matchResultSent = false;
     
     this.team = 0;
     this.spectate = false;

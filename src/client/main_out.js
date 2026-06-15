@@ -615,6 +615,19 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 addChat(msg, offset);
 
                 break;
+            case 122:
+                var resultJson = getString();
+
+                try {
+                    var resultData = JSON.parse(resultJson);
+                    matchStats.foodEaten = resultData.foodEaten || 0;
+                    matchStats.cellsEaten = resultData.cellsEaten || 0;
+                    if (matchResultVisible) {
+                        showMatchResult();
+                    }
+                } catch (e) {}
+
+                break;
 
         }
     }
@@ -1021,6 +1034,249 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
     }
 
+    function resetMatchStats() {
+        hasSpawnedOnce = false;
+        wasAliveLastFrame = false;
+        matchResultVisible = false;
+
+        matchStats = {
+            startTime: 0,
+            endTime: 0,
+            highestMass: 0,
+            leaderboardTimeMs: 0,
+            topPosition: 0,
+            foodEaten: 0,
+            cellsEaten: 0,
+            massHistory: [],
+            lastMassSample: 0,
+            lastLeaderboardCheck: Date.now()
+        };
+
+        hideMatchResult();
+    }
+
+    function updateMatchStats() {
+        var now = Date.now();
+        var isAlive = playerCells && playerCells.length > 0;
+
+        if (isAlive && !hasSpawnedOnce) {
+            hasSpawnedOnce = true;
+            matchStats.startTime = now;
+            matchStats.lastLeaderboardCheck = now;
+        }
+
+        if (isAlive) {
+            var currentMass = ~~(calcUserScore() / 100);
+
+            if (currentMass > matchStats.highestMass) {
+                matchStats.highestMass = currentMass;
+            }
+
+            if (!matchStats.lastMassSample || now - matchStats.lastMassSample >= 1000) {
+                matchStats.massHistory.push({
+                    t: now,
+                    mass: currentMass
+                });
+
+                if (matchStats.massHistory.length > 300) {
+                    matchStats.massHistory.shift();
+                }
+
+                matchStats.lastMassSample = now;
+            }
+
+            if (leaderBoard && leaderBoard.length > 0) {
+                var myName = playerCells[0] && playerCells[0].name ? playerCells[0].name : "";
+                var myRank = -1;
+
+                for (var i = 0; i < leaderBoard.length; i++) {
+                    if ((leaderBoard[i].name || "") === myName) {
+                        myRank = i + 1;
+                        break;
+                    }
+                }
+
+                var delta = now - (matchStats.lastLeaderboardCheck || now);
+
+                if (myRank === 1) {
+                    matchStats.leaderboardTimeMs += delta;
+                }
+
+                if (myRank > 0) {
+                    if (matchStats.topPosition === 0 || myRank < matchStats.topPosition) {
+                        matchStats.topPosition = myRank;
+                    }
+                }
+            }
+
+            matchStats.lastLeaderboardCheck = now;
+        }
+
+        if (wasAliveLastFrame && !isAlive && hasSpawnedOnce && !matchResultVisible) {
+            matchStats.endTime = now;
+            showMatchResult();
+        }
+
+        wasAliveLastFrame = isAlive;
+    }
+
+    function showMatchResult() {
+        matchResultVisible = true;
+
+        var aliveMs = Math.max(0, matchStats.endTime - matchStats.startTime);
+
+        var modal = document.getElementById("matchResultModal");
+        if (!modal) {
+            modal = document.createElement("div");
+            modal.id = "matchResultModal";
+            modal.style.position = "fixed";
+            modal.style.left = "50%";
+            modal.style.top = "50%";
+            modal.style.transform = "translate(-50%, -50%)";
+            modal.style.width = "390px";
+            modal.style.maxWidth = "92vw";
+            modal.style.background = "#ffffff";
+            modal.style.borderRadius = "14px";
+            modal.style.boxShadow = "0 10px 40px rgba(0,0,0,0.35)";
+            modal.style.zIndex = "99999";
+            modal.style.padding = "18px";
+            modal.style.fontFamily = "Ubuntu, Arial, sans-serif";
+            modal.style.textAlign = "center";
+
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = ""
+            + '<div style="font-size:26px;font-weight:700;margin-bottom:14px;">Match Results</div>'
+            + '<div style="display:flex;justify-content:space-between;text-align:center;margin-bottom:10px;">'
+            + '  <div style="width:48%;">'
+            + '    <div style="font-size:18px;font-weight:700;">' + matchStats.foodEaten + '</div>'
+            + '    <div style="font-size:12px;color:#666;">food eaten</div>'
+            + '  </div>'
+            + '  <div style="width:48%;">'
+            + '    <div style="font-size:18px;font-weight:700;">' + matchStats.highestMass + '</div>'
+            + '    <div style="font-size:12px;color:#666;">highest mass</div>'
+            + '  </div>'
+            + '</div>'
+
+            + '<div style="display:flex;justify-content:space-between;text-align:center;margin-bottom:10px;">'
+            + '  <div style="width:48%;">'
+            + '    <div style="font-size:18px;font-weight:700;">' + formatMatchTime(aliveMs) + '</div>'
+            + '    <div style="font-size:12px;color:#666;">time alive</div>'
+            + '  </div>'
+            + '  <div style="width:48%;">'
+            + '    <div style="font-size:18px;font-weight:700;">' + formatMatchTime(matchStats.leaderboardTimeMs) + '</div>'
+            + '    <div style="font-size:12px;color:#666;">leaderboard time</div>'
+            + '  </div>'
+            + '</div>'
+
+            + '<div style="display:flex;justify-content:space-between;text-align:center;margin-bottom:10px;">'
+            + '  <div style="width:48%;">'
+            + '    <div style="font-size:18px;font-weight:700;">' + matchStats.cellsEaten + '</div>'
+            + '    <div style="font-size:12px;color:#666;">cells eaten</div>'
+            + '  </div>'
+            + '  <div style="width:48%;">'
+            + '    <div style="font-size:18px;font-weight:700;">' + (matchStats.topPosition || "-") + '</div>'
+            + '    <div style="font-size:12px;color:#666;">top position</div>'
+            + '  </div>'
+            + '</div>'
+
+            + '<canvas id="matchResultChart" width="340" height="120" style="width:100%;height:120px;margin:10px 0 14px 0;"></canvas>'
+            + '<button id="matchResultBackBtn" style="width:100%;height:40px;border:none;border-radius:6px;background:#2f80ed;color:#fff;font-size:16px;font-weight:700;cursor:pointer;">Kembali</button>';
+
+        drawMatchResultChart();
+
+        document.getElementById("matchResultBackBtn").onclick = function () {
+            hideMatchResult();
+            if (typeof showOverlays === "function") {
+                showOverlays(true);
+            }
+        };
+    }
+
+    function hideMatchResult() {
+        var modal = document.getElementById("matchResultModal");
+        if (modal) {
+            modal.remove();
+        }
+        matchResultVisible = false;
+    }
+
+    function formatMatchTime(ms) {
+        ms = Math.max(0, ms || 0);
+        var totalSec = Math.floor(ms / 1000);
+        var min = Math.floor(totalSec / 60);
+        var sec = totalSec % 60;
+        return min + ":" + (sec < 10 ? "0" + sec : sec);
+    }
+
+    function drawMatchResultChart() {
+        var canvas = document.getElementById("matchResultChart");
+        if (!canvas) return;
+
+        var ctx = canvas.getContext("2d");
+        var w = canvas.width;
+        var h = canvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        var data = matchStats.massHistory || [];
+        if (data.length < 2) {
+            ctx.fillStyle = "#cccccc";
+            ctx.font = "14px Ubuntu";
+            ctx.textAlign = "center";
+            ctx.fillText("No chart data", w / 2, h / 2);
+            return;
+        }
+
+        var minMass = Infinity;
+        var maxMass = 0;
+
+        for (var i = 0; i < data.length; i++) {
+            if (data[i].mass < minMass) minMass = data[i].mass;
+            if (data[i].mass > maxMass) maxMass = data[i].mass;
+        }
+
+        if (minMass === Infinity) minMass = 0;
+        if (maxMass <= minMass) maxMass = minMass + 1;
+
+        ctx.fillStyle = "rgba(180, 150, 255, 0.08)";
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.beginPath();
+
+        for (var j = 0; j < data.length; j++) {
+            var x = (j / (data.length - 1)) * (w - 20) + 10;
+            var y = h - 10 - ((data[j].mass - minMass) / (maxMass - minMass)) * (h - 20);
+
+            if (j === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+
+        ctx.lineTo(w - 10, h - 10);
+        ctx.lineTo(10, h - 10);
+        ctx.closePath();
+
+        ctx.fillStyle = "rgba(180, 150, 255, 0.18)";
+        ctx.fill();
+
+        ctx.beginPath();
+        for (var k = 0; k < data.length; k++) {
+            var lx = (k / (data.length - 1)) * (w - 20) + 10;
+            var ly = h - 10 - ((data[k].mass - minMass) / (maxMass - minMass)) * (h - 20);
+
+            if (k === 0) ctx.moveTo(lx, ly);
+            else ctx.lineTo(lx, ly);
+        }
+
+        ctx.strokeStyle = "rgba(180, 150, 255, 0.65)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
     function drawGameScene() {
         var a, oldtime = Date.now();
         ++cb;
@@ -1121,6 +1377,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         drawSplitIcon(ctx);
         drawTouch(ctx);
         drawChatBoard();
+        updateMatchStats();
         var deltatime = Date.now() - oldtime;
         deltatime > 1E3 / 60 ? z -= .01 : deltatime < 1E3 / 65 && (z += .01);
         .4 > z && (z = .4);
@@ -1307,6 +1564,21 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         Cells = [],
         leaderBoard = [],
         chatBoard = [],
+        hasSpawnedOnce = false,
+        wasAliveLastFrame = false,
+        matchResultVisible = false,
+        matchStats = {
+            startTime: 0,
+            endTime: 0,
+            highestMass: 0,
+            leaderboardTimeMs: 0,
+            topPosition: 0,
+            foodEaten: 0,
+            cellsEaten: 0,
+            massHistory: [],
+            lastMassSample: 0,
+            lastLeaderboardCheck: 0
+        },
         rawMouseX = 0,
         rawMouseY = 0,
         X = -1,
@@ -1377,6 +1649,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
         userNickName = authUser || guestNick;
         sendNickName();
+        resetMatchStats();
         userScore = 0
     };
     wHandle.setRegion = setRegion;
@@ -1756,17 +2029,21 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     c = null;
                 }
                 c = (e = c) ? -1 != ib.indexOf(skinName) : false;
-                b || ctx.stroke();
-                ctx.fill();
-                if (!(null == e || c)) {
+                var hasNormalSkin = null != e && !c;
+                if (!hasNormalSkin) {
+                    b || ctx.stroke();
+                    ctx.fill();
+                }
+                if (hasNormalSkin) {
                     ctx.save();
                     ctx.clip();
                     ctx.drawImage(e, this.x - this.size, this.y - this.size, 2 * this.size, 2 * this.size);
                     ctx.restore();
                 }
                 if ((showColor || 15 < this.size) && !b) {
-                    ctx.strokeStyle = '#000000';
-                    ctx.globalAlpha *= .1;
+                    ctx.lineWidth = hasNormalSkin ? Math.max(3, this.size * .035) : ctx.lineWidth;
+                    ctx.strokeStyle = hasNormalSkin ? this.color : '#000000';
+                    ctx.globalAlpha *= hasNormalSkin ? .95 : .1;
                     ctx.stroke();
                 }
                 ctx.globalAlpha = 1;

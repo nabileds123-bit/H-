@@ -596,6 +596,8 @@ GameServer.prototype.addNode = function(node) {
 }
 
 GameServer.prototype.removeNode = function(node) {
+    var removedPlayer = node && node.getType && node.getType() == 0 ? node.owner : null;
+
     // Remove from main nodes list
     var index = this.nodes.indexOf(node);
     if (index != -1) {
@@ -610,6 +612,11 @@ GameServer.prototype.removeNode = function(node) {
     
 	// Special on-remove actions
     node.onRemove(this);
+
+    if (removedPlayer && removedPlayer.cells.length <= 0 && !removedPlayer.matchResultSent) {
+        removedPlayer.matchResultSent = true;
+        this.sendMatchResult(removedPlayer);
+    }
     
     // Animation when eating
     for (var i = 0; i < this.clients.length;i++) {
@@ -726,13 +733,36 @@ GameServer.prototype.sendGuildChat = function(sender, message) {
 
 GameServer.prototype.sendGuildChatPacket = function(client, sender, message) {
     var flags = 32; // tanda guild chat
-    var color = {
-        r: 255,
-        g: 213,
-        b: 74
-    };
 
-    client.sendPacket(new Packet.Chat(sender, message, flags, color));
+    client.sendPacket(new Packet.Chat(sender, message, flags));
+}
+
+GameServer.prototype.sendMatchResult = function(player) {
+    if (!player || !player.socket) return;
+
+    var payload = JSON.stringify({
+        foodEaten: player.matchFoodEaten || 0,
+        cellsEaten: player.matchCellsEaten || 0
+    });
+
+    var buf = new ArrayBuffer(1 + payload.length * 2 + 2);
+    var view = new DataView(buf);
+    var offset = 0;
+
+    view.setUint8(offset++, 122);
+
+    for (var i = 0; i < payload.length; i++) {
+        view.setUint16(offset, payload.charCodeAt(i), true);
+        offset += 2;
+    }
+
+    view.setUint16(offset, 0, true);
+
+    player.socket.sendPacket({
+        build: function() {
+            return buf;
+        }
+    });
 }
 
 GameServer.prototype.updateClients = function() {
@@ -765,6 +795,9 @@ var f = new Entity.Food(this.getNextNodeId(), null, this.getRandomPosition(), Ma
 
 GameServer.prototype.spawnPlayer = function(client) {
    var config = this.getWorldConfig();
+   client.matchFoodEaten = 0;
+   client.matchCellsEaten = 0;
+   client.matchResultSent = false;
    if(config.serverGamemode == 2) {
    var pos = this.getCertainPosition(0,0);
    } else {
@@ -880,6 +913,13 @@ GameServer.prototype.updateMoveEngine = function() {
         var list = this.getCellsInRange(cell);
         for (var j = 0; j < list.length ; j++) {
             var check = list[j];
+            if (cell.owner) {
+                if (check.getType && check.getType() == 1) {
+                    cell.owner.matchFoodEaten = (cell.owner.matchFoodEaten || 0) + 1;
+                } else if (check.getType && check.getType() == 0 && check.owner != cell.owner) {
+                    cell.owner.matchCellsEaten = (cell.owner.matchCellsEaten || 0) + 1;
+                }
+            }
         	//if(!cell.firstSplit){ soon will be used
             // Consume effect
             check.onConsume(cell,this);
