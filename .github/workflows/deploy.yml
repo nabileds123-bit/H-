@@ -10,13 +10,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Parse deploy secret
+        id: deploy_secret
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          secret_file="$(mktemp)"
+          cat > "$secret_file" <<'DEPLOY_SECRET'
+          ${{ secrets.MAIN }}
+          DEPLOY_SECRET
+
+          awk -F= '/^VPS_HOST=/{print "vps_host="$2}' "$secret_file" >> "$GITHUB_OUTPUT"
+          awk -F= '/^VPS_USER=/{print "vps_user="$2}' "$secret_file" >> "$GITHUB_OUTPUT"
+          awk -F= '/^VPS_PORT=/{print "vps_port="$2}' "$secret_file" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "vps_ssh_key<<SSH_KEY"
+            awk '
+              /^VPS_SSH_KEY<<EOF$/ {capture=1; next}
+              /^EOF$/ && capture {capture=0; next}
+              capture {print}
+            ' "$secret_file"
+            echo "SSH_KEY"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
+          host: ${{ steps.deploy_secret.outputs.vps_host }}
+          username: ${{ steps.deploy_secret.outputs.vps_user }}
+          key: ${{ steps.deploy_secret.outputs.vps_ssh_key }}
+          port: ${{ steps.deploy_secret.outputs.vps_port }}
           script: |
             set -e
             cd /var/www/bubblev2

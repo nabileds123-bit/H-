@@ -82,7 +82,7 @@ Setiap ada push ke branch `main`, GitHub akan SSH ke VPS lalu update app di
 Di VPS, buat SSH key khusus deploy:
 
 ```bash
-ssh-keygen -t ed25519 -C "github-deploy-bubblev2" -f ~/.ssh/github_deploy_bubblev2
+ssh-keygen -t ed25519 -N "" -C "github-deploy-bubblev2" -f ~/.ssh/github_deploy_bubblev2
 cat ~/.ssh/github_deploy_bubblev2.pub >> ~/.ssh/authorized_keys
 chmod 700 ~/.ssh
 chmod 600 ~/.ssh/authorized_keys
@@ -98,12 +98,35 @@ Copy isi private key yang tampil dari command terakhir, termasuk baris:
 ```
 
 Di GitHub repo, buka `Settings` -> `Secrets and variables` -> `Actions` ->
-`New repository secret`, lalu buat:
+`New repository secret`, lalu buat satu secret:
 
-- `VPS_HOST` = `141.11.25.59`
-- `VPS_USER` = `root`
-- `VPS_PORT` = `22`
-- `VPS_SSH_KEY` = isi private key dari `~/.ssh/github_deploy_bubblev2`
+Name:
+
+```text
+MAIN
+```
+
+Secret:
+
+```text
+VPS_HOST=141.11.25.59
+VPS_USER=root
+VPS_PORT=22
+VPS_SSH_KEY<<EOF
+-----BEGIN OPENSSH PRIVATE KEY-----
+ISI_PRIVATE_KEY_DARI_VPS
+-----END OPENSSH PRIVATE KEY-----
+EOF
+```
+
+Ganti bagian `ISI_PRIVATE_KEY_DARI_VPS` dengan isi private key dari command:
+
+```bash
+cat ~/.ssh/github_deploy_bubblev2
+```
+
+Copy mulai dari `-----BEGIN OPENSSH PRIVATE KEY-----` sampai
+`-----END OPENSSH PRIVATE KEY-----`.
 
 Setelah itu, setiap commit yang di-push ke `main` akan otomatis pull/restart di
 VPS.
