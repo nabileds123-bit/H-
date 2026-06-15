@@ -2157,7 +2157,6 @@ $(document).on('keyup', function(input) {
                 <br clear="both"/>
             </div>
             <div id="locationUnknown">
-			<script>connect();</script>
                <select id="region" class="form-control" required>
                     <option disabled value=""> -- Select a Region --</option>
                     <option value="US-Fremont">US West</option>
@@ -2791,11 +2790,10 @@ $(document).on('keyup', function(input) {
     </div>
 </div>
 <div id="connecting"
-     style="display:none;position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 100; background-color: rgba(0,0,0,0.5);">
+     style="display:none;position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 700; background-color: rgba(0,0,0,0.5);">
     <div style="width: 350px; background-color: #FFFFFF; margin: 100px auto; border-radius: 15px; padding: 5px 15px 5px 15px;">
         <h2>Connecting</h2>
-
-        <p> If you cannot connect to the servers, check if you have some anti virus or firewall blocking the connection.
+        <p> If you cannot connect to the servers, check if you have some anti virus or firewall blocking the connection.</p>
     </div>
 </div>
 <canvas id="canvas" width="800" height="600"></canvas>
@@ -2836,6 +2834,29 @@ $(function () {
         if (mode !== ':hardcore') return mode;
 
         return hardcoreRooms[Math.floor(Math.random() * hardcoreRooms.length)];
+    }
+
+    function initRegionSelection() {
+        var savedRegion = localStorage.getItem('location');
+        var selectedRegion = savedRegion || $('#region').val() || 'EU-London';
+
+        if (selectedRegion) {
+            $('#region').val(selectedRegion);
+        }
+
+        if (!$('#region').val()) {
+            $('#region').val('EU-London');
+        }
+
+        if (typeof window.setRegion === 'function') {
+            window.setRegion($('#region').val());
+        }
+
+        $('#region').on('change', function () {
+            if (typeof window.setRegion === 'function') {
+                window.setRegion(this.value);
+            }
+        });
     }
 
     function showAuthStatus(selector, message, isError) {
@@ -4329,6 +4350,7 @@ $(function () {
 
     updateBattleModeLock();
     updateInviteModeSelection();
+    initRegionSelection();
     renderModeButtons();
     updateFriendInviteTitle();
     initPersistedCheckboxes();
