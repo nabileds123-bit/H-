@@ -2826,6 +2826,7 @@ $(function () {
     var guildViewerRole = 'leader';
     var guildList = [];
     var guildMembers = [];
+    var premiumChatWarning = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
 
     function getCurrentGuildViewerName() {
         return authUser || $('#accountNick').text() || 'amen';
@@ -2944,6 +2945,7 @@ $(function () {
         localStorage.setItem('authLastLogin', user.lastLoginAt || localStorage.getItem('authLastLogin') || Date.now());
         localStorage.setItem('cellColor', user.cellColor || '#000000');
         localStorage.setItem('authAccountType', user.accountType || 'Free');
+        localStorage.setItem('authPremiumUntil', user.premiumUntil || '');
         localStorage.setItem('authPoints', user.points || 0);
         localStorage.setItem('authXp', user.xp || localStorage.getItem('authXp') || 0);
         localStorage.setItem('authXpMax', user.xpMax || localStorage.getItem('authXpMax') || 0);
@@ -2953,7 +2955,36 @@ $(function () {
         localStorage.setItem('authActiveSkinType', user.activeSkinType || 'player');
         localStorage.setItem('authGuildTag', user.guildTag || '');
         localStorage.setItem('authGuildSkinUrl', user.guildSkinUrl || '');
+        updateChatAccess();
     }
+
+    function hasActivePremium() {
+        var accountType = String(localStorage.getItem('authAccountType') || '').toLowerCase();
+        var premiumUntil = String(localStorage.getItem('authPremiumUntil') || '').trim();
+
+        if (accountType !== 'premium') return false;
+        if (!premiumUntil) return true;
+
+        var expiresAt = Date.parse(premiumUntil);
+        if (isNaN(expiresAt)) {
+            expiresAt = parseInt(premiumUntil, 10);
+        }
+
+        return !expiresAt || expiresAt > Date.now();
+    }
+
+    function updateChatAccess() {
+        var loggedIn = !!localStorage.getItem('authToken') && !!localStorage.getItem('authUser');
+        $('#chat_textbox').toggle(loggedIn);
+    }
+
+    window.canSendPremiumChat = function () {
+        return hasActivePremium();
+    };
+
+    window.showPremiumChatWarning = function () {
+        alert(premiumChatWarning);
+    };
 
     function renderAccountSkin(selector, url, title, type) {
         if (!url) return false;
@@ -3767,6 +3798,7 @@ $(function () {
 
     function applyAuthState() {
         updateBattleModeLock();
+        updateChatAccess();
         if (!isLoggedIn()) return;
 
         $('#nick')
@@ -4523,6 +4555,9 @@ $(function () {
         localStorage.removeItem('authToken');
         localStorage.removeItem('authUser');
         localStorage.removeItem('authLastLogin');
+        localStorage.removeItem('authAccountType');
+        localStorage.removeItem('authPremiumUntil');
+        updateChatAccess();
         $('#helloXpPanel').removeClass('is-visible');
         window.location.reload();
         return false;

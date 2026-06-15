@@ -13,6 +13,37 @@ function hexToColor(hex) {
     };
 }
 
+var PREMIUM_CHAT_WARNING = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
+
+function isPremiumUser(user) {
+    var accountType = String(user && user.accountType || '').toLowerCase();
+    var premiumUntil = String(user && user.premiumUntil || '').trim();
+
+    if (accountType !== 'premium') return false;
+    if (!premiumUntil) return true;
+
+    var expiresAt = Date.parse(premiumUntil);
+    if (isNaN(expiresAt)) {
+        expiresAt = parseInt(premiumUntil, 10);
+    }
+
+    return !expiresAt || expiresAt > Date.now();
+}
+
+function applyAuthUserToClient(client, user) {
+    client.authUser = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        cellColor: user.cellColor || '#000000',
+        accountType: user.accountType || 'Free',
+        premiumUntil: user.premiumUntil || '',
+        guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
+        activeSkinType: user.activeSkinType || 'player'
+    };
+    client.setGuildTag(client.authUser.guildTag);
+}
+
 function PacketHandler(gameServer, socket) {
     this.gameServer = gameServer;
     this.socket = socket;
@@ -179,8 +210,9 @@ this.merg = true;
             }
             offset = i + 2;
 
+            var token = "";
+            var user = null;
             if (flags & 16) {
-                var token = "";
                 for (i = offset; i + 1 < view.byteLength; i += 2) {
                     charCode = view.getUint16(i, true);
                     if (charCode == 0) {
@@ -189,22 +221,22 @@ this.merg = true;
                     token += String.fromCharCode(charCode);
                 }
 
-                var user = token ? userStore.findBySessionToken(token) : null;
+                user = token ? userStore.findBySessionToken(token) : null;
                 if (user) {
-                    this.socket.playerTracker.authUser = {
-                        id: user.id,
-                        username: user.username,
-                        email: user.email,
-                        cellColor: user.cellColor || '#000000',
-                        guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
-                        activeSkinType: user.activeSkinType || 'player'
-                    };
-                    this.socket.playerTracker.setGuildTag(this.socket.playerTracker.authUser.guildTag);
+                    applyAuthUserToClient(this.socket.playerTracker, user);
                     if (!this.socket.playerTracker.getName()) {
                         this.socket.playerTracker.setName(user.username);
                     }
                 }
             }
+
+            if (!user || !isPremiumUser(user)) {
+                if (user) {
+                    this.socket.sendPacket(new Packet.Message(PREMIUM_CHAT_WARNING));
+                }
+                break;
+            }
+
             var packet = new Packet.Chat(this.socket.playerTracker, message);
             this.gameServer.withWorld(this.socket.world, function() {
                 // Send to clients in the same world
@@ -231,15 +263,7 @@ PacketHandler.prototype.setNickname = function(newNick) {
 
     if (user) {
         nick = user.username;
-        client.authUser = {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            cellColor: user.cellColor || '#000000',
-            guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
-            activeSkinType: user.activeSkinType || 'player'
-        };
-        client.setGuildTag(client.authUser.guildTag);
+        applyAuthUserToClient(client, user);
 
         if (!usesTeams && user.cellColor && user.cellColor !== '#000000') {
             var color = hexToColor(user.cellColor);

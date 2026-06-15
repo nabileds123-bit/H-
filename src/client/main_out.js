@@ -519,6 +519,14 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 nodesOnScreen.push(msg.getUint32(offset, true));
                 offset += 4;
                 break;
+            case 42:
+                var systemMessage = '';
+                while (offset + 1 < msg.byteLength) {
+                    systemMessage += String.fromCharCode(msg.getUint16(offset, true));
+                    offset += 2;
+                }
+                addSystemChat(systemMessage);
+                break;
             case 48: // update leaderboard (custom text)
                 setCustomLB = true;
                 noRanking = true;
@@ -577,6 +585,18 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 break;
 
         }
+    }
+
+    function addSystemChat(message) {
+        if (!message) return;
+
+        chatBoard.push({
+            "name": "System",
+            "color": "#ff6666",
+            "message": message,
+            "time": Date.now()
+        });
+        drawChatBoard();
     }
 
 
@@ -794,6 +814,18 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     function sendChat(str) {
         if (wsIsOpen() && (str.length < 200) && (str.length > 0)) {
             var authToken = null != wHandle.localStorage ? wHandle.localStorage.authToken : null;
+            if (!authToken) {
+                return;
+            }
+
+            var canSendPremiumChat = typeof wHandle.canSendPremiumChat === 'function' ? wHandle.canSendPremiumChat() : false;
+            if (!canSendPremiumChat) {
+                if (typeof wHandle.showPremiumChatWarning === 'function') {
+                    wHandle.showPremiumChatWarning();
+                }
+                return;
+            }
+
             var msg = prepareData(2 + 2 * str.length + 2 + (authToken ? 2 * authToken.length + 2 : 0));
             var offset = 0;
             msg.setUint8(offset++, 99);
