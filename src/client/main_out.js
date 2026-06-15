@@ -646,20 +646,21 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function drawChatBoard() {
         //chatCanvas = null;
+        if (chatBoard.length < 1) return;
 
         chatCanvas = document.createElement("canvas");
         var ctx = chatCanvas.getContext("2d");
         var scaleFactor = Math.min(Math.max(canvasWidth / 1200, 0.75),1); //scale factor = 0.75 to 1
-        chatCanvas.width = 1000 * scaleFactor;
-        chatCanvas.height = 550 * scaleFactor;
-        ctx.scale(scaleFactor, scaleFactor);
-        var nowtime = Date.now();
-        if (chatBoard.length < 1) return;
-
-
         var len = chatBoard.length;
         var from = len - 15;
         if (from < 0) from = 0;
+        var visibleCount = len - from;
+
+        chatCanvas.width = 1000 * scaleFactor;
+        chatCanvas.height = Math.max(32, 24 * visibleCount + 8) * scaleFactor;
+        ctx.scale(scaleFactor, scaleFactor);
+        var nowtime = Date.now();
+
         for (var i = 0; i < (len - from); i++) {
             var chatItem = chatBoard[i + from];
             var lineY = 20 + 24 * i;
