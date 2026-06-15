@@ -237,6 +237,35 @@ this.merg = true;
                 break;
             }
 
+            var isGuildChat = /^\/g\s+/i.test(message);
+
+            if (isGuildChat) {
+                message = message.replace(/^\/g\s+/i, "").trim();
+
+                if (!message) {
+                    break;
+                }
+
+                var player = this.socket.playerTracker;
+                var guildId = this.gameServer.getPlayerGuildId ?
+                    this.gameServer.getPlayerGuildId(player) :
+                    (player.guildId || player.guild_id || player.guildTag || (player.user && player.user.guild_id));
+
+                if (!guildId) {
+                    if (this.gameServer.sendSystemMessage) {
+                        this.gameServer.sendSystemMessage(player, "Kamu belum punya guild.");
+                    } else {
+                        this.socket.sendPacket(new Packet.Message("Kamu belum punya guild."));
+                    }
+                    break;
+                }
+
+                this.gameServer.withWorld(this.socket.world, function() {
+                    this.sendGuildChat(player, message);
+                });
+                break;
+            }
+
             var packet = new Packet.Chat(this.socket.playerTracker, message);
             this.gameServer.withWorld(this.socket.world, function() {
                 // Send to clients in the same world

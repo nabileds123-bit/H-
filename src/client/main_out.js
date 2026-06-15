@@ -89,7 +89,8 @@
 
         var spacePressed = false,
             qPressed = false,
-            wPressed = false;
+            wPressed = false,
+            ctrlPressed = false;
         function isGamePaused() {
             return wjQuery("#overlays").is(":visible");
         }
@@ -100,6 +101,34 @@
 
         wHandle.onkeydown = function (event) {
             switch (event.keyCode) {
+                case 17: // Ctrl = buka chat guild
+                    if (!ctrlPressed && !hasOverlay) {
+                        var chatInput = document.getElementById("chat_textbox");
+
+                        if (chatInput) {
+                            chatInput.focus();
+                            isTyping = true;
+
+                            var value = chatInput.value || "";
+
+                            // kalau kosong, isi /g
+                            if (value.trim().length < 1) {
+                                chatInput.value = "/g ";
+                            }
+                            // kalau belum diawali /g, tambahkan /g di depan
+                            else if (!/^\/g\s/i.test(value)) {
+                                chatInput.value = "/g " + value;
+                            }
+                            // kalau sudah ada /g, biarkan saja, jangan ketik ulang
+
+                            // cursor taruh di akhir tulisan
+                            chatInput.selectionStart = chatInput.selectionEnd = chatInput.value.length;
+                        }
+
+                        ctrlPressed = true;
+                        event.preventDefault();
+                    }
+                    break;
                 case 32: // split
                     if ((!spacePressed) && (!isTyping) && !isGamePaused()) {
                         sendMouseMove();
@@ -123,7 +152,7 @@
                 case 27: // quit
                     showOverlays(true);
                     sendPauseState(true);
-                    wPressed = qPressed = spacePressed = false;
+                    wPressed = qPressed = spacePressed = ctrlPressed = false;
                     wHandle.isSpectating = false;
                     break;
 
@@ -146,6 +175,9 @@
         };
         wHandle.onkeyup = function (event) {
             switch (event.keyCode) {
+                case 17:
+                    ctrlPressed = false;
+                    break;
                 case 32:
                     spacePressed = false;
                     break;
@@ -162,7 +194,7 @@
         };
         wHandle.onblur = function () {
             sendUint8(19);
-            wPressed = qPressed = spacePressed = false
+            wPressed = qPressed = spacePressed = ctrlPressed = false
         };
 
         wHandle.onresize = canvasResize;
@@ -633,11 +665,17 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             color = '0' + color;
         }
         color = '#' + color;
+        var isGuildChat = !!(flags & 32);
+        var chatName = getString();
+        var chatMessage = getString();
+
         chatBoard.push({
-            "name": getString(),
-            "color": color,
-            "message": getString(),
-            "time": Date.now()
+            "name": chatName,
+            "color": isGuildChat ? "#ffd54a" : color,
+            "textColor": isGuildChat ? "#ffd54a" : "#777777",
+            "message": chatMessage,
+            "time": Date.now(),
+            "isGuild": isGuildChat
         });
         //console.log(chatBoard);
         drawChatBoard();
@@ -647,7 +685,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     function drawChatBoard() {
         var nowtime = Date.now();
         var CHAT_LIFE_TIME = 15000;     // chat mulai hilang setelah 15 detik
-        var CHAT_REMOVE_DELAY = 5000;   // hilang 1 chat tiap 5 detik
+        var CHAT_REMOVE_DELAY = 1000;   // hilang 1 chat tiap 1 detik
         var CHAT_MAX_WIDTH = 320;   // kecilkan kalau mau lebih cepat turun ke bawah
 
         if (!drawChatBoard.lastRemoveTime) {
@@ -745,11 +783,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             if (y + lineHeight > maxY) break;
 
             // nama player
-            ctx.fillStyle = msg.color || "#ff3333";
+            ctx.fillStyle = msg.isGuild ? "#ffd54a" : (msg.color || "#ff3333");
             ctx.fillText(nameText, nameX, y);
 
             // pesan baris pertama
-            ctx.fillStyle = "#777777";
+            ctx.fillStyle = msg.textColor || "#777777";
             ctx.fillText(lines[0], msgX, y);
 
             y += lineHeight;
@@ -758,7 +796,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             for (var j = 1; j < lines.length; j++) {
                 if (y + lineHeight > maxY) break;
 
-                ctx.fillStyle = "#777777";
+                ctx.fillStyle = msg.textColor || "#777777";
                 ctx.fillText(lines[j], paddingX, y);
 
                 y += lineHeight;
@@ -899,6 +937,12 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     }
 
     function sendChat(str) {
+        str = String(str || "").trim();
+
+        if (/^\/g\s*$/i.test(str)) {
+            return;
+        }
+
         if (wsIsOpen() && (str.length < 200) && (str.length > 0)) {
             var authToken = null != wHandle.localStorage ? wHandle.localStorage.authToken : null;
             if (!authToken) {

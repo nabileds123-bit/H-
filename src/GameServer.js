@@ -679,6 +679,62 @@ GameServer.prototype.sendMessage = function(msg) {
     }
 }
 
+GameServer.prototype.getPlayerGuildId = function(player) {
+    if (!player) return '';
+
+    return String(
+        player.guildId ||
+        player.guild_id ||
+        player.guildTag ||
+        (player.user && (player.user.guild_id || player.user.guildTag)) ||
+        (player.authUser && (player.authUser.guild_id || player.authUser.guildTag)) ||
+        ''
+    ).trim();
+}
+
+GameServer.prototype.sendSystemMessage = function(player, msg) {
+    if (!player || !player.socket) return;
+
+    player.socket.sendPacket(new Packet.Message(msg));
+}
+
+GameServer.prototype.sendGuildChat = function(sender, message) {
+    var senderGuildId = this.getPlayerGuildId(sender);
+
+    if (!senderGuildId) {
+        return;
+    }
+
+    var clients = this.clients || [];
+    var senderWorld = sender && sender.socket ? sender.socket.world : null;
+
+    for (var i = 0; i < clients.length; i++) {
+        var client = clients[i];
+        if (!client || !client.playerTracker) continue;
+        if (senderWorld && client.world !== senderWorld) continue;
+
+        var target = client.playerTracker;
+        var targetGuildId = this.getPlayerGuildId(target);
+
+        if (String(targetGuildId) !== String(senderGuildId)) {
+            continue;
+        }
+
+        this.sendGuildChatPacket(client, sender, message);
+    }
+}
+
+GameServer.prototype.sendGuildChatPacket = function(client, sender, message) {
+    var flags = 32; // tanda guild chat
+    var color = {
+        r: 255,
+        g: 213,
+        b: 74
+    };
+
+    client.sendPacket(new Packet.Chat(sender, message, flags, color));
+}
+
 GameServer.prototype.updateClients = function() {
     for (var i = 0; i < this.clients.length; i++) {
         if (typeof this.clients[i] == "undefined") {
