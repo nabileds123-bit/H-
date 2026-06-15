@@ -914,7 +914,7 @@ GameServer.prototype.updateMoveEngine = function() {
         for (var j = 0; j < list.length ; j++) {
             var check = list[j];
             if (cell.owner) {
-                if (check.getType && check.getType() == 1) {
+                if (check.getType && (check.getType() == 1 || check.getType() == 3)) {
                     cell.owner.matchFoodEaten = (cell.owner.matchFoodEaten || 0) + 1;
                 } else if (check.getType && check.getType() == 0 && check.owner != cell.owner) {
                     cell.owner.matchCellsEaten = (cell.owner.matchCellsEaten || 0) + 1;

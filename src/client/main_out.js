@@ -1146,6 +1146,20 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         return "Ubuntu, Arial, sans-serif";
     }
 
+    function getMatchResultFooterHTML() {
+        var source = document.querySelector("#dialogFooter center") || document.querySelector("#dialogFooter");
+        var html = source ? source.innerHTML : ''
+            + '<a href="#home" class="mode-footer-link" style="color:#337ab7; font-weight:500;">Home</a>'
+            + ' | '
+            + '<a href="#login" class="mode-footer-link" style="color:#337ab7; font-weight:500;">Login</a>'
+            + ' | '
+            + '<a href="#community" class="mode-footer-link" style="color:#337ab7; font-weight:500;">Community</a>'
+            + ' | '
+            + '<a href="https://discord.gg/EDbdRsnKWU" class="mode-footer-link" style="color:#337ab7; font-weight:500;">About</a>';
+
+        return html.replace(/\s+id="[^"]*"/g, "");
+    }
+
     function showMatchResult() {
         matchResultVisible = true;
 
@@ -1180,56 +1194,72 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
                 '<div style="text-align:center; font-size:26px; font-weight:700; color:#333; margin-bottom:16px;">Match Results</div>' +
 
-                '<div style="display:grid; grid-template-columns:1fr 1fr; row-gap:14px; column-gap:10px; text-align:center; margin-bottom:14px;">' +
+                '<div style="position:relative; height:300px; margin-bottom:14px;">' +
 
-                    '<div>' +
-                        '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.foodEaten || 0) + '</div>' +
-                        '<div style="font-size:12px; color:#666; margin-top:2px;">food eaten</div>' +
-                    '</div>' +
+                    '<canvas id="matchResultChart" width="260" height="220" style="' +
+                        'position:absolute;' +
+                        'left:50%;' +
+                        'top:45%;' +
+                        'transform:translate(-50%, -50%);' +
+                        'width:260px;' +
+                        'height:220px;' +
+                        'z-index:1;' +
+                        'opacity:0.75;' +
+                        'pointer-events:none;' +
+                    '"></canvas>' +
 
-                    '<div>' +
-                        '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.highestMass || 0) + '</div>' +
-                        '<div style="font-size:12px; color:#666; margin-top:2px;">highest mass</div>' +
-                    '</div>' +
+                    '<div style="' +
+                        'position:relative;' +
+                        'z-index:2;' +
+                        'display:grid;' +
+                        'grid-template-columns:1fr 1fr;' +
+                        'row-gap:18px;' +
+                        'column-gap:70px;' +
+                        'text-align:center;' +
+                        'padding:4px 28px 0 28px;' +
+                    '">' +
 
-                    '<div>' +
-                        '<div style="font-size:18px; font-weight:700; color:#333;">' + formatMatchTime(aliveMs) + '</div>' +
-                        '<div style="font-size:12px; color:#666; margin-top:2px;">time alive</div>' +
-                    '</div>' +
+                        '<div>' +
+                            '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.foodEaten || 0) + '</div>' +
+                            '<div style="font-size:12px; color:#666; margin-top:2px;">food eaten</div>' +
+                        '</div>' +
 
-                    '<div>' +
-                        '<div style="font-size:18px; font-weight:700; color:#333;">' + formatMatchTime(matchStats.leaderboardTimeMs || 0) + '</div>' +
-                        '<div style="font-size:12px; color:#666; margin-top:2px;">leaderboard time</div>' +
-                    '</div>' +
+                        '<div>' +
+                            '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.highestMass || 0) + '</div>' +
+                            '<div style="font-size:12px; color:#666; margin-top:2px;">highest mass</div>' +
+                        '</div>' +
 
-                    '<div>' +
-                        '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.cellsEaten || 0) + '</div>' +
-                        '<div style="font-size:12px; color:#666; margin-top:2px;">cells eaten</div>' +
-                    '</div>' +
+                        '<div>' +
+                            '<div style="font-size:18px; font-weight:700; color:#333;">' + formatMatchTime(aliveMs) + '</div>' +
+                            '<div style="font-size:12px; color:#666; margin-top:2px;">time alive</div>' +
+                        '</div>' +
 
-                    '<div>' +
-                        '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.topPosition || "-") + '</div>' +
-                        '<div style="font-size:12px; color:#666; margin-top:2px;">top position</div>' +
+                        '<div>' +
+                            '<div style="font-size:18px; font-weight:700; color:#333;">' + formatMatchTime(matchStats.leaderboardTimeMs || 0) + '</div>' +
+                            '<div style="font-size:12px; color:#666; margin-top:2px;">leaderboard time</div>' +
+                        '</div>' +
+
+                        '<div>' +
+                            '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.cellsEaten || 0) + '</div>' +
+                            '<div style="font-size:12px; color:#666; margin-top:2px;">cells eaten</div>' +
+                        '</div>' +
+
+                        '<div>' +
+                            '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.topPosition || "-") + '</div>' +
+                            '<div style="font-size:12px; color:#666; margin-top:2px;">top position</div>' +
+                        '</div>' +
+
                     '</div>' +
 
                 '</div>' +
 
-                '<div style="background:#efedf4; border-radius:0; padding:10px; margin:0 0 14px 0;">' +
-                    '<canvas id="matchResultChart" width="340" height="110" style="display:block; width:100%; height:110px;"></canvas>' +
-                '</div>' +
-
-                '<button id="matchResultBackBtn" style="width:100%; height:40px; border:none; border-radius:6px; background:#347ee8; color:#fff; font-size:16px; font-weight:700; cursor:pointer; margin-top:auto;">Kembali</button>' +
+                '<button id="matchResultBackBtn" style="width:100%; height:40px; border:none; border-radius:6px; background:#347ee8; color:#fff; font-size:16px; font-weight:700; cursor:pointer;">Kembali</button>' +
 
             '</div>' +
 
-            '<div style="height:54px; border-top:1px solid #e5e5e5; display:flex; align-items:center; justify-content:center; font-size:12px; color:#9a9a9a; background:#f7f7f7;">' +
-                '<span style="margin:0 4px;">Utama</span>' +
-                '<span style="color:#c4c4c4;">|</span>' +
-                '<span style="margin:0 4px; color:#4f86d9;">Akun</span>' +
-                '<span style="color:#c4c4c4;">|</span>' +
-                '<span style="margin:0 4px; color:#4f86d9;">Community</span>' +
-                '<span style="color:#c4c4c4;">|</span>' +
-                '<span style="margin:0 4px; color:#4f86d9;">About</span>' +
+            '<div style="position:relative; margin:0 15px 5px 15px; height:32px; line-height:32px; text-align:center; font-size:12px; background:#f7f7f7;">' +
+                '<div style="position:absolute; left:0; right:0; top:-16px; border-top:1px solid #eee;"></div>' +
+                '<center>' + getMatchResultFooterHTML() + '</center>' +
             '</div>';
 
         drawMatchResultChart();
