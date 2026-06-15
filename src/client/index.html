@@ -2309,7 +2309,7 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="account-row">
                     <div class="account-label">Guild:</div>
-                    <div class="account-value">N/A <a href="#join-guild" id="joinGuildLink">Join Guild</a></div>
+                    <div class="account-value"><span id="accountGuildText">N/A</span> <a href="#join-guild" id="joinGuildLink">Join Guild</a></div>
                 </div>
                 <div class="account-row">
                     <div class="account-value" style="display:block; width:auto;">Last Login - <span id="accountLastLogin">-</span></div>
@@ -2783,6 +2783,7 @@ $(document).on('keyup', function(input) {
     <a href="#friends" data-route="friends"><span class="dropup-icon fa fa-user-plus"></span><span>Friends</span></a>
     <a href="#high-score" data-route="high-score"><span class="dropup-icon glyphicon glyphicon-stats"></span><span>Highscore</span></a>
     <a href="#search-player" data-route="search-player"><span class="dropup-icon glyphicon glyphicon-search"></span><span>Cari Player</span></a>
+    <a href="#guild-detail" data-route="my-guild" id="myGuildDropupLink" style="display:none;"><span class="dropup-icon glyphicon glyphicon-tower"></span><span id="myGuildDropupText">Guild</span></a>
     <a href="#guild" data-route="guild"><span class="dropup-icon glyphicon glyphicon-tower"></span><span>Guilds</span></a>
 </div>
 
@@ -2875,6 +2876,28 @@ $(function () {
         return true;
     }
 
+    function updateGuildUi() {
+        var guildTag = String(localStorage.getItem('authGuildTag') || '').trim();
+        var guildName = guildTag ? '[' + guildTag + ']' : 'N/A';
+
+        $('#accountGuildText').empty();
+        if (guildTag) {
+            $('#accountGuildText').append($('<a>', {
+                href: '#guild-detail',
+                id: 'accountGuildDetailLink',
+                text: guildName
+            }));
+            $('#joinGuildLink').hide();
+            $('#myGuildDropupLink').show();
+            $('#myGuildDropupText').text(guildName);
+        } else {
+            $('#accountGuildText').text('N/A');
+            $('#joinGuildLink').show();
+            $('#myGuildDropupLink').hide();
+            $('#myGuildDropupText').text('Guild');
+        }
+    }
+
     function showHomeView() {
         $('#loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide();
         $('#homeView, #instructions').show();
@@ -2920,6 +2943,7 @@ $(function () {
         if (hasPlayerSkin || hasGuildSkin) {
             $('#accountSkinRow').show();
         }
+        updateGuildUi();
         $('#cellColorPalette').removeClass('is-open');
         $('#accountView').show();
         updatePlayerExpVisibility();
@@ -3078,6 +3102,17 @@ $(function () {
         showGuildListView();
         updatePlayerExpVisibility();
         $('#guildSearch').focus();
+    }
+
+    function openMyGuildDetail() {
+        var guildTag = String(localStorage.getItem('authGuildTag') || '').trim();
+        if (!guildTag) {
+            openGuildDialog();
+            return;
+        }
+
+        openGuildDialog();
+        openGuildDetailView(guildTag + ' Guild', guildTag, localStorage.getItem('authGuildSkinUrl') || '');
     }
 
     function showGuildListView() {
@@ -3394,6 +3429,7 @@ $(function () {
     }
 
     function openCommunityDropup($sourceLink) {
+        updateGuildUi();
         positionCommunityDropup($sourceLink);
         $('#communityDropup').addClass('is-open');
     }
@@ -3554,6 +3590,16 @@ $(function () {
     $('#communityDropup a[data-route="guild"], #joinGuildLink').on('click', function (event) {
         event.preventDefault();
         openGuildDialog();
+    });
+
+    $('#communityDropup a[data-route="my-guild"]').on('click', function (event) {
+        event.preventDefault();
+        openMyGuildDetail();
+    });
+
+    $('#accountGuildText').on('click', 'a', function (event) {
+        event.preventDefault();
+        openMyGuildDetail();
     });
 
     $('#communityDropup a[data-route="notification"]').on('click', function (event) {
