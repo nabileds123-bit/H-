@@ -73,11 +73,63 @@ Setelah SSL aktif, buka:
 https://bubblev2.site
 ```
 
-## 6. Update Deploy Berikutnya
+## 6. Auto Pull Saat Push
+
+Repo ini punya GitHub Actions workflow di `.github/workflows/deploy.yml`.
+Setiap ada push ke branch `main`, GitHub akan SSH ke VPS lalu update app di
+`/var/www/bubblev2`.
+
+Di VPS, buat SSH key khusus deploy:
+
+```bash
+ssh-keygen -t ed25519 -C "github-deploy-bubblev2" -f ~/.ssh/github_deploy_bubblev2
+cat ~/.ssh/github_deploy_bubblev2.pub >> ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+cat ~/.ssh/github_deploy_bubblev2
+```
+
+Copy isi private key yang tampil dari command terakhir, termasuk baris:
+
+```text
+-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----
+```
+
+Di GitHub repo, buka `Settings` -> `Secrets and variables` -> `Actions` ->
+`New repository secret`, lalu buat:
+
+- `VPS_HOST` = `141.11.25.59`
+- `VPS_USER` = `root`
+- `VPS_PORT` = `22`
+- `VPS_SSH_KEY` = isi private key `~/.ssh/github_deploy_bubblev2`
+
+Setelah itu, setiap commit yang di-push ke `main` akan otomatis pull/restart di
+VPS.
+
+## 7. Auto Push Dari Lokal
+
+Dari Windows PowerShell di folder project:
+
+```powershell
+.\scripts\auto-push.ps1 "Pesan commit kamu"
+```
+
+Script ini akan menjalankan:
+
+- `git add -A`
+- `git commit -m "..."`
+- `git push`
+
+Setelah push berhasil, workflow GitHub Actions otomatis deploy ke VPS.
+
+## 8. Manual Update Jika Dibutuhkan
 
 ```bash
 cd /var/www/bubblev2
-git pull
+git fetch origin main
+git reset --hard origin/main
 npm install --production
 pm2 restart bubblev2
 ```
