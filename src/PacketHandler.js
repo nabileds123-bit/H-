@@ -169,12 +169,41 @@ this.merg = true;
             if (offset >= view.byteLength) {
                 break;
             }
-            for (var i = offset; i + 1 < view.byteLength && i <= maxLen; i += 2) {
+            var messageEnd = Math.min(view.byteLength, offset + maxLen);
+            for (var i = offset; i + 1 < messageEnd; i += 2) {
                 var charCode = view.getUint16(i, true);
                 if (charCode == 0) {
                     break;
                 }
                 message += String.fromCharCode(charCode);
+            }
+            offset = i + 2;
+
+            if (flags & 16) {
+                var token = "";
+                for (i = offset; i + 1 < view.byteLength; i += 2) {
+                    charCode = view.getUint16(i, true);
+                    if (charCode == 0) {
+                        break;
+                    }
+                    token += String.fromCharCode(charCode);
+                }
+
+                var user = token ? userStore.findBySessionToken(token) : null;
+                if (user) {
+                    this.socket.playerTracker.authUser = {
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        cellColor: user.cellColor || '#000000',
+                        guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
+                        activeSkinType: user.activeSkinType || 'player'
+                    };
+                    this.socket.playerTracker.setGuildTag(this.socket.playerTracker.authUser.guildTag);
+                    if (!this.socket.playerTracker.getName()) {
+                        this.socket.playerTracker.setName(user.username);
+                    }
+                }
             }
             var packet = new Packet.Chat(this.socket.playerTracker, message);
             this.gameServer.withWorld(this.socket.world, function() {

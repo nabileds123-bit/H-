@@ -793,13 +793,24 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function sendChat(str) {
         if (wsIsOpen() && (str.length < 200) && (str.length > 0)) {
-            var msg = prepareData(2 + 2 * str.length);
+            var authToken = null != wHandle.localStorage ? wHandle.localStorage.authToken : null;
+            var msg = prepareData(2 + 2 * str.length + 2 + (authToken ? 2 * authToken.length + 2 : 0));
             var offset = 0;
             msg.setUint8(offset++, 99);
-            msg.setUint8(offset++, 0); // flags (0 for now)
+            msg.setUint8(offset++, authToken ? 16 : 0);
             for (var i = 0; i < str.length; ++i) {
                 msg.setUint16(offset, str.charCodeAt(i), true);
                 offset += 2;
+            }
+            msg.setUint16(offset, 0, true);
+            offset += 2;
+
+            if (authToken) {
+                for (i = 0; i < authToken.length; ++i) {
+                    msg.setUint16(offset, authToken.charCodeAt(i), true);
+                    offset += 2;
+                }
+                msg.setUint16(offset, 0, true);
             }
 
             wsSend(msg);
