@@ -1172,7 +1172,23 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     var wCanvas = document.createElement("canvas");
     var playerStat = null;
     wHandle.isSpectating = false;
+    wHandle.hasActivePlayerCells = function () {
+        return playerCells && playerCells.length > 0;
+    };
+    wHandle.resumeCurrentGame = function () {
+        if (!wHandle.hasActivePlayerCells()) {
+            return false;
+        }
+
+        wHandle.isSpectating = false;
+        hideOverlays();
+        return true;
+    };
     wHandle.setNick = function (arg) {
+        if (wHandle.resumeCurrentGame()) {
+            return;
+        }
+
         hideOverlays();
         var authUser = null != wHandle.localStorage ? wHandle.localStorage.authUser : null;
         var guestNick = String(arg || '').trim();
@@ -1200,6 +1216,10 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         showMass = arg
     };
     wHandle.spectate = function () {
+        if (wHandle.resumeCurrentGame()) {
+            return;
+        }
+
         userNickName = null;
         wHandle.isSpectating = true;
         if (wsIsOpen()) {

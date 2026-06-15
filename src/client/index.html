@@ -3072,6 +3072,10 @@ $(function () {
     }
 
     window.playSelectedMode = function () {
+        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
+            return;
+        }
+
         var selectedGroup = getSelectedGameModeGroup();
 
         if (selectedGroup !== 'direct' && !inviteSubModeTouched) {
@@ -3983,6 +3987,10 @@ $(function () {
     });
 
     $('#spectateBtn').on('click', function () {
+        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
+            return false;
+        }
+
         if (typeof window.setGameMode === 'function' && typeof window.getSelectedGameModeForConnection === 'function') {
             window.setGameMode(window.getSelectedGameModeForConnection(), true);
         }
