@@ -131,9 +131,13 @@ GameServer.prototype.start = function() {
 
       for (var i = 0; i < parts.length; i++) {
         var pair = parts[i].split('=');
-        if (decodeURIComponent(pair[0] || '') == 'maintenanceKey' &&
-            decodeURIComponent(pair[1] || '') == maintenanceKey) {
-          return true;
+        try {
+          if (decodeURIComponent(pair[0] || '') == 'maintenanceKey' &&
+              decodeURIComponent(pair[1] || '') == maintenanceKey) {
+            return true;
+          }
+        } catch (e) {
+          return false;
         }
       }
 

@@ -25,6 +25,10 @@ function PacketHandler(gameServer, socket) {
 module.exports = PacketHandler;
 
 PacketHandler.prototype.handleMessage = function(message) {
+    if (!message || message.length < 1) {
+        return;
+    }
+
     function stobuf(buf) {
         var length = buf.length;
         var arrayBuf = new ArrayBuffer(length);
@@ -46,7 +50,7 @@ PacketHandler.prototype.handleMessage = function(message) {
         case 0:
             // Set Nickname
             var nick = "";
-            for (var i = 1; i < view.byteLength; i += 2) {
+            for (var i = 1; i + 1 < view.byteLength; i += 2) {
                 var charCode = view.getUint16(i, true);
                 if (charCode == 0) {
                     break;
@@ -66,7 +70,7 @@ PacketHandler.prototype.handleMessage = function(message) {
         case 10:
             // Set game mode/world before spawning
             var mode = "";
-            for (var i = 1; i < view.byteLength; i += 2) {
+            for (var i = 1; i + 1 < view.byteLength; i += 2) {
                 var charCode = view.getUint16(i, true);
                 if (charCode == 0) {
                     break;
@@ -79,6 +83,9 @@ PacketHandler.prototype.handleMessage = function(message) {
         case 16:
             // Mouse Move
             if (client.isPaused) {
+                break;
+            }
+            if (view.byteLength < 17) {
                 break;
             }
             client.mouse.x = view.getFloat64(1, true);
@@ -125,7 +132,7 @@ this.merg = true;
             break;
         case 42:
             var message = "";
-            for (var i = 1; i < view.byteLength; i += 2) {
+            for (var i = 1; i + 1 < view.byteLength; i += 2) {
                 var charCode = view.getUint16(i, true);
                 if (charCode == 0) {
                     break;
@@ -146,6 +153,9 @@ this.merg = true;
             var message = "";
             var maxLen = 200 * 2; // 2 bytes per char
             var offset = 2;
+            if (view.byteLength < offset) {
+                break;
+            }
             var flags = view.getUint8(1); // for future use (e.g. broadcast vs local message)
             if (flags & 2) {
                 offset += 4;
@@ -156,7 +166,10 @@ this.merg = true;
             if (flags & 8) {
                 offset += 16;
             }
-            for (var i = offset; i < view.byteLength && i <= maxLen; i += 2) {
+            if (offset >= view.byteLength) {
+                break;
+            }
+            for (var i = offset; i + 1 < view.byteLength && i <= maxLen; i += 2) {
                 var charCode = view.getUint16(i, true);
                 if (charCode == 0) {
                     break;
