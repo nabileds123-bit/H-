@@ -14,13 +14,14 @@ Virus.prototype.calcMove = function () {
 }
 
 Virus.prototype.feed = function(feeder,gameServer) {
+    var config = gameServer.getWorldConfig ? gameServer.getWorldConfig() : gameServer.config;
     this.setAngle(feeder.getAngle()); // Set direction if the virus explodes
     this.mass += 14; // 7 cells to burst the virus
     gameServer.removeNode(feeder);
 	
     // Check if the virus is going to explode
-    if (this.mass >= gameServer.config.virusBurstMass) {
-        this.mass = gameServer.config.virusStartMass; // Reset mass
+    if (this.mass >= config.virusBurstMass) {
+        this.mass = config.virusStartMass; // Reset mass
         gameServer.shootVirus(this);
     }
 	
@@ -29,9 +30,10 @@ Virus.prototype.feed = function(feeder,gameServer) {
 // Main Functions
 
 Virus.prototype.onConsume = function(consumer,gameServer) {
+    var config = gameServer.getWorldConfig ? gameServer.getWorldConfig() : gameServer.config;
     var client = consumer.owner;
     var maxSplits = Math.floor(consumer.mass/16) - 1; // Maximum amount of splits
-    var numSplits = gameServer.config.playerMaxCells - client.cells.length; // Get number of splits
+    var numSplits = config.playerMaxCells - client.cells.length; // Get number of splits
     numSplits = Math.min(numSplits,maxSplits);
     var splitMass = Math.min(consumer.mass/(numSplits + 1), 32); // Maximum size of new splits
     
@@ -59,7 +61,7 @@ Virus.prototype.onConsume = function(consumer,gameServer) {
     var angle = 0; // Starting angle
     for (var k = 0; k < numSplits; k++) {
         angle += 6/numSplits; // Get directions of splitting cells
-        gameServer.newCellVirused(client, consumer, angle, splitMass,150);
+        gameServer.newCellVirused(client, consumer, angle, splitMass,90);
         consumer.mass -= splitMass;
     }
     

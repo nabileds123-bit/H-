@@ -61,6 +61,10 @@ function isValidEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value || '');
 }
 
+function isGmailEmail(value) {
+    return /^[^\s@]+@gmail\.com$/i.test(value || '');
+}
+
 function isValidPassword(value) {
     return typeof value === 'string' && value.length >= 6 && value.length <= 72;
 }
@@ -84,6 +88,10 @@ function handleRegister(req, res) {
 
         if (!isValidEmail(userEmail)) {
             return sendJson(res, 400, { ok: false, message: 'Email is not valid.' });
+        }
+
+        if (!isGmailEmail(userEmail)) {
+            return sendJson(res, 400, { ok: false, message: 'Email must use @gmail.com.' });
         }
 
         if (!isValidPassword(password)) {

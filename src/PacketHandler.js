@@ -63,6 +63,19 @@ PacketHandler.prototype.handleMessage = function(message) {
                 this.socket.playerTracker.spectate = true;
             }
             break;
+        case 10:
+            // Set game mode/world before spawning
+            var mode = "";
+            for (var i = 1; i < view.byteLength; i += 2) {
+                var charCode = view.getUint16(i, true);
+                if (charCode == 0) {
+                    break;
+                }
+
+                mode += String.fromCharCode(charCode);
+            }
+            this.gameServer.setClientWorld(this.socket, mode);
+            break;
         case 16:
             // Mouse Move
             if (client.isPaused) {
@@ -120,11 +133,13 @@ this.merg = true;
 
                 message += String.fromCharCode(charCode);
             }
-            
-            this.gameServer.sendMessage(message);
+            this.gameServer.withWorld(this.socket.world, function() {
+                this.sendMessage(message);
+            });
+            break;
         case 255:
             // Connection Start - Send SetBorder packet first
-            var c = this.gameServer.config;
+            var c = this.gameServer.getWorldConfig(this.socket.world);
             this.socket.sendPacket(new Packet.SetBorder(c.borderLeft, c.borderRight, c.borderTop, c.borderBottom));
             break;
          case 99:
@@ -149,10 +164,12 @@ this.merg = true;
                 message += String.fromCharCode(charCode);
             }
             var packet = new Packet.Chat(this.socket.playerTracker, message);
-            // Send to all clients (broadcast)
-            for (var i = 0; i < this.gameServer.clients.length; i++) {
-                this.gameServer.clients[i].sendPacket(packet);
-            }
+            this.gameServer.withWorld(this.socket.world, function() {
+                // Send to clients in the same world
+                for (var i = 0; i < this.clients.length; i++) {
+                    this.clients[i].sendPacket(packet);
+                }
+            });
             break;
 default:
             break;
@@ -166,28 +183,38 @@ PacketHandler.prototype.setNickname = function(newNick) {
     var token = parts[1];
     var user = token ? userStore.findBySessionToken(token) : null;
 
+    var world = client.world || this.socket.world;
+    var gameMode = world ? world.gameMode : this.gameServer.gameMode;
+    var usesTeams = gameMode && gameMode.haveTeams;
+
     if (user) {
         nick = user.username;
         client.authUser = {
             id: user.id,
             username: user.username,
             email: user.email,
-            cellColor: user.cellColor || '#000000'
+            cellColor: user.cellColor || '#000000',
+            guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || ''
         };
+        client.setGuildTag(client.authUser.guildTag);
 
-        if (user.cellColor && user.cellColor !== '#000000') {
+        if (!usesTeams && user.cellColor && user.cellColor !== '#000000') {
             var color = hexToColor(user.cellColor);
             if (color) {
                 client.setColor(color);
             }
-        } else {
+        } else if (!usesTeams) {
             client.setColor(this.gameServer.getRandomColor());
         }
+    } else {
+        client.setGuildTag("");
     }
 
     if (client.cells.length < 1) {
         // If client has no cells... then spawn a player
-        this.gameServer.spawnPlayer(client);
+        this.gameServer.withWorld(client.world, function() {
+            this.spawnPlayer(client);
+        });
         
         // Turn off spectate mode
         client.spectate = false;

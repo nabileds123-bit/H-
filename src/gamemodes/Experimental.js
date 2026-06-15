@@ -2,7 +2,6 @@ var FFA = require('./FFA'); // Base gamemode
 var Cell = require('../entity/Cell');
 var Food = require('../entity/Food');
 var Virus = require('../entity/Virus');
-var VirusFeed = require('../entity/Virus').prototype.feed;
 
 function Experimental() {
     FFA.apply(this, Array.prototype.slice.call(arguments));
@@ -87,20 +86,6 @@ Experimental.prototype.onServerInit = function(gameServer) {
     // Called when the server starts
     gameServer.run = true;
 
-    // Special virus mechanics
-    Virus.prototype.feed = function(feeder,gameServer) {
-        gameServer.removeNode(feeder);
-        // Pushes the virus
-        this.setAngle(feeder.getAngle()); // Set direction if the virus explodes
-        this.moveEngineTicks = 5; // Amount of times to loop the movement function
-        this.moveEngineSpeed = 30;
-
-        var index = gameServer.movingNodes.indexOf(this);
-        if (index == -1) {
-            gameServer.movingNodes.push(this);
-        }
-    };
-
     // Override this
     gameServer.getRandomSpawn = gameServer.getRandomPosition;
 };
@@ -127,8 +112,6 @@ Experimental.prototype.onChange = function(gameServer) {
     for (var i in this.nodesMother) {
         gameServer.removeNode(this.nodesMother[i]);
     }
-    // Add back default functions
-    Virus.prototype.feed = VirusFeed;
     gameServer.getRandomSpawn = require('../GameServer').prototype.getRandomSpawn;
 };
 

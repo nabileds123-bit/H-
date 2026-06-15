@@ -27,7 +27,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="Vector2.js"></script>
-    <script src="main_out.js?542"></script>
+    <script src="main_out.js?550"></script>
 	<script>/ jshint -W097 /
 'use strict';
 
@@ -69,7 +69,7 @@ $(document).on('keydown', function(input) {
             $("body").trigger($.Event("keyup", {
                 keyCode: 87
             }));
-        }, 90);
+        }, 170);
  }
 })
 
@@ -121,6 +121,55 @@ $(document).on('keyup', function(input) {
         flex: 1 1 auto;
         width: auto;
         float: none;
+    }
+
+    .btn-play.is-battle-play {
+        border-color: #d9534f;
+        background: #d9534f;
+        color: #fff;
+    }
+
+    .btn-play.is-battle-play:hover,
+    .btn-play.is-battle-play:focus {
+        border-color: #c9302c;
+        background: #c9302c;
+        color: #fff;
+    }
+
+    .btn-play.is-battle-loading,
+    .btn-play.is-battle-loading:hover,
+    .btn-play.is-battle-loading:focus {
+        border-color: #8f302d;
+        background: #8f302d;
+        color: #fff;
+        opacity: .72;
+        cursor: not-allowed;
+    }
+
+    #battleLobbyStart.is-loading,
+    #battleLobbyStart.is-loading:hover,
+    #battleLobbyStart.is-loading:focus {
+        background: #8f302d;
+        opacity: .72;
+        cursor: not-allowed;
+    }
+
+    .battle-play-spinner {
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        margin-right: 7px;
+        border: 2px solid rgba(255, 255, 255, .45);
+        border-top-color: #fff;
+        border-radius: 50%;
+        vertical-align: -2px;
+        animation: battlePlaySpin .7s linear infinite;
+    }
+
+    @keyframes battlePlaySpin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     .btn-settings {
@@ -208,6 +257,7 @@ $(document).on('keyup', function(input) {
         transform: translate(-50%, -50%);
         overflow: visible;
         box-sizing: border-box;
+        z-index: 210;
     }
 
     #dialogContent {
@@ -321,7 +371,8 @@ $(document).on('keyup', function(input) {
 
     #guildDialog,
     #notificationDialog,
-    #highScoreDialog {
+    #highScoreDialog,
+    #accountDetailDialog {
         display: none;
         width: 380px;
         height: 550px;
@@ -348,28 +399,32 @@ $(document).on('keyup', function(input) {
         flex-direction: column;
     }
 
-    #highScoreDialog.is-open {
+    #highScoreDialog.is-open,
+    #accountDetailDialog.is-open {
         display: flex;
         flex-direction: column;
     }
 
     #guildDialog .dialog-brand,
     #notificationDialog .dialog-brand,
-    #highScoreDialog .dialog-brand {
+    #highScoreDialog .dialog-brand,
+    #accountDetailDialog .dialog-brand {
         color: #337ab7;
         text-decoration: none;
     }
 
     #guildDialog .dialog-brand:hover,
     #notificationDialog .dialog-brand:hover,
-    #highScoreDialog .dialog-brand:hover {
+    #highScoreDialog .dialog-brand:hover,
+    #accountDetailDialog .dialog-brand:hover {
         color: #23527c;
         text-decoration: underline;
     }
 
     #guildDialog .spa-page-body,
     #notificationDialog .spa-page-body,
-    #highScoreDialog .spa-page-body {
+    #highScoreDialog .spa-page-body,
+    #accountDetailDialog .spa-page-body {
         flex: 1;
         min-height: 0;
         padding-bottom: 10px;
@@ -379,7 +434,8 @@ $(document).on('keyup', function(input) {
 
     #guildDialog .dialog-footer,
     #notificationDialog .dialog-footer,
-    #highScoreDialog .dialog-footer {
+    #highScoreDialog .dialog-footer,
+    #accountDetailDialog .dialog-footer {
         position: absolute;
         left: 15px;
         right: 15px;
@@ -393,7 +449,8 @@ $(document).on('keyup', function(input) {
 
     #guildDialog .dialog-footer:before,
     #notificationDialog .dialog-footer:before,
-    #highScoreDialog .dialog-footer:before {
+    #highScoreDialog .dialog-footer:before,
+    #accountDetailDialog .dialog-footer:before {
         content: "";
         position: absolute;
         left: 0;
@@ -467,6 +524,130 @@ $(document).on('keyup', function(input) {
 
     .highscore-row {
         color: #333;
+    }
+
+    #accountDetailView {
+        height: 452px;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .account-detail-tabs {
+        display: flex;
+        margin-top: 14px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .account-detail-tab {
+        flex: 1;
+        min-width: 0;
+        padding: 11px 8px;
+        border: 0;
+        background: transparent;
+        color: #337ab7;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    .account-detail-tab.active {
+        border: 1px solid #ddd;
+        border-bottom-color: #fff;
+        border-radius: 3px 3px 0 0;
+        color: #555;
+        margin-bottom: -1px;
+        background: #fff;
+    }
+
+    .account-detail-pane {
+        display: none;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .account-detail-pane.active {
+        display: block;
+    }
+
+    .account-detail-table {
+        margin-top: 8px;
+        border-top: 1px solid #e3e3e3;
+    }
+
+    .account-detail-row {
+        display: grid;
+        grid-template-columns: 82px 1fr;
+        min-height: 37px;
+        align-items: center;
+        border-bottom: 1px solid #e3e3e3;
+        background: #f9f9f9;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .account-detail-label {
+        padding-left: 8px;
+    }
+
+    .account-detail-value {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .account-detail-value a {
+        color: #337ab7;
+    }
+
+    .account-detail-premium {
+        color: #188a18;
+    }
+
+    .account-detail-skins {
+        display: flex;
+        gap: 16px;
+        padding: 24px 0 4px 0;
+    }
+
+    .account-detail-skin {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        border: 1px solid #aaa;
+        background:
+            radial-gradient(circle at 45% 40%, rgba(255,255,255,.16), rgba(0,0,0,.2) 38%, rgba(0,0,0,.82) 70%),
+            #222;
+        box-shadow: inset 0 0 6px rgba(255,255,255,.22);
+    }
+
+    .account-detail-skin.alt {
+        background:
+            radial-gradient(circle at 62% 45%, rgba(255,0,0,.55), rgba(35,0,10,.95) 68%),
+            #300;
+    }
+
+    .account-detail-search {
+        display: grid;
+        grid-template-columns: 1fr 38px;
+        margin-top: 2px;
+    }
+
+    .account-detail-search .form-control {
+        height: 34px;
+        border-radius: 4px 0 0 4px;
+    }
+
+    .account-detail-search .btn {
+        height: 34px;
+        border-radius: 0 4px 4px 0;
+        padding: 6px 10px;
+    }
+
+    .account-detail-empty {
+        padding: 28px 8px;
+        text-align: center;
+        color: #777;
     }
 
     .highscore-row.is-top {
@@ -644,6 +825,223 @@ $(document).on('keyup', function(input) {
 
     .guild-create-link-wrap {
         padding: 14px 0 6px 0;
+        text-align: center;
+    }
+
+    #guildDetailView {
+        display: none;
+        height: 452px;
+        min-height: 0;
+        flex-direction: column;
+    }
+
+    .guild-detail-rule {
+        margin: 12px 0 20px 0;
+        border-top: 1px solid #eee;
+    }
+
+    .guild-detail-logo {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 1px solid #999;
+        background:
+            linear-gradient(rgba(255,255,255,.22) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.22) 1px, transparent 1px),
+            #087a2d;
+        background-size: 18px 18px;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: bold;
+        text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    }
+
+    .guild-detail-logo img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .guild-detail-logo-prefix {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: #fff;
+        font-size: 14px;
+        font-weight: bold;
+        line-height: 1;
+        text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+        pointer-events: none;
+    }
+
+    .guild-detail-tabs {
+        display: flex;
+        align-items: flex-end;
+        margin-top: 40px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    .guild-detail-tab {
+        flex: 1;
+        min-width: 0;
+        padding: 9px 12px;
+        border: 0;
+        border-bottom: 0;
+        background: transparent;
+        color: #337ab7;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    .guild-detail-tab.active {
+        border: 1px solid #ccc;
+        border-bottom-color: #fff;
+        border-radius: 3px 3px 0 0;
+        color: #333;
+        background: #fff;
+        margin-bottom: -1px;
+    }
+
+    .guild-detail-pane {
+        display: none;
+        flex: 1;
+        min-height: 0;
+        padding-top: 16px;
+    }
+
+    .guild-detail-pane.active {
+        display: block;
+    }
+
+    .guild-member-head,
+    .guild-member-row {
+        display: grid;
+        grid-template-columns: 82px 1fr 50px 58px;
+        align-items: center;
+        min-height: 36px;
+        font-size: 14px;
+    }
+
+    .guild-member-head {
+        font-weight: bold;
+        text-align: left;
+    }
+
+    .guild-member-head span:first-child {
+        padding-left: 8px;
+    }
+
+    .guild-member-head span:nth-child(2) {
+        padding-left: 22px;
+    }
+
+    .guild-member-head span:nth-child(3) {
+        text-align: center;
+    }
+
+    .guild-member-row {
+        background: #fff09a;
+        border-bottom: 1px solid #f0e188;
+    }
+
+    .guild-member-role {
+        padding-left: 8px;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .guild-member-name {
+        min-width: 0;
+        padding-left: 22px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: bold;
+    }
+
+    .guild-member-level,
+    .guild-member-status {
+        text-align: center;
+    }
+
+    .guild-member-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .guild-role-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 3px;
+        background: #ffe27a;
+        color: #5c4a00;
+        font-size: 12px;
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    .guild-action-icon {
+        width: 17px;
+        height: 17px;
+        object-fit: contain;
+        cursor: pointer;
+        transition: opacity .12s ease, transform .12s ease;
+        vertical-align: middle;
+    }
+
+    .guild-action-icon:hover {
+        opacity: .78;
+        transform: translateY(-1px);
+    }
+
+    .guild-action-crown.is-member {
+        filter: grayscale(1);
+        opacity: .55;
+    }
+
+    .guild-action-crown.is-staff {
+        filter: grayscale(1) contrast(2.4) brightness(.35);
+        opacity: 1;
+    }
+
+    .guild-action-trash {
+        filter: saturate(3) hue-rotate(320deg) contrast(1.35);
+    }
+
+    .guild-online-dot {
+        display: inline-block;
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        background: linear-gradient(to bottom, #25d35d 0 48%, #0b8f37 48% 100%);
+        border: 1px solid #07842e;
+    }
+
+    .guild-detail-actions {
+        margin-top: 2px;
+        padding-top: 1px;
+        border-top: 1px solid #ddd;
+        text-align: right;
+    }
+
+    .guild-detail-actions .btn {
+        margin-left: 2px;
+    }
+
+    .guild-detail-empty {
+        padding: 16px 4px;
+        color: #777;
         text-align: center;
     }
 
@@ -881,6 +1279,245 @@ $(document).on('keyup', function(input) {
         }
     }
 
+    #battleLobbyDialog {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        z-index: 420;
+        width: 760px;
+        min-height: 600px;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, .18);
+        border-radius: 6px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
+        transform: translate(-50%, -50%);
+        overflow: hidden;
+        color: #555;
+    }
+
+    #battleLobbyDialog.is-open {
+        display: block;
+    }
+
+    .battle-lobby-header {
+        position: relative;
+        height: 52px;
+        padding: 16px 42px 12px 15px;
+        border-bottom: 1px solid #e5e5e5;
+        color: #222;
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    #battleLobbyClose {
+        position: absolute;
+        top: 11px;
+        right: 16px;
+        border: 0;
+        background: transparent;
+        color: #c9c9c9;
+        font-size: 26px;
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    #battleLobbyClose:hover {
+        color: #999;
+    }
+
+    .battle-lobby-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px 12px;
+        padding: 18px 6px 20px 6px;
+    }
+
+    .battle-lobby-panel {
+        min-height: 250px;
+        border: 1px solid #e1e1e1;
+        background: #fff;
+    }
+
+    .battle-lobby-panel.is-players {
+        display: flex;
+        flex-direction: column;
+        height: 250px;
+        min-height: 250px;
+    }
+
+    .battle-lobby-panel.is-players .battle-player-row {
+        flex: 0 0 42px;
+    }
+
+    .battle-lobby-panel.is-short {
+        min-height: 270px;
+    }
+
+    .battle-lobby-panel-title {
+        height: 40px;
+        padding: 10px 14px;
+        border-bottom: 1px solid #ddd;
+        background: #f7f7f7;
+        color: #555;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .battle-lobby-panel-title .glyphicon,
+    .battle-lobby-panel-title .fa {
+        margin-right: 6px;
+        color: #777;
+    }
+
+    .battle-settings-row {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        align-items: center;
+        min-height: 36px;
+        border-bottom: 1px solid #eee;
+        font-size: 15px;
+    }
+
+    .battle-settings-label {
+        padding-right: 12px;
+        text-align: right;
+        color: #777;
+    }
+
+    .battle-settings-value {
+        color: #6d6d9a;
+        text-decoration: underline;
+    }
+
+    .battle-settings-value.is-danger {
+        color: #cf5d62;
+    }
+
+    .battle-player-row,
+    .battle-friend-row {
+        display: grid;
+        align-items: center;
+        min-height: 42px;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+    }
+
+    .battle-player-row {
+        grid-template-columns: 54px 1fr 54px;
+    }
+
+    .battle-friend-row {
+        grid-template-columns: 48px 1fr 46px 42px;
+    }
+
+    .battle-avatar {
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        margin-left: 12px;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        background: #6f9ee7;
+        color: #fff;
+        font-weight: bold;
+    }
+
+    .battle-avatar.cyan {
+        background: #5fd4de;
+    }
+
+    .battle-avatar.blue {
+        background: #6f9ee7;
+    }
+
+    .battle-percent {
+        color: #4aa564;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    #battleLobbyStart {
+        width: 100%;
+        height: 34px;
+        margin-top: auto;
+        flex: 0 0 34px;
+        border: 0;
+        background: #d9534f;
+        color: #fff;
+        font-weight: bold;
+    }
+
+    #battleLobbyStart:hover {
+        background: #c9302c;
+    }
+
+    .battle-chat-body {
+        height: 218px;
+    }
+
+    .battle-chat-input {
+        width: 100%;
+        height: 34px;
+        border: 0;
+        border-top: 1px solid #eee;
+        padding: 6px 12px;
+        outline: none;
+    }
+
+    .battle-friends-head {
+        float: right;
+        font-weight: normal;
+        font-size: 14px;
+    }
+
+    .battle-friends-head input {
+        vertical-align: -2px;
+    }
+
+    .battle-friend-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .battle-friend-status {
+        color: #666;
+        text-align: center;
+    }
+
+    .battle-friend-game {
+        color: #555;
+        text-align: center;
+    }
+
+    .battle-online-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #78b600;
+    }
+
+    @media (max-width: 780px) {
+        #battleLobbyDialog {
+            left: 10px;
+            right: 10px;
+            top: 10px;
+            bottom: 10px;
+            width: auto;
+            min-height: 0;
+            transform: none;
+            overflow-y: auto;
+        }
+
+        .battle-lobby-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
     .auth-actions {
         display: table;
         width: 100%;
@@ -931,19 +1568,20 @@ $(document).on('keyup', function(input) {
     #modeButtonWrap {
         display: flex;
         justify-content: center;
-        gap: 6px;
-        margin-bottom: 8px;
+        gap: 2px;
+         margin-top: -9px;
+        margin-bottom: 4px;
         text-align: center;
     }
 
     #modeButtonWrap.is-battle {
-        gap: 6px;
+        gap: 2px;
     }
 
     #modeButtonWrap.is-battle .mode-button {
         flex: 0 0 auto;
-        min-width: 92px;
-        height: 34px;
+        min-width: 110px;
+        height: 36px;
         padding: 6px 12px;
         font-size: 12px;
         margin: 0 2px;
@@ -1229,7 +1867,7 @@ $(document).on('keyup', function(input) {
         position: absolute;
         left: 30px;
         right: 10px;
-        bottom: 64px;
+        bottom: 54px;
         margin: 0;
         padding-right: calc((var(--xp-star-size) / 2) + 2px);
     }
@@ -1487,14 +2125,13 @@ $(document).on('keyup', function(input) {
             </div>
             <div class="form-group">
                 <div id="modeButtonWrap">
-                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":hardcore" data-battle-mode=":battle:1v1" data-invite-mode="MegaSplit">Mega Split</button>
-                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":x5" data-battle-mode=":battle:2v2" data-invite-mode="Hardcore">Hardcore</button>
+                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":x5" data-battle-mode=":battle:1v1" data-invite-mode="X5">X5</button>
+                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":hardcore" data-battle-mode=":battle:2v2" data-invite-mode="Hardcore">Hardcore</button>
                     <button type="button" id="battleSpectateBtn" class="btn btn-success mode-button battle-spectate-button">Spectate</button>
                 </div>
 
                 <div class="btn-row">
-                    <button  type="submit" id="playBtn"
-                            onclick="setNick(document.getElementById('nick').value); return false;"
+                    <button  type="button" id="playBtn"
                             class="btn btn-play btn-primary btn-needs-server">Play
                     </button>
                     <button type="button" id="friendPlayBtn" class="btn btn-success btn-friend" title="Play with Friends">
@@ -1732,7 +2369,7 @@ $(document).on('keyup', function(input) {
 
     </div>
     <div id="friendInviteModal">
-        <h3 class="friend-invite-title">Invite friends to <span id="friendInviteMode">FFA - MegaSplit</span></h3>
+        <h3 class="friend-invite-title">Invite friends to <span id="friendInviteMode">FFA - X5</span></h3>
         <div class="friend-invite-list">
         </div>
         <div class="friend-invite-footer">
@@ -1742,7 +2379,8 @@ $(document).on('keyup', function(input) {
     <div id="guildDialog">
         <div class="form-group">
             <a href="#home" class="dialog-brand guild-home-link" style="font-size:14px;">Bubble.am</a>
-            <span style="font-size:14px; color:#888;"> &raquo; Guilds</span>
+            <span id="guildBreadcrumbList" style="font-size:14px; color:#888;"> &raquo; Guilds</span>
+            <span id="guildBreadcrumbDetail" style="display:none; font-size:14px; color:#333;"> &raquo; <a href="#guilds" id="guildBackToList">Guilds</a> &raquo; <span id="guildDetailTitle">asda</span></span>
         </div>
         <div class="spa-page-body">
             <div id="guildListView">
@@ -1765,6 +2403,40 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="guild-create-link-wrap">
                     <a href="#create-guild" id="guildCreateLink" class="text-primary">Create new Guild</a>
+                </div>
+            </div>
+            <div id="guildDetailView">
+                <div class="guild-detail-rule"></div>
+                <div id="guildDetailLogo" class="guild-detail-logo">[sex]</div>
+                <div class="guild-detail-tabs">
+                    <button type="button" class="guild-detail-tab active" data-guild-detail-tab="members">Members</button>
+                    <button type="button" class="guild-detail-tab" data-guild-detail-tab="info">Info</button>
+                    <button type="button" class="guild-detail-tab" data-guild-detail-tab="statistics">Statistics</button>
+                    <button type="button" class="guild-detail-tab" data-guild-detail-tab="logs">Logs</button>
+                </div>
+                <div id="guildDetailMembers" class="guild-detail-pane active">
+                    <div class="guild-member-head">
+                        <span>#</span>
+                        <span>Name</span>
+                        <span>Level</span>
+                        <span></span>
+                    </div>
+                    <div id="guildMemberList">
+                    </div>
+                    <div class="guild-detail-actions">
+                        <button type="button" class="btn btn-success">Invite player</button>
+                        <button type="button" class="btn btn-success">Edit</button>
+                        <button type="button" class="btn btn-danger">Delete</button>
+                    </div>
+                </div>
+                <div id="guildDetailInfo" class="guild-detail-pane">
+                    <div class="guild-detail-empty">No guild info yet.</div>
+                </div>
+                <div id="guildDetailStatistics" class="guild-detail-pane">
+                    <div class="guild-detail-empty">No statistics yet.</div>
+                </div>
+                <div id="guildDetailLogs" class="guild-detail-pane">
+                    <div class="guild-detail-empty">No logs yet.</div>
                 </div>
             </div>
         </div>
@@ -1807,6 +2479,79 @@ $(document).on('keyup', function(input) {
             </div>
         </form>
     </div>
+    <div id="accountDetailDialog">
+        <div class="form-group">
+            <a href="#home" class="dialog-brand account-detail-home-link" style="font-size:14px;">Bubble.am</a>
+            <span style="font-size:14px; color:#888;"> &raquo; Cari</span>
+            <span style="font-size:14px; color:#333;"> &raquo; <span id="accountDetailTitle">Cimenk Benskar</span></span>
+        </div>
+        <div class="spa-page-body">
+            <div id="accountDetailView">
+                <div class="account-detail-tabs">
+                    <button type="button" class="account-detail-tab active" data-account-detail-tab="profile">Profile</button>
+                    <button type="button" class="account-detail-tab" data-account-detail-tab="top1">Top 1</button>
+                    <button type="button" class="account-detail-tab" data-account-detail-tab="3vs3">3 vs 3</button>
+                    <button type="button" class="account-detail-tab" data-account-detail-tab="1vs1">1 vs 1</button>
+                </div>
+                <div id="accountDetailProfile" class="account-detail-pane active">
+                    <div class="account-detail-table">
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Nama:</span>
+                            <span id="accountDetailName" class="account-detail-value">Cimenk Benskar</span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Tingkatan:</span>
+                            <span id="accountDetailLevel" class="account-detail-value">155</span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Poin:</span>
+                            <span id="accountDetailPoints" class="account-detail-value">26.3</span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Klan:</span>
+                            <span class="account-detail-value"><a id="accountDetailGuild" href="#guild-detail">ROSE Guild.Co</a></span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Game:</span>
+                            <span id="accountDetailGame" class="account-detail-value">5 hours ago</span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Status:</span>
+                            <span id="accountDetailStatus" class="account-detail-value account-detail-premium">Premium Account</span>
+                        </div>
+                    </div>
+                    <div class="account-detail-skins">
+                        <div class="account-detail-skin"></div>
+                        <div class="account-detail-skin alt"></div>
+                    </div>
+                    <form id="accountDetailSearchForm" class="account-detail-search">
+                        <input id="accountDetailSearchInput" class="form-control" type="text" placeholder="Cari">
+                        <button class="btn btn-primary" type="submit"><span class="glyphicon glyphicon-search"></span></button>
+                    </form>
+                </div>
+                <div id="accountDetailTop1" class="account-detail-pane">
+                    <div class="account-detail-empty">Belum ada data Top 1.</div>
+                </div>
+                <div id="accountDetail3vs3" class="account-detail-pane">
+                    <div class="account-detail-empty">Belum ada data 3 vs 3.</div>
+                </div>
+                <div id="accountDetail1vs1" class="account-detail-pane">
+                    <div class="account-detail-empty">Belum ada data 1 vs 1.</div>
+                </div>
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <center>
+                <a href="#home" class="mode-footer-link account-detail-home-link" style="color:#337ab7; font-weight:500;">Utama</a>
+                |
+                <a href="#account" class="mode-footer-link" id="accountDetailLoginLink" style="color:#337ab7; font-weight:500;">Masuk</a>
+                |
+                <a href="#community" class="mode-footer-link" id="accountDetailCommunityLink" style="color:#337ab7; font-weight:500;">Community</a>
+                |
+                <a href="https://discord.gg/EDbdRsnKWU" class="mode-footer-link" style="color:#337ab7; font-weight:500;">About</a>
+            </center>
+        </div>
+    </div>
     <div id="notificationDialog">
         <div class="form-group">
             <a href="#home" class="dialog-brand notification-home-link" style="font-size:14px;">Bubble.am</a>
@@ -1838,7 +2583,7 @@ $(document).on('keyup', function(input) {
                 <div class="highscore-filters">
                     <select id="highScoreMode" class="form-control highscore-mode">
                         <option>FFA - Hardcore</option>
-                        <option>FFA - MegaSplit</option>
+                        <option>FFA - X5</option>
                         <option>1vs1</option>
                         <option>2vs2</option>
                     </select>
@@ -1870,6 +2615,61 @@ $(document).on('keyup', function(input) {
                 |
                 <a href="https://discord.gg/EDbdRsnKWU" class="mode-footer-link" style="color:#337ab7; font-weight:500;">About</a>
             </center>
+        </div>
+    </div>
+    <div id="battleLobbyDialog">
+        <div class="battle-lobby-header">
+            Create Battle
+            <button id="battleLobbyClose" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="battle-lobby-grid">
+            <div class="battle-lobby-panel">
+                <div class="battle-lobby-panel-title"><span class="glyphicon glyphicon-cog"></span>Settings</div>
+                <div class="battle-settings-row">
+                    <div class="battle-settings-label">Mode</div>
+                    <div id="battleLobbyMode" class="battle-settings-value">2 vs 2</div>
+                </div>
+                <div class="battle-settings-row">
+                    <div class="battle-settings-label">Region</div>
+                    <div class="battle-settings-value">Oceania</div>
+                </div>
+                <div class="battle-settings-row">
+                    <div class="battle-settings-label">Queue</div>
+                    <div class="battle-settings-value">no data</div>
+                </div>
+                <div class="battle-settings-row">
+                    <div class="battle-settings-label">Status</div>
+                    <div class="battle-settings-value">Waiting for start</div>
+                </div>
+                <div class="battle-settings-row">
+                    <div class="battle-settings-label">Reward</div>
+                    <div class="battle-settings-value">1.5 pt</div>
+                </div>
+                <div class="battle-settings-row">
+                    <div class="battle-settings-label">If defeated</div>
+                    <div class="battle-settings-value is-danger">-0.7 pt</div>
+                </div>
+            </div>
+            <div class="battle-lobby-panel is-players">
+                <div class="battle-lobby-panel-title"><span class="glyphicon glyphicon-user"></span>Players <span id="battleLobbyPlayerCount">1/2</span></div>
+                <div class="battle-player-row">
+                    <span class="battle-avatar">O</span>
+                    <span id="battleLobbyPlayerName">OM STROOOOOOONG</span>
+                    <span class="battle-percent">59%</span>
+                </div>
+                <button id="battleLobbyStart" type="button">Start</button>
+            </div>
+            <div class="battle-lobby-panel is-short">
+                <div class="battle-lobby-panel-title"><span class="fa fa-comments"></span>Chat</div>
+                <div class="battle-chat-body"></div>
+                <input class="battle-chat-input" type="text" placeholder="Message..">
+            </div>
+            <div class="battle-lobby-panel is-short">
+                <div class="battle-lobby-panel-title">
+                    <span class="fa fa-user-plus"></span>Friends
+                    <label class="battle-friends-head"><input type="checkbox" checked> show all invitations</label>
+                </div>
+            </div>
         </div>
     </div>
     <div id="battleLiveDialog">
@@ -1951,6 +2751,7 @@ $(document).on('keyup', function(input) {
     <a href="#notification" data-route="notification"><span class="dropup-icon glyphicon glyphicon-bell"></span><span>Notifications</span></a>
     <a href="#friends" data-route="friends"><span class="dropup-icon fa fa-user-plus"></span><span>Friends</span></a>
     <a href="#high-score" data-route="high-score"><span class="dropup-icon glyphicon glyphicon-stats"></span><span>Highscore</span></a>
+    <a href="#search-player" data-route="search-player"><span class="dropup-icon glyphicon glyphicon-search"></span><span>Cari Player</span></a>
     <a href="#guild" data-route="guild"><span class="dropup-icon glyphicon glyphicon-tower"></span><span>Guilds</span></a>
 </div>
 
@@ -1961,7 +2762,27 @@ $(function () {
     var resetToken = null;
     var authToken = localStorage.getItem('authToken');
     var authUser = localStorage.getItem('authUser');
-    var inviteSubMode = localStorage.getItem('inviteSubMode') || 'MegaSplit';
+    var inviteSubMode = localStorage.getItem('inviteSubMode') || 'X5';
+    var inviteSubModeTouched = false;
+    var hardcoreRooms = [':hardcore:1', ':hardcore:2'];
+    var battleLobbyModeValue = ':battle:1v1';
+    var battleLobbyInviteMode = '1vs1';
+    var battlePlayLoading = false;
+    var battlePlayTimer = null;
+    var battleStartLoading = false;
+    var battleStartTimer = null;
+    var guildViewerRole = 'leader';
+    var guildMembers = [];
+
+    function getCurrentGuildViewerName() {
+        return authUser || $('#accountNick').text() || 'amen';
+    }
+
+    function resolveGameModeRoom(mode) {
+        if (mode !== ':hardcore') return mode;
+
+        return hardcoreRooms[Math.floor(Math.random() * hardcoreRooms.length)];
+    }
 
     function showAuthStatus(selector, message, isError) {
         $(selector)
@@ -1994,6 +2815,8 @@ $(function () {
         $('#guildCreateDialog').removeClass('is-open');
         $('#notificationDialog').removeClass('is-open');
         $('#highScoreDialog').removeClass('is-open');
+        $('#accountDetailDialog').removeClass('is-open');
+        $('#battleLobbyDialog').removeClass('is-open');
         updatePlayerExpVisibility();
     }
 
@@ -2059,35 +2882,235 @@ $(function () {
         $('#battleLiveDialog').removeClass('is-open');
     }
 
+    function closeBattleLobbyDialog() {
+        $('#battleLobbyDialog').removeClass('is-open');
+        cancelBattleStartLoading();
+    }
+
     function openBattleLiveDialog() {
         closeCommunityDropup();
         closeFriendInviteModal();
+        closeBattleLobbyDialog();
         $('#battleLiveDialog').addClass('is-open');
     }
+
+    function openBattleLobby(modeValue, inviteMode) {
+        battleLobbyModeValue = modeValue || ':battle:1v1';
+        battleLobbyInviteMode = inviteMode || '1vs1';
+
+        closeCommunityDropup();
+        closeFriendInviteModal();
+        closeBattleLiveDialog();
+        closeBattleLobbyDialog();
+        $('#overlays').show();
+        $('#helloDialog').show();
+        $('#guildDialog').removeClass('is-open');
+        $('#guildCreateDialog').removeClass('is-open');
+        $('#notificationDialog').removeClass('is-open');
+        $('#highScoreDialog').removeClass('is-open');
+        $('#accountDetailDialog').removeClass('is-open');
+        $('#battleLobbyMode').text(battleLobbyInviteMode.replace('vs', ' vs '));
+        $('#battleLobbyPlayerCount').text(battleLobbyInviteMode === '2vs2' ? '1/4' : '1/2');
+        $('#battleLobbyPlayerName').text(authUser || $('#nick').val() || 'OM STROOOOOOONG');
+        $('#battleLobbyDialog').addClass('is-open');
+    }
+
+    function setBattlePlayLoading(isLoading) {
+        battlePlayLoading = !!isLoading;
+
+        $('#playBtn')
+            .prop('disabled', battlePlayLoading)
+            .toggleClass('is-battle-loading', battlePlayLoading)
+            .html(battlePlayLoading ? '<span class="battle-play-spinner"></span><span>Play</span>' : 'Play');
+    }
+
+    function cancelBattlePlayLoading() {
+        if (battlePlayTimer) {
+            clearTimeout(battlePlayTimer);
+            battlePlayTimer = null;
+        }
+
+        setBattlePlayLoading(false);
+    }
+
+    function setBattleStartLoading(isLoading) {
+        battleStartLoading = !!isLoading;
+
+        $('#battleLobbyStart')
+            .prop('disabled', battleStartLoading)
+            .toggleClass('is-loading', battleStartLoading)
+            .html(battleStartLoading ? '<span class="battle-play-spinner"></span><span>Start</span>' : 'Start');
+    }
+
+    function cancelBattleStartLoading() {
+        if (battleStartTimer) {
+            clearTimeout(battleStartTimer);
+            battleStartTimer = null;
+        }
+
+        setBattleStartLoading(false);
+    }
+
+    window.playSelectedMode = function () {
+        var selectedGroup = getSelectedGameModeGroup();
+
+        if (selectedGroup !== 'direct' && !inviteSubModeTouched) {
+            updateInviteModeSelection();
+            return;
+        }
+
+        if (selectedGroup === 'battle') {
+            if (battlePlayLoading) return;
+
+            var selectedMode = getSelectedModeValue();
+            var selectedInviteMode = inviteSubMode;
+
+            setBattlePlayLoading(true);
+            battlePlayTimer = setTimeout(function () {
+                battlePlayTimer = null;
+
+                try {
+                    openBattleLobby(selectedMode, selectedInviteMode);
+                    setBattlePlayLoading(false);
+                } catch (err) {
+                    setBattlePlayLoading(false);
+                    throw err;
+                }
+            }, 700);
+            return;
+        }
+
+        if (typeof window.setGameMode === 'function') {
+            window.setGameMode(window.getSelectedGameModeForConnection(), true);
+        }
+
+        setNick(document.getElementById('nick').value);
+    };
 
     function openGuildDialog() {
         closeCommunityDropup();
         closeFriendInviteModal();
         closeBattleLiveDialog();
+        closeBattleLobbyDialog();
         $('#overlays').show();
         $('#helloDialog').hide();
         $('#notificationDialog').removeClass('is-open');
         $('#highScoreDialog').removeClass('is-open');
+        $('#accountDetailDialog').removeClass('is-open');
         $('#guildCreateDialog').removeClass('is-open');
         $('#guildDialog').addClass('is-open');
+        showGuildListView();
         updatePlayerExpVisibility();
         $('#guildSearch').focus();
+    }
+
+    function showGuildListView() {
+        $('#guildBreadcrumbList').show();
+        $('#guildBreadcrumbDetail').hide();
+        $('#guildDetailView').hide();
+        $('#guildListView').css('display', 'flex');
+    }
+
+    function getGuildActionHtml(member) {
+        var viewerRole = String(guildViewerRole || 'member').toLowerCase();
+        var memberRole = String(member.role || 'member').toLowerCase();
+        var memberId = encodeURIComponent(member.id);
+
+        if (member.isSelf) {
+            return memberRole === 'leader' ? '<span class="guild-role-badge">Leader</span>' : '';
+        }
+
+        if (viewerRole === 'leader') {
+            if (memberRole === 'member') {
+                return [
+                    '<img class="guild-action-icon guild-action-crown is-member" src="/img/Crown.png" alt="Promote" title="Promote to Staff" data-guild-action="promote" data-member-id="' + memberId + '">',
+                    '<img class="guild-action-icon guild-action-trash" src="/img/Trash.png" alt="Kick" title="Kick member" data-guild-action="kick" data-member-id="' + memberId + '">'
+                ].join('');
+            }
+
+            if (memberRole === 'staff') {
+                return [
+                    '<img class="guild-action-icon guild-action-crown is-staff" src="/img/Crown.png" alt="Demote" title="Demote to Member" data-guild-action="demote" data-member-id="' + memberId + '">',
+                    '<img class="guild-action-icon guild-action-trash" src="/img/Trash.png" alt="Kick" title="Kick staff" data-guild-action="kick" data-member-id="' + memberId + '">'
+                ].join('');
+            }
+        }
+
+        if (viewerRole === 'staff' && memberRole === 'member') {
+            return '<img class="guild-action-icon guild-action-trash" src="/img/Trash.png" alt="Kick" title="Kick member" data-guild-action="kick" data-member-id="' + memberId + '">';
+        }
+
+        return '';
+    }
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderGuildMembers() {
+        var rows = guildMembers.map(function(member, index) {
+            var role = String(member.role || 'member').toLowerCase();
+            var roleText = role.charAt(0).toUpperCase() + role.slice(1);
+
+            return [
+                '<div class="guild-member-row" data-member-id="' + member.id + '">',
+                '<span class="guild-member-role">' + roleText + '</span>',
+                '<span class="guild-member-name">' + escapeHtml(member.name) + '</span>',
+                '<span class="guild-member-level">' + (member.level || 1) + '</span>',
+                '<span class="guild-member-actions">' + getGuildActionHtml(member) + '</span>',
+                '</div>'
+            ].join('');
+        });
+
+        $('#guildMemberList').html(rows.join(''));
+    }
+
+    function openGuildDetailView(name, tag, logoSrc) {
+        var guildName = String(name || 'asda').trim() || 'asda';
+        var guildTag = String(tag || 'sex').trim() || 'sex';
+        var logo = String(logoSrc || '').trim();
+        var leaderName = getCurrentGuildViewerName();
+
+        $('#guildBreadcrumbList').hide();
+        $('#guildDetailTitle').text(guildName);
+        $('#guildBreadcrumbDetail').show();
+        $('#guildListView').hide();
+        $('#guildDetailLogo').empty();
+        if (logo) {
+            $('#guildDetailLogo').append($('<img>', {
+                src: logo,
+                alt: guildName
+            }));
+        }
+        $('#guildDetailLogo').append($('<span>', {
+            class: 'guild-detail-logo-prefix',
+            text: '[' + guildTag + ']'
+        }));
+        guildMembers = [
+            { id: 'leader', name: leaderName, role: 'leader', level: 1, isSelf: guildViewerRole === 'leader' },
+            { id: 'staff', name: 'Staff Player', role: 'staff', level: 1, isSelf: guildViewerRole === 'staff' },
+            { id: 'member', name: 'Member Player', role: 'member', level: 1, isSelf: guildViewerRole === 'member' }
+        ];
+        renderGuildMembers();
+        $('#guildDetailView').css('display', 'flex');
     }
 
     function openNotificationDialog() {
         closeCommunityDropup();
         closeFriendInviteModal();
         closeBattleLiveDialog();
+        closeBattleLobbyDialog();
         $('#overlays').show();
         $('#helloDialog').hide();
         $('#guildDialog').removeClass('is-open');
         $('#guildCreateDialog').removeClass('is-open');
         $('#highScoreDialog').removeClass('is-open');
+        $('#accountDetailDialog').removeClass('is-open');
         $('#notificationDialog').addClass('is-open');
         updatePlayerExpVisibility();
     }
@@ -2096,14 +3119,35 @@ $(function () {
         closeCommunityDropup();
         closeFriendInviteModal();
         closeBattleLiveDialog();
+        closeBattleLobbyDialog();
         $('#overlays').show();
         $('#helloDialog').hide();
         $('#guildDialog').removeClass('is-open');
         $('#guildCreateDialog').removeClass('is-open');
         $('#notificationDialog').removeClass('is-open');
+        $('#accountDetailDialog').removeClass('is-open');
         $('#highScoreDialog').addClass('is-open');
         updatePlayerExpVisibility();
         $('#highScoreMode').focus();
+    }
+
+    function openAccountDetailDialog(name) {
+        var playerName = String(name || 'Cimenk Benskar').trim() || 'Cimenk Benskar';
+
+        closeCommunityDropup();
+        closeFriendInviteModal();
+        closeBattleLiveDialog();
+        closeBattleLobbyDialog();
+        $('#overlays').show();
+        $('#helloDialog').hide();
+        $('#guildDialog').removeClass('is-open');
+        $('#guildCreateDialog').removeClass('is-open');
+        $('#notificationDialog').removeClass('is-open');
+        $('#highScoreDialog').removeClass('is-open');
+        $('#accountDetailTitle, #accountDetailName').text(playerName);
+        $('#accountDetailSearchInput').val('');
+        $('#accountDetailDialog').addClass('is-open');
+        updatePlayerExpVisibility();
     }
 
     function closeGuildCreateDialog() {
@@ -2131,6 +3175,9 @@ $(function () {
 
     function getFriendInviteModeText() {
         var mode = $('#gamemode option:selected').text() || 'FFA';
+        if (getSelectedGameModeGroup() === 'direct') {
+            return mode;
+        }
         return mode + ' - ' + inviteSubMode;
     }
 
@@ -2154,18 +3201,33 @@ $(function () {
 
     function getSelectedGameModeGroup() {
         var value = $('#gamemode').val() || ':x5';
-        return value === ':battle' ? 'battle' : 'ffa';
+        if (value === ':battle') return 'battle';
+        if (value === ':teams' || value === ':experimental') return 'direct';
+        return 'ffa';
     }
 
     function renderModeButtons() {
-        var isBattle = getSelectedGameModeGroup() === 'battle';
+        var selectedGroup = getSelectedGameModeGroup();
+        var isBattle = selectedGroup === 'battle';
+        var isDirect = selectedGroup === 'direct';
         var buttons = $('.mode-button').not('#battleSpectateBtn');
+
+        $('#playBtn').toggleClass('is-battle-play', isBattle);
+        if (!isBattle && battlePlayLoading) {
+            cancelBattlePlayLoading();
+        }
+
+        $('#modeButtonWrap').toggle(!isDirect);
+        if (isDirect) {
+            updateFriendInviteTitle();
+            return;
+        }
 
         $('#modeButtonWrap').toggleClass('is-battle', isBattle);
 
         buttons.eq(0)
-            .text(isBattle ? '1vs1' : 'Mega Split')
-            .attr('data-invite-mode', isBattle ? '1vs1' : 'MegaSplit');
+            .text(isBattle ? '1vs1' : 'X5')
+            .attr('data-invite-mode', isBattle ? '1vs1' : 'X5');
 
         buttons.eq(1)
             .text(isBattle ? '2vs2' : 'Hardcore')
@@ -2178,8 +3240,8 @@ $(function () {
             return;
         }
 
-        if (!isBattle && inviteSubMode !== 'MegaSplit' && inviteSubMode !== 'Hardcore') {
-            setInviteSubMode('MegaSplit');
+        if (!isBattle && inviteSubMode !== 'X5' && inviteSubMode !== 'Hardcore') {
+            setInviteSubMode('X5');
             return;
         }
 
@@ -2193,13 +3255,39 @@ $(function () {
 
     function updateInviteModeSelection() {
         $('.mode-button').removeClass('is-selected');
+        if (!inviteSubModeTouched) return;
+
         $('.mode-button').filter(function () {
             return String($(this).attr('data-invite-mode')) === inviteSubMode;
         }).addClass('is-selected');
     }
 
-    function setInviteSubMode(value) {
-        inviteSubMode = value || 'MegaSplit';
+    function getSelectedModeValue() {
+        var selectedGroup = getSelectedGameModeGroup();
+        if (selectedGroup === 'direct') {
+            return $('#gamemode').val();
+        }
+
+        var selectedButton = $('.mode-button').not('#battleSpectateBtn').filter(function () {
+            return String($(this).attr('data-invite-mode')) === inviteSubMode;
+        }).first();
+
+        if (!selectedButton.length) {
+            selectedButton = $('.mode-button').not('#battleSpectateBtn').first();
+        }
+
+        return selectedGroup === 'battle' ? selectedButton.data('battle-mode') : selectedButton.data('ffa-mode');
+    }
+
+    window.getSelectedGameModeForConnection = function () {
+        return resolveGameModeRoom(getSelectedModeValue());
+    };
+
+    function setInviteSubMode(value, touched) {
+        inviteSubMode = value || 'X5';
+        if (touched) {
+            inviteSubModeTouched = true;
+        }
         localStorage.setItem('inviteSubMode', inviteSubMode);
         updateInviteModeSelection();
         updateFriendInviteTitle();
@@ -2319,6 +3407,18 @@ $(function () {
         }
     }
 
+    function refreshInitialHomeXp() {
+        if (!isLoggedIn() || resetToken) return;
+
+        $('#overlays').show();
+        if (!$('#loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').filter(':visible').length) {
+            $('#homeView, #instructions').show();
+            $('#helloDialog').show();
+        }
+
+        updatePlayerExpVisibility();
+    }
+
     function applyAuthState() {
         updateBattleModeLock();
         if (!isLoggedIn()) return;
@@ -2390,6 +3490,11 @@ $(function () {
         openHighScoreDialog();
     });
 
+    $('#communityDropup a[data-route="search-player"]').on('click', function (event) {
+        event.preventDefault();
+        openAccountDetailDialog();
+    });
+
     $('.guild-home-link').on('click', function (event) {
         event.preventDefault();
         showHomeView();
@@ -2403,6 +3508,55 @@ $(function () {
     $('.notification-home-link').on('click', function (event) {
         event.preventDefault();
         showHomeView();
+    });
+
+    $('.account-detail-home-link').on('click', function (event) {
+        event.preventDefault();
+        showHomeView();
+    });
+
+    $('.account-detail-tab').on('click', function () {
+        var tab = $(this).data('account-detail-tab');
+        var target = {
+            profile: '#accountDetailProfile',
+            top1: '#accountDetailTop1',
+            '3vs3': '#accountDetail3vs3',
+            '1vs1': '#accountDetail1vs1'
+        }[tab];
+
+        $('.account-detail-tab').removeClass('active');
+        $(this).addClass('active');
+        $('.account-detail-pane').removeClass('active');
+        $(target || '#accountDetailProfile').addClass('active');
+    });
+
+    $('#accountDetailSearchForm').on('submit', function (event) {
+        event.preventDefault();
+        openAccountDetailDialog($('#accountDetailSearchInput').val());
+    });
+
+    $('#accountDetailLoginLink').on('click', function (event) {
+        event.preventDefault();
+        $('#accountDetailDialog').removeClass('is-open');
+        $('#helloDialog').show();
+        if (authToken && authUser) {
+            showAccountView();
+        } else {
+            $('#homeView, #instructions, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide();
+            $('#loginView').show();
+            updatePlayerExpVisibility();
+        }
+    });
+
+    $('#accountDetailCommunityLink').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeFriendInviteModal();
+        if ($('#communityDropup').hasClass('is-open')) {
+            closeCommunityDropup();
+        } else {
+            openCommunityDropup($(this));
+        }
     });
 
     $('#guildAccountLink').on('click', function (event) {
@@ -2483,6 +3637,75 @@ $(function () {
         $(this).addClass('active');
     });
 
+    $('#guildBackToList').on('click', function (event) {
+        event.preventDefault();
+        showGuildListView();
+        $('#guildSearch').focus();
+    });
+
+    $('.guild-detail-tab').on('click', function () {
+        var tab = $(this).data('guild-detail-tab');
+
+        $('.guild-detail-tab').removeClass('active');
+        $(this).addClass('active');
+        $('.guild-detail-pane').removeClass('active');
+        $('#guildDetail' + String(tab).charAt(0).toUpperCase() + String(tab).slice(1)).addClass('active');
+    });
+
+    $('#guildList').on('click', '.guild-row', function (event) {
+        event.preventDefault();
+        openGuildDetailView($(this).find('.guild-name').text(), $(this).find('.guild-tag').text());
+    });
+
+    $('#guildMemberList').on('click', '[data-guild-action]', function (event) {
+        event.preventDefault();
+
+        var action = $(this).data('guild-action');
+        var memberId = decodeURIComponent(String($(this).data('member-id') || ''));
+        var member = null;
+
+        for (var i = 0; i < guildMembers.length; i++) {
+            if (guildMembers[i].id === memberId) {
+                member = guildMembers[i];
+                break;
+            }
+        }
+
+        if (!member || member.isSelf) return;
+
+        if (action === 'promote' && guildViewerRole === 'leader' && member.role === 'member') {
+            member.role = 'staff';
+            renderGuildMembers();
+            return;
+        }
+
+        if (action === 'demote' && guildViewerRole === 'leader' && member.role === 'staff') {
+            if (!confirm('Demote ' + member.name + ' menjadi Member?')) return;
+            member.role = 'member';
+            renderGuildMembers();
+            return;
+        }
+
+        if (action === 'kick') {
+            if (guildViewerRole === 'leader' && (member.role === 'member' || member.role === 'staff')) {
+                if (!confirm('Kick ' + member.name + ' dari guild?')) return;
+                guildMembers = guildMembers.filter(function(item) {
+                    return item.id !== member.id;
+                });
+                renderGuildMembers();
+                return;
+            }
+
+            if (guildViewerRole === 'staff' && member.role === 'member') {
+                if (!confirm('Kick ' + member.name + ' dari guild?')) return;
+                guildMembers = guildMembers.filter(function(item) {
+                    return item.id !== member.id;
+                });
+                renderGuildMembers();
+            }
+        }
+    });
+
     $('#guildCreateLink').on('click', function (event) {
         event.preventDefault();
         openGuildCreateDialog();
@@ -2517,15 +3740,26 @@ $(function () {
         var tag = String($('#guildCreateTag').val() || '').trim().toUpperCase();
         var name = String($('#guildCreateName').val() || '').trim();
         var type = String($('#guildCreateType').val() || '').trim();
-        var logoError = getGuildCreateLogoError(getGuildCreateLogoFile());
+        var logoFile = getGuildCreateLogoFile();
+        var logoError = getGuildCreateLogoError(logoFile);
 
         if (!tag) {
             status.removeClass('text-success').addClass('text-danger').text('Prefix wajib diisi.').show();
             return;
         }
 
+        if (!/^[A-Z0-9_\-=+!@#$%&.,]{1,4}$/.test(tag)) {
+            status.removeClass('text-success').addClass('text-danger').text('Prefix maksimal 4 karakter, hanya boleh A-Z, 0-9, dan simbol - _ = + ! @ # $ % & . ,').show();
+            return;
+        }
+
         if (!name) {
             status.removeClass('text-success').addClass('text-danger').text('Guild name wajib diisi.').show();
+            return;
+        }
+
+        if (!/^[A-Za-z0-9 ]{1,32}$/.test(name)) {
+            status.removeClass('text-success').addClass('text-danger').text('Guild name hanya boleh berisi huruf, angka, dan spasi.').show();
             return;
         }
 
@@ -2539,7 +3773,9 @@ $(function () {
             return;
         }
 
-        status.removeClass('text-danger').addClass('text-success').text('Create guild backend is not ready yet.').show();
+        status.removeClass('text-danger').addClass('text-success').text('Opening guild detail preview.').show();
+        closeGuildCreateDialog();
+        openGuildDetailView(name, tag, logoFile ? URL.createObjectURL(logoFile) : '');
     });
 
     $('#battleSpectateBtn').on('click', function () {
@@ -2548,6 +3784,10 @@ $(function () {
     });
 
     $('#spectateBtn').on('click', function () {
+        if (typeof window.setGameMode === 'function' && typeof window.getSelectedGameModeForConnection === 'function') {
+            window.setGameMode(window.getSelectedGameModeForConnection(), true);
+        }
+
         if (typeof window.spectate === 'function') {
             window.spectate();
         }
@@ -2560,6 +3800,38 @@ $(function () {
 
     $('#battleLiveDialog').on('click', function (event) {
         event.stopPropagation();
+    });
+
+    $('#battleLobbyClose').on('click', function () {
+        closeBattleLobbyDialog();
+    });
+
+    $('#battleLobbyStart').on('click', function () {
+        if (battleStartLoading) return;
+
+        setBattleStartLoading(true);
+        battleStartTimer = setTimeout(function () {
+            battleStartTimer = null;
+            setInviteSubMode(battleLobbyInviteMode);
+            closeBattleLobbyDialog();
+
+            if (typeof window.setGameMode === 'function') {
+                window.setGameMode(resolveGameModeRoom(battleLobbyModeValue), true);
+            }
+
+            setNick(document.getElementById('nick').value);
+        }, 700);
+    });
+
+    $('#battleLobbyDialog').on('click', function (event) {
+        event.stopPropagation();
+    });
+
+    $('#playBtn').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        playSelectedMode();
+        return false;
     });
 
     $('#friendPlayBtn').on('click', function (event) {
@@ -2578,17 +3850,32 @@ $(function () {
         if (this.id === 'battleSpectateBtn') return;
 
         var selectedGroup = getSelectedGameModeGroup();
+        var inviteMode = $(this).attr('data-invite-mode') || $.trim($(this).text()).replace(/\s+/g, '');
         var modeValue = selectedGroup === 'battle' ? $(this).data('battle-mode') : $(this).data('ffa-mode');
 
-        if (typeof window.setGameMode === 'function') {
-            window.setGameMode(modeValue);
+        if (battlePlayLoading) {
+            cancelBattlePlayLoading();
         }
 
-        setInviteSubMode($(this).attr('data-invite-mode') || $.trim($(this).text()).replace(/\s+/g, ''));
+        setInviteSubMode(inviteMode, true);
+
+        if (selectedGroup !== 'direct') {
+            return;
+        }
+
+        if (typeof window.setGameMode === 'function') {
+            window.setGameMode(resolveGameModeRoom(modeValue), true);
+        }
+
+        setNick(document.getElementById('nick').value);
     });
 
     $('#gamemode').on('change', function () {
         var baseMode = $(this).val();
+
+        if (battlePlayLoading) {
+            cancelBattlePlayLoading();
+        }
 
         if (baseMode === ':battle' && !isLoggedIn()) {
             alert('Please login to play Battle.');
@@ -2596,11 +3883,15 @@ $(function () {
             baseMode = ':x5';
         }
 
-        if (typeof window.setGameMode === 'function') {
-            window.setGameMode(baseMode);
+        renderModeButtons();
+
+        if (baseMode === ':battle') {
+            return;
         }
 
-        renderModeButtons();
+        if (typeof window.setGameMode === 'function') {
+            window.setGameMode(window.getSelectedGameModeForConnection(), true);
+        }
     });
 
     $('#friendInviteModal').on('click', function (event) {
@@ -2615,12 +3906,14 @@ $(function () {
         closeCommunityDropup();
         closeFriendInviteModal();
         closeBattleLiveDialog();
+        closeBattleLobbyDialog();
     });
 
     $(window).on('resize scroll', function () {
         closeCommunityDropup();
         closeFriendInviteModal();
         closeBattleLiveDialog();
+        closeBattleLobbyDialog();
     });
 
     $('#registerSubmit').on('click', function () {
@@ -2792,20 +4085,20 @@ $(function () {
     updateFriendInviteTitle();
     initPersistedCheckboxes();
     applyAuthState();
+    setTimeout(refreshInitialHomeXp, 0);
 });
 </script>
-
-
 </body>
-
 <script type="text/javascript">
     $('input').keypress(function(e) {
         if (e.which == '13') {
+            if (this.id !== 'nick' || !$('#homeView').is(':visible')) {
+                return;
+            }
+
             e.preventDefault();
-            if (!isSpectating) setNick(document.getElementById('nick').value);
+            if (!isSpectating) playSelectedMode();
         }
     });
 </script>
-
-
 </html>

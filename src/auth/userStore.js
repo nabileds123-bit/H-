@@ -33,25 +33,43 @@ function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
 }
 
+function normalizeGmailEmail(email) {
+    var normalized = normalizeEmail(email);
+    var parts = normalized.split('@');
+
+    if (parts.length !== 2 || parts[1] !== 'gmail.com') {
+        return null;
+    }
+
+    var local = parts[0].split('+')[0].replace(/\./g, '');
+    return local + '@gmail.com';
+}
+
 function normalizeUsername(username) {
     return String(username || '').trim();
 }
 
 function findByUsernameOrEmail(identifier) {
     var value = String(identifier || '').trim().toLowerCase();
+    var gmailValue = normalizeGmailEmail(value);
     var store = readStore();
 
     return store.users.find(function(user) {
-        return user.username.toLowerCase() === value || user.email.toLowerCase() === value;
+        var userGmail = user.gmailCanonicalEmail || normalizeGmailEmail(user.email);
+        return user.username.toLowerCase() === value ||
+            user.email.toLowerCase() === value ||
+            (gmailValue && userGmail === gmailValue);
     }) || null;
 }
 
 function findByEmail(email) {
     var normalized = normalizeEmail(email);
+    var gmailValue = normalizeGmailEmail(normalized);
     var store = readStore();
 
     return store.users.find(function(user) {
-        return user.email === normalized;
+        var userGmail = user.gmailCanonicalEmail || normalizeGmailEmail(user.email);
+        return user.email === normalized || (gmailValue && userGmail === gmailValue);
     }) || null;
 }
 
@@ -75,9 +93,13 @@ function createUser(data) {
     var store = readStore();
     var username = normalizeUsername(data.username);
     var email = normalizeEmail(data.email);
+    var gmailCanonicalEmail = normalizeGmailEmail(email);
 
     var duplicate = store.users.find(function(user) {
-        return user.username.toLowerCase() === username.toLowerCase() || user.email === email;
+        var userGmail = user.gmailCanonicalEmail || normalizeGmailEmail(user.email);
+        return user.username.toLowerCase() === username.toLowerCase() ||
+            user.email === email ||
+            (gmailCanonicalEmail && userGmail === gmailCanonicalEmail);
     });
 
     if (duplicate) {
@@ -88,6 +110,7 @@ function createUser(data) {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2),
         username: username,
         email: email,
+        gmailCanonicalEmail: gmailCanonicalEmail,
         passwordHash: data.passwordHash,
         emailVerified: false,
         cellColor: '#000000',

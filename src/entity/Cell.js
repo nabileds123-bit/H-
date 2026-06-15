@@ -27,7 +27,7 @@ module.exports = Cell;
 
 Cell.prototype.getName = function() {
 	if (this.owner) {
-		return this.owner.name;
+		return this.owner.getDisplayName ? this.owner.getDisplayName() : this.owner.name;
 	} else {
 		return "";
 	}
@@ -53,14 +53,17 @@ Cell.prototype.getSize = function() {
 }
 
 Cell.prototype.addMass = function(n) {
-    this.mass = Math.min(this.mass + n,this.owner.gameServer.config.playerMaxMass);
+    var config = this.owner.gameServer.getWorldConfig ? this.owner.gameServer.getWorldConfig(this.owner.world) : this.owner.gameServer.config;
+    this.mass = Math.min(this.mass + n,config.playerMaxMass);
 }
 
 Cell.prototype.getSpeed = function() {
 	// Old formula: 5 + (20 * (1 - (this.mass/(70+this.mass))));
 	// Based on 50ms ticks. If updateMoveEngine interval changes, change 50 to new value
 	// (should possibly have a config value for this?)
-	return 745.28 * Math.pow(this.mass, -0.222) * 50 / 1000;
+    var gameServer = this.owner && this.owner.gameServer;
+    var config = gameServer && gameServer.getWorldConfig ? gameServer.getWorldConfig(this.owner.world) : (gameServer ? gameServer.config : {});
+	return (config.playerSpeed || 745.28) * Math.pow(this.mass, -0.222) * 50 / 1000;
 }
 
 Cell.prototype.setAngle = function(radians) {
@@ -134,7 +137,7 @@ Cell.prototype.visibleCheck = function(box,centerPos) {
 }
 
 Cell.prototype.calcMove = function(x2, y2, gameServer) {
-	var config = gameServer.config;
+	var config = gameServer.getWorldConfig ? gameServer.getWorldConfig() : gameServer.config;
 	
     // Get angle
     var deltaY = y2 - this.position.y;
@@ -226,7 +229,7 @@ Cell.prototype.calcMove = function(x2, y2, gameServer) {
 
     this.position.x = x1 >> 0;
     this.position.y = y1 >> 0;
-	if(gameServer.config.rainbowCells) {
+	if(config.rainbowCells) {
 		this.color = gameServer.getRandomColor();
 };
 }
@@ -237,7 +240,7 @@ Cell.prototype.calcMovePhys = function(config) {
     var Y = this.position.y + ( this.moveEngineSpeed * Math.cos(this.angle) );
 	
     // Movement engine
-    this.moveEngineSpeed *= .73; // Decaying speed
+    this.moveEngineSpeed *= .85; // Decaying speed
     this.moveEngineTicks--;
 	 
     // Border check - Bouncy physics

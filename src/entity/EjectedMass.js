@@ -24,8 +24,9 @@ EjectedMass.prototype.onRemove = function(gameServer) {
 }
 
 EjectedMass.prototype.onConsume = function(consumer,gameServer) {
+    var config = gameServer.getWorldConfig ? gameServer.getWorldConfig() : gameServer.config;
     // Adds mass to consumer
-    consumer.addMass(gameServer.config.ejectMassGain);
+    consumer.addMass(config.ejectMassGain);
 }
 
 EjectedMass.prototype.moveDone = function(gameServer) {

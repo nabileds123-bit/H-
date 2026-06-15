@@ -10,7 +10,7 @@
      * Enter path to the skin image folder
      * To take skins from the official server enter: "http://agar.io/skins/"
      */
-    var SKIN_URL = "./skins/";//skins folder
+    var SKIN_URL = "../skins/";//skins folder
 
 
     var touchX, touchY,
@@ -447,6 +447,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         msg.setUint8(0, 255);
         msg.setUint32(1, 1332175218, true);
         wsSend(msg);
+        sendGameMode();
         sendNickName();
         if (wHandle.isSpectating) {
             sendUint8(1);
@@ -493,6 +494,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             case 20: // clear nodes
                 playerCells = [];
                 nodesOnScreen = [];
+                nodes = {};
+                nodelist = [];
+                Cells = [];
+                leaderBoard = [];
+                userScore = 0;
                 break;
             case 21: // draw line
                 lineX = msg.getInt16(offset, true);
@@ -772,6 +778,15 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
     }
 
+    function sendGameMode() {
+        if (wsIsOpen()) {
+            var msg = prepareData(1 + 2 * gameMode.length);
+            msg.setUint8(0, 10);
+            for (var i = 0; i < gameMode.length; ++i) msg.setUint16(1 + 2 * i, gameMode.charCodeAt(i), true);
+            wsSend(msg)
+        }
+    }
+
     function sendChat(str) {
         if (wsIsOpen() && (str.length < 200) && (str.length > 0)) {
             var msg = prepareData(2 + 2 * str.length);
@@ -875,6 +890,12 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         ctx.translate(canvasWidth / 2, canvasHeight / 2);
         ctx.scale(viewZoom, viewZoom);
         ctx.translate(-nodeX, -nodeY);
+        ctx.save();
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 1 / viewZoom;
+        ctx.globalAlpha = .9;
+        ctx.strokeRect(leftPos, topPos, rightPos - leftPos, bottomPos - topPos);
+        ctx.restore();
         for (d = 0; d < Cells.length; d++) Cells[d].drawOneCell(ctx);
 
         for (d = 0; d < nodelist.length; d++) nodelist[d].drawOneCell(ctx);
@@ -1146,13 +1167,23 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         noRanking = false;
     splitIcon.src = "split.png";
     ejectIcon.src = "feed.png";
+    var guestNoNameSkins = [
+        "8", "nasa", "berlusconi", "blatter", "boris", "bush",
+        "cameron", "chavez", "clinton", "dilma", "fidel",
+        "hillary", "hitler", "hollande", "kim jong un",
+        "obama", "palin", "putin", "stalin", "trump", "tsipras"
+    ];
     var wCanvas = document.createElement("canvas");
     var playerStat = null;
     wHandle.isSpectating = false;
     wHandle.setNick = function (arg) {
         hideOverlays();
         var authUser = null != wHandle.localStorage ? wHandle.localStorage.authUser : null;
-        userNickName = authUser || arg;
+        var guestNick = String(arg || '').trim();
+        if (!authUser && !guestNick) {
+            guestNick = guestNoNameSkins[Math.floor(Math.random() * guestNoNameSkins.length)];
+        }
+        userNickName = authUser || guestNick;
         sendNickName();
         userScore = 0
     };
@@ -1176,15 +1207,17 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         userNickName = null;
         wHandle.isSpectating = true;
         if (wsIsOpen()) {
+            sendGameMode();
             sendUint8(1);
         } else {
             wsConnect();
         }
         hideOverlays()
     };
-    wHandle.setGameMode = function (arg) {
-        if (arg != gameMode) {
+    wHandle.setGameMode = function (arg, forceReset) {
+        if (forceReset || arg != gameMode) {
             gameMode = arg;
+            sendGameMode();
             showConnecting();
         }
     };
@@ -1216,6 +1249,16 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     //This part is for loading custon skins
     var data = {"action": "test"};
     var response = [];
+    var skinFileMap = {};
+
+    function rememberSkinFiles(names) {
+        if (!names || !names.length) return;
+
+        for (var i = 0; i < names.length; i++) {
+            skinFileMap[String(names[i]).toLowerCase()] = names[i];
+        }
+    }
+
     wjQuery.ajax({
         type: "POST",
         dataType: "json",
@@ -1224,6 +1267,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         success: function (data) {
             //alert(data["names"]);
             response = JSON.parse(data["names"]);
+            rememberSkinFiles(response);
         },
         error: function () {
             response = [];
@@ -1240,10 +1284,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             dataType: "json",
             url: "checkdir.php", //Relative or absolute path to response.php file
             data: data,
-            success: function (data) {
-                //alert(data["names"]);
-                response = JSON.parse(data["names"]);
-            },
+        success: function (data) {
+            //alert(data["names"]);
+            response = JSON.parse(data["names"]);
+            rememberSkinFiles(response);
+        },
             error: function () {
                 response = [];
             }
@@ -1254,8 +1299,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
         for (var i = 0; i < response.length; i++) {
             //console.log(response[insert]);
-            if (-1 == knownNameDict.indexOf(response[i])) {
-                knownNameDict.push(response[i]);
+            var skinName = String(response[i]).toLowerCase();
+            if (-1 == knownNameDict.indexOf(skinName)) {
+                knownNameDict.push(skinName);
                 //console.log("Add:"+response[i]);
             }
         }
@@ -1272,7 +1318,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         knownNameDict = "poland;usa;china;russia;canada;australia;spain;brazil;germany;ukraine;france;sweden;hitler;north korea;south korea;japan;united kingdom;earth;greece;latvia;lithuania;estonia;finland;norway;cia;maldivas;austria;nigeria;reddit;yaranaika;confederate;9gag;indiana;4chan;italy;bulgaria;tumblr;2ch.hk;hong kong;portugal;jamaica;german empire;mexico;sanik;switzerland;croatia;chile;indonesia;bangladesh;thailand;iran;iraq;peru;moon;botswana;bosnia;netherlands;european union;taiwan;pakistan;hungary;satanist;qing dynasty;matriarchy;patriarchy;feminism;ireland;texas;facepunch;prodota;cambodia;steam;piccolo;india;kc;denmark;quebec;ayy lmao;sealand;bait;tsarist russia;origin;vinesauce;stalin;belgium;luxembourg;stussy;prussia;8ch;argentina;scotland;sir;romania;belarus;wojak;doge;nasa;byzantium;imperial japan;french kingdom;somalia;turkey;mars;pokerface;8;irs;receita federal;facebook".split(";"),
         knownNameDict_noDisp = ["8", "nasa", "Amruflxryns"],
         ib = ["_canvas'blob"];
-    Cell.prototype = {
+        Cell.prototype = {
         id: 0,
         points: null,
         pointsAcc: null,
@@ -1484,7 +1530,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     if (-1 != knownNameDict.indexOf(skinName)) {
                         if (!skins.hasOwnProperty(skinName)) {
                             skins[skinName] = new Image;
-                            skins[skinName].src = SKIN_URL + skinName + '.png';
+                            skins[skinName].src = SKIN_URL + (skinFileMap[skinName] || skinName) + '.png';
                         }
                         if (0 != skins[skinName].width && skins[skinName].complete) {
                             c = skins[skinName];

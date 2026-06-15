@@ -4,6 +4,7 @@ var GameServer = require('./GameServer');
 function PlayerTracker(gameServer, socket) {
     this.isOnline = true;
     this.name = "";
+    this.guildTag = "";
     this.gameServer = gameServer;
     this.socket = socket;
     this.nodeDestroyQueue = [];
@@ -56,6 +57,18 @@ PlayerTracker.prototype.setName = function(name) {
 
 PlayerTracker.prototype.getName = function() {
     return this.name;
+}
+
+PlayerTracker.prototype.setGuildTag = function(tag) {
+    this.guildTag = String(tag || '').trim();
+}
+
+PlayerTracker.prototype.getDisplayName = function() {
+    if (!this.guildTag) {
+        return this.name;
+    }
+
+    return "[" + this.guildTag + "] " + this.name;
 }
 
 PlayerTracker.prototype.getScore = function(reCalcScore) {
@@ -147,8 +160,12 @@ PlayerTracker.prototype.update = function() {
 
     // Update leaderboard
     if (this.tickLeaderboard <= 0) {
-        this.socket.sendPacket(new Packet.UpdateLeaderboard(this.gameServer.leaderboard,this.gameServer.gameMode.packetLB));
-        this.tickLeaderboard = this.gameServer.config.leaderboardUpdateClient;
+        var world = this.world || this.gameServer.activeWorld;
+        var leaderboard = world ? world.leaderboard : this.gameServer.leaderboard;
+        var gameMode = world ? world.gameMode : this.gameServer.gameMode;
+        var config = this.gameServer.getWorldConfig ? this.gameServer.getWorldConfig(world) : this.gameServer.config;
+        this.socket.sendPacket(new Packet.UpdateLeaderboard(leaderboard,gameMode.packetLB));
+        this.tickLeaderboard = config.leaderboardUpdateClient;
     } else {
         this.tickLeaderboard--;
     }
@@ -158,6 +175,7 @@ PlayerTracker.prototype.update = function() {
 // Viewing box
 
 PlayerTracker.prototype.updateSightRange = function() { // For view distance
+    var config = this.gameServer.getWorldConfig ? this.gameServer.getWorldConfig(this.world) : this.gameServer.config;
     var totalSize = 1.0;
     var len = this.cells.length;
     
@@ -169,7 +187,7 @@ PlayerTracker.prototype.updateSightRange = function() { // For view distance
     	
         totalSize += this.cells[i].getSize();
     }
-    this.sightRange = this.gameServer.config.serverViewBase / Math.pow(Math.min(64.0 / totalSize, 1), 0.4);
+    this.sightRange = config.serverViewBase / Math.pow(Math.min(64.0 / totalSize, 1), 0.4);
 }
 
 PlayerTracker.prototype.updateCenter = function() { // Get center of cells
@@ -196,9 +214,13 @@ PlayerTracker.prototype.updateCenter = function() { // Get center of cells
 }
 
 PlayerTracker.prototype.calcViewBox = function() {
+    var world = this.world || this.gameServer.activeWorld;
+    var nodes = world ? world.nodes : this.gameServer.nodes;
+    var gameMode = world ? world.gameMode : this.gameServer.gameMode;
+
     if (this.spectate) {
         // Spectate mode
-        this.spectatedPlayer = this.gameServer.gameMode.rankOne;
+        this.spectatedPlayer = gameMode.rankOne;
         if (this.spectatedPlayer) {
             // Get spectated player's location and calculate zoom amount
             var specZoom = Math.sqrt(100 * this.spectatedPlayer.score);
@@ -222,8 +244,8 @@ PlayerTracker.prototype.calcViewBox = function() {
     this.viewBox.width = this.sightRange;
 	
     var newVisible = [];
-    for (var i = 0; i < this.gameServer.nodes.length ;i++) {
-        node = this.gameServer.nodes[i];
+    for (var i = 0; i < nodes.length ;i++) {
+        node = nodes[i];
 		
         if (!node) {
             continue;

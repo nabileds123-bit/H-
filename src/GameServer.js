@@ -20,6 +20,9 @@ function GameServer(mult, prt) {
     this.multi = mult;
 	this.port = prt;
     this.lastNodeId = 1;
+    this.allClients = [];
+    this.worlds = {};
+    this.activeWorld = null;
     this.clients = [];
     this.nodes = [];
     this.nodesVirus = []; // Virus nodes
@@ -54,7 +57,7 @@ function GameServer(mult, prt) {
         foodStartAmount: 100, // The starting amount of food in the map
         foodMaxAmount: 500, // Maximum food cells on the map
         foodMass: 1, // Starting food size (In mass)
-	//foodMaxMass: 4,
+        foodMaxMass: 4,
         virusMinAmount: 10, // Minimum amount of viruses on the map. 
         virusMaxAmount: 50, // Maximum amount of viruses on the map. If this amount is reached, then ejected cells will pass through viruses.
         virusStartMass: 100, // Starting virus size (In mass)
@@ -65,6 +68,7 @@ function GameServer(mult, prt) {
         ejectSpawnPlayer: 50, // Chance for a player to spawn from ejected mass
         playerStartMass: 10, // Starting mass of the player cell.
         playerMaxMass: 22500, // Maximum mass a player can have
+        playerSpeed: 745.28, // Base player movement speed
         playerMinMassEject: 32, // Mass required to eject a cell
         playerMinMassSplit: 36, // Mass required to split
         playerMaxCells: 16, // Max cells the player is allowed to have
@@ -75,7 +79,10 @@ function GameServer(mult, prt) {
 	  //  serverSubdomain: 'marios-best-game',
 	    ejectVirus: 0,
 	    serverTitle: 'Ogar3',
-	    serverPlaceholder: 'Nick'
+	    serverPlaceholder: 'Nick',
+        maintenanceMode: 0,
+        maintenanceKey: 'change-this-key',
+        maintenanceImage: '/img/bg.png'
     };
     // Parse config
     this.loadConfig();
@@ -85,6 +92,7 @@ function GameServer(mult, prt) {
     if (!this.gameMode) {
         this.gameMode = Gamemode.list[0]; // Default is FFA
     }
+    this.initWorlds();
     
     // Colors
     this.colors = [{'r':235,'b':0,'g':75},{'r':225,'b':255,'g':125},{'r':180,'b':20,'g':7},{'r':80,'b':240,'g':170},{'r':180,'b':135,'g':90},{'r':195,'b':0,'g':240},{'r':150,'b':255,'g':18},{'r':80,'b':0,'g':245},{'r':165,'b':0,'g':25},{'r':80,'b':0,'g':145},{'r':80,'b':240,'g':170},{'r':55,'b':255,'g':92}]; 
@@ -94,7 +102,9 @@ module.exports = GameServer;
 
 GameServer.prototype.start = function() {
     // Gamemode configurations
-    this.gameMode.onServerInit(this);
+    for (var worldId in this.worlds) {
+        this.ensureWorldInitialized(this.worlds[worldId]);
+    }
     
     this.config.serverPort = process.env.PORT || this.config.serverPort ;
     
@@ -106,6 +116,54 @@ GameServer.prototype.start = function() {
     
     
     var serve = serveStatic(__dirname);
+    var maintenanceMode = parseInt(this.config.maintenanceMode) === 1;
+    var maintenanceKey = String(this.config.maintenanceKey || 'change-this-key');
+    var maintenanceImage = String(this.config.maintenanceImage || '/img/bg.png');
+
+    function hasMaintenanceCookie(req) {
+      var cookie = req.headers.cookie || '';
+      return cookie.indexOf('maintenanceAdmin=1') !== -1;
+    }
+
+    function hasMaintenanceKey(req) {
+      var query = req.url.split('?')[1] || '';
+      var parts = query.split('&');
+
+      for (var i = 0; i < parts.length; i++) {
+        var pair = parts[i].split('=');
+        if (decodeURIComponent(pair[0] || '') == 'maintenanceKey' &&
+            decodeURIComponent(pair[1] || '') == maintenanceKey) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    function showMaintenance(res) {
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store'
+      });
+      res.end([
+        '<!doctype html>',
+        '<html>',
+        '<head>',
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<title>Maintenance</title>',
+        '<style>',
+        'html,body{margin:0;width:100%;height:100%;background:#eef7fa;}',
+        'body{display:flex;align-items:center;justify-content:center;}',
+        'img{width:100%;height:100%;object-fit:contain;}',
+        '</style>',
+        '</head>',
+        '<body>',
+        '<img src="' + maintenanceImage + '" alt="Maintenance">',
+        '</body>',
+        '</html>'
+      ].join(''));
+    }
     
     var hserver = http.createServer(function(req, res){
       var pathname = req.url.split('?')[0];
@@ -114,8 +172,24 @@ GameServer.prototype.start = function() {
         return;
       }
 
+      if (maintenanceMode && hasMaintenanceKey(req)) {
+        res.writeHead(302, {
+          'Set-Cookie': 'maintenanceAdmin=1; Path=/; HttpOnly; SameSite=Lax',
+          'Location': '/'
+        });
+        res.end();
+        return;
+      }
+
+      if (maintenanceMode && !hasMaintenanceCookie(req)) {
+        if (pathname !== maintenanceImage && pathname !== '/favicon.ico') {
+          showMaintenance(res);
+          return;
+        }
+      }
+
       if (pathname == '/client/checkdir.php' || pathname == '/checkdir.php') {
-        var skinsDir = path.join(__dirname, 'client', 'skins');
+        var skinsDir = path.join(__dirname, 'skins');
         fs.readdir(skinsDir, function(err, files) {
           var names = [];
 
@@ -154,8 +228,13 @@ GameServer.prototype.start = function() {
     // Start the server
     this.socketServer = new WebSocket.Server({server: hserver });
     
-    for (var i = 0; i < this.config.foodStartAmount; i++) {
-        this.spawnFood();
+    for (var worldId in this.worlds) {
+        this.withWorld(this.worlds[worldId], function() {
+            var config = this.getWorldConfig();
+            for (var i = 0; i < config.foodStartAmount; i++) {
+                this.spawnFood();
+            }
+        });
     }
     
     // Start Main Loop
@@ -175,7 +254,7 @@ GameServer.prototype.start = function() {
     this.socketServer.on('connection', connectionEstablished.bind(this));
 
     function connectionEstablished(ws) {
-        if (this.clients.length > this.config.serverMaxConnections) {
+        if (this.allClients.length > this.config.serverMaxConnections) {
             ws.close();
             console.log("[Game] Client tried to connect, but server player limit has been reached!");
             return;
@@ -183,9 +262,18 @@ GameServer.prototype.start = function() {
     	
         function close(error) {
             console.log("[Game] Disconnect: %s:%d", this.socket.remoteAddress, this.socket.remotePort);
-            var index = this.server.clients.indexOf(this.socket);
+            this.server.removeClientCells(this.socket.playerTracker);
+
+            var index = this.server.allClients.indexOf(this.socket);
             if (index != -1) {
-                this.server.clients.splice(index, 1);
+                this.server.allClients.splice(index, 1);
+            }
+
+            if (this.socket.world) {
+                index = this.socket.world.clients.indexOf(this.socket);
+                if (index != -1) {
+                    this.socket.world.clients.splice(index, 1);
+                }
             }
             
             // Switch online flag off
@@ -197,17 +285,198 @@ GameServer.prototype.start = function() {
         ws.remotePort = ws._socket.remotePort;
         ws.playerTracker = new PlayerTracker(this, ws);
         ws.packetHandler = new PacketHandler(this, ws);
+        this.setClientWorld(ws, ':x5');
         ws.on('message', ws.packetHandler.handleMessage.bind(ws.packetHandler));
 
         var bindObject = { server: this, socket: ws };
         ws.on('error', close.bind(bindObject));
         ws.on('close', close.bind(bindObject));
-        this.clients.push(ws);
+        this.allClients.push(ws);
     }
 }
 
 GameServer.prototype.getMode = function() {
     return this.gameMode;
+}
+
+GameServer.prototype.createWorld = function(id, gameMode, config) {
+    return {
+        id: id,
+        clients: [],
+        nodes: [],
+        nodesVirus: [],
+        nodesEjected: [],
+        nodesPlayer: [],
+        currentFood: 0,
+        movingNodes: [],
+        leaderboard: [],
+        tickSpawn: 0,
+        tickMain: 0,
+        gameMode: gameMode,
+        config: config || {},
+        initialized: false
+    };
+}
+
+GameServer.prototype.initWorlds = function() {
+    this.worlds[':x5'] = this.createWorld(':x5', new Gamemode.X5(), this.getModeConfig('x5'));
+    this.worlds[':hardcore:1'] = this.createWorld(':hardcore:1', new Gamemode.FFA(), this.getModeConfig('hardcore'));
+    this.worlds[':hardcore:2'] = this.createWorld(':hardcore:2', new Gamemode.FFA(), this.getModeConfig('hardcore'));
+    this.worlds[':teams'] = this.createWorld(':teams', new Gamemode.Teams(), this.getModeConfig('teams'));
+    this.worlds[':experimental'] = this.createWorld(':experimental', new Gamemode.Experimental(), this.getModeConfig('experimental'));
+    this.worlds[':battle:1v1'] = this.createWorld(':battle:1v1', new Gamemode.FFA(), this.getModeConfig('battle1v1'));
+    this.worlds[':battle:2v2'] = this.createWorld(':battle:2v2', new Gamemode.FFA(), this.getModeConfig('battle2v2'));
+    this.setActiveWorld(this.worlds[':x5']);
+}
+
+GameServer.prototype.setActiveWorld = function(world) {
+    this.activeWorld = world;
+    this.clients = world.clients;
+    this.nodes = world.nodes;
+    this.nodesVirus = world.nodesVirus;
+    this.nodesEjected = world.nodesEjected;
+    this.nodesPlayer = world.nodesPlayer;
+    this.currentFood = world.currentFood;
+    this.movingNodes = world.movingNodes;
+    this.leaderboard = world.leaderboard;
+    this.gameMode = world.gameMode;
+}
+
+GameServer.prototype.saveActiveWorld = function() {
+    if (!this.activeWorld) return;
+
+    this.activeWorld.currentFood = this.currentFood;
+    this.activeWorld.leaderboard = this.leaderboard;
+}
+
+GameServer.prototype.getModeConfig = function(prefix) {
+    var config = {};
+
+    for (var key in this.config) {
+        var overrideKey = prefix + key.charAt(0).toUpperCase() + key.slice(1);
+        if (typeof this.config[overrideKey] !== 'undefined') {
+            config[key] = this.config[overrideKey];
+        }
+    }
+
+    return config;
+}
+
+GameServer.prototype.getWorldConfig = function(world) {
+    var config = {};
+
+    for (var key in this.config) {
+        config[key] = this.config[key];
+    }
+
+    world = world || this.activeWorld;
+    if (world && world.config) {
+        for (var overrideKey in world.config) {
+            config[overrideKey] = world.config[overrideKey];
+        }
+    }
+
+    return config;
+}
+
+GameServer.prototype.ensureWorldInitialized = function(world) {
+    if (!world || world.initialized) return;
+
+    var previous = this.activeWorld;
+    this.saveActiveWorld();
+    this.setActiveWorld(world);
+    this.gameMode.onServerInit(this);
+    world.initialized = true;
+    this.saveActiveWorld();
+
+    if (previous) {
+        this.setActiveWorld(previous);
+    }
+}
+
+GameServer.prototype.withWorld = function(world, callback) {
+    var previous = this.activeWorld;
+    this.saveActiveWorld();
+    this.ensureWorldInitialized(world || this.worlds[':x5']);
+    this.setActiveWorld(world || this.worlds[':x5']);
+
+    var result = callback.call(this);
+
+    this.saveActiveWorld();
+    if (previous) {
+        this.setActiveWorld(previous);
+    }
+    return result;
+}
+
+GameServer.prototype.resolveWorldId = function(mode) {
+    if (mode == ':hardcore') {
+        return Math.random() < 0.5 ? ':hardcore:1' : ':hardcore:2';
+    }
+
+    if (this.worlds[mode]) {
+        return mode;
+    }
+
+    return ':x5';
+}
+
+GameServer.prototype.setClientWorld = function(socket, mode) {
+    var world = this.worlds[this.resolveWorldId(mode)];
+    if (!world) {
+        world = this.worlds[':x5'];
+    }
+
+    socket.sendPacket(new Packet.ClearNodes());
+    var worldConfig = this.getWorldConfig(world);
+    socket.sendPacket(new Packet.SetBorder(worldConfig.borderLeft, worldConfig.borderRight, worldConfig.borderTop, worldConfig.borderBottom));
+
+    if (socket.world === world) {
+        this.removeClientCells(socket.playerTracker);
+        socket.playerTracker.visibleNodes = [];
+        socket.playerTracker.nodeDestroyQueue = [];
+        socket.playerTracker.cells = [];
+        socket.playerTracker.spectate = false;
+        return;
+    }
+
+    if (socket.world) {
+        this.removeClientCells(socket.playerTracker);
+        var oldIndex = socket.world.clients.indexOf(socket);
+        if (oldIndex != -1) {
+            socket.world.clients.splice(oldIndex, 1);
+        }
+    }
+
+    socket.world = world;
+    console.log("[Game] Client world set to " + world.id + " (" + world.gameMode.name + ")");
+    socket.playerTracker.world = world;
+    socket.playerTracker.visibleNodes = [];
+    socket.playerTracker.nodeDestroyQueue = [];
+    socket.playerTracker.cells = [];
+    socket.playerTracker.spectate = false;
+    world.clients.push(socket);
+    this.withWorld(world, function() {
+        this.gameMode.onPlayerInit(socket.playerTracker);
+    });
+}
+
+GameServer.prototype.removeClientCells = function(client) {
+    if (!client || !client.cells) return;
+
+    var cells = client.cells.slice(0);
+    for (var i = 0; i < cells.length; i++) {
+        var cell = cells[i];
+        if (cell && cell.owner && cell.owner.world) {
+            this.withWorld(cell.owner.world, function() {
+                this.removeNode(cell);
+            });
+        }
+    }
+
+    client.cells = [];
+    client.visibleNodes = [];
+    client.nodeDestroyQueue = [];
 }
 
 GameServer.prototype.getNextNodeId = function() {
@@ -219,9 +488,10 @@ GameServer.prototype.getNextNodeId = function() {
 }
 
 GameServer.prototype.getRandomPosition = function() {
+    var config = this.getWorldConfig();
     return {
-        x: Math.floor(Math.random() * (this.config.borderRight - this.config.borderLeft)) + this.config.borderLeft,
-        y: Math.floor(Math.random() * (this.config.borderBottom - this.config.borderTop)) + this.config.borderTop
+        x: Math.floor(Math.random() * (config.borderRight - config.borderLeft)) + config.borderLeft,
+        y: Math.floor(Math.random() * (config.borderBottom - config.borderTop)) + config.borderTop
     };
 }
 GameServer.prototype.getCertainPosition = function(a, b) {
@@ -231,7 +501,8 @@ GameServer.prototype.getCertainPosition = function(a, b) {
     };
 }
 GameServer.prototype.getRandomColor = function() {
-  if(this.config.serverOldColors) {
+  var config = this.getWorldConfig ? this.getWorldConfig() : this.config;
+  if(config.serverOldColors) {
 	  var index = Math.floor(Math.random() * this.colors.length);
     var color = this.colors[index];
     return {
@@ -310,30 +581,35 @@ GameServer.prototype.mainLoop = function() {
     this.time = local;
 
     if (this.tick >= 50) {
-        // Loop main functions
-        this.updateMoveEngine();
-        this.updateClients();
-		
-        // Spawn food
-        this.tickSpawn++;
-        if (this.tickSpawn >= this.config.spawnInterval) {
-            this.updateFood(); // Spawn food
-            this.virusCheck(); // Spawn viruses
-			
-            this.tickSpawn = 0; // Reset
-        }
-		
-        // Update cells/leaderboard loop
-        this.tickMain++;
-        if (this.tickMain >= 40) { // 2 seconds
-            // Update cells
-            this.updateCells();
-            
-            // Update leaderboard with the gamemode's method
-            this.leaderboard = []; 
-            this.gameMode.updateLB(this);
-			
-            this.tickMain = 0; // Reset
+        for (var worldId in this.worlds) {
+            var world = this.worlds[worldId];
+            this.withWorld(this.worlds[worldId], function() {
+                var config = this.getWorldConfig();
+
+                // Loop main functions
+                this.updateMoveEngine();
+                this.updateClients();
+
+                // Spawn food
+                world.tickSpawn++;
+                if (world.tickSpawn >= config.spawnInterval) {
+                    this.updateFood(); // Spawn food
+                    this.virusCheck(); // Spawn viruses
+                    world.tickSpawn = 0;
+                }
+
+                // Update cells/leaderboard loop
+                world.tickMain++;
+                if (world.tickMain >= 40) { // 2 seconds
+                    // Update cells
+                    this.updateCells();
+
+                    // Update leaderboard with the gamemode's method
+                    this.leaderboard = [];
+                    this.gameMode.updateLB(this);
+                    world.tickMain = 0;
+                }
+            });
         }
 		
         // Debug
@@ -365,14 +641,17 @@ GameServer.prototype.updateClients = function() {
 }
 
 GameServer.prototype.updateFood = function() {
-    var toSpawn = Math.min(this.config.foodSpawnAmount,(this.config.foodMaxAmount-this.currentFood));
+    var config = this.getWorldConfig();
+    var toSpawn = Math.min(config.foodSpawnAmount,(config.foodMaxAmount-this.currentFood));
     for (var i = 0; i < toSpawn; i++) {
         this.spawnFood();
     }    
 }
 
 GameServer.prototype.spawnFood = function() {
-var f = new Entity.Food(this.getNextNodeId(), null, this.getRandomPosition(), Math.floor(Math.random() * this.config.foodMaxMass) + this.config.foodMass);
+var config = this.getWorldConfig();
+var foodMaxMass = config.foodMaxMass || 1;
+var f = new Entity.Food(this.getNextNodeId(), null, this.getRandomPosition(), Math.floor(Math.random() * foodMaxMass) + config.foodMass);
   f.setColor(this.getRandomColor());
 	
     this.addNode(f);
@@ -380,18 +659,19 @@ var f = new Entity.Food(this.getNextNodeId(), null, this.getRandomPosition(), Ma
 }
 
 GameServer.prototype.spawnPlayer = function(client) {
-   if(this.config.serverGameMode == 2) {
+   var config = this.getWorldConfig();
+   if(config.serverGamemode == 2) {
    var pos = this.getCertainPosition(0,0);
    } else {
    var pos = this.getRandomPosition();
    }
 	
-    var startMass = this.config.playerStartMass;
+    var startMass = config.playerStartMass;
     
     // Check if there are ejected mass in the world. Does not work in team mode
     if ((this.nodesEjected.length > 0) && (!this.gameMode.haveTeams)) {
         var index = Math.floor(Math.random() * 100) + 1;
-        if (index <= this.config.ejectSpawnPlayer) {
+        if (index <= config.ejectSpawnPlayer) {
             // Get ejected cell
             var index = Math.floor(Math.random() * this.nodesEjected.length);
             var e = this.nodesEjected[index];
@@ -422,8 +702,9 @@ GameServer.prototype.spawnPlayer = function(client) {
 }
 
 GameServer.prototype.virusCheck = function() {
+    var config = this.getWorldConfig();
     // Checks if there are enough viruses on the map
-    if (this.nodesVirus.length < this.config.virusMinAmount) {
+    if (this.nodesVirus.length < config.virusMinAmount) {
         // Spawns a virus
         var pos = this.getRandomPosition();
         
@@ -431,7 +712,7 @@ GameServer.prototype.virusCheck = function() {
         for (var i = 0; i < this.nodesPlayer.length; i++) {
             var check = this.nodesPlayer[i];
             
-            if (check.mass < this.config.virusStartMass) {
+            if (check.mass < config.virusStartMass) {
                 continue;
             }
     		
@@ -459,12 +740,13 @@ GameServer.prototype.virusCheck = function() {
         }
     	
         // Spawn if no cells are colliding
-        var v = new Entity.Virus(this.getNextNodeId(), null, pos, this.config.virusStartMass);
+        var v = new Entity.Virus(this.getNextNodeId(), null, pos, config.virusStartMass);
         this.addNode(v);
     }
 }
 
 GameServer.prototype.updateMoveEngine = function() {
+    var config = this.getWorldConfig();
     // Move player cells
     var len = this.nodesPlayer.length;
     for (var i = 0; i < len; i++) {
@@ -520,8 +802,8 @@ GameServer.prototype.updateMoveEngine = function() {
         
         if (check.getMoveTicks() > 0) {
             // If the cell has enough move ticks, then move it
-            check.calcMovePhys(this.config);
-            if ((check.getType() == 3) && (this.nodesVirus.length < this.config.virusMaxAmount)) {
+            check.calcMovePhys(config);
+            if ((check.getType() == 3) && (this.nodesVirus.length < config.virusMaxAmount)) {
                 // Check for viruses
                 var v = this.getNearestVirus(check);
                 if (v) { // Feeds the virus if it exists
@@ -545,23 +827,24 @@ GameServer.prototype.setAsMovingNode = function(node) {
 }
 
 GameServer.prototype.splitCells = function(client) {
+    var config = this.getWorldConfig();
     var len = client.cells.length;
     for (var i = 0; i < len; i++) {
     	
-        if (client.cells.length >= this.config.playerMaxCells) {
+        if (client.cells.length >= config.playerMaxCells) {
             continue;
         }
         
         var cell = client.cells[i];
         if (!cell) continue;
-        if (cell.mass < this.config.playerMinMassSplit) continue;
+        if (cell.mass < config.playerMinMassSplit) continue;
 
         var deltaY = client.mouse.y - cell.position.y;
         var deltaX = client.mouse.x - cell.position.x;
         var angle = Math.atan2(deltaX, deltaY);
     	
         var size = cell.getSize();
-        var spawnOffset = Math.max(18, Math.min(42, size * 0.22));
+        var spawnOffset = Math.max(24, Math.min(40, size * 0.16));
 
         var startPos = {
             x: cell.position.x + (spawnOffset * Math.sin(angle)),
@@ -573,8 +856,8 @@ GameServer.prototype.splitCells = function(client) {
 
         var split = new Entity.PlayerCell(this.getNextNodeId(), client, startPos, newMass);
         split.setAngle(angle);
-        split.setMoveEngineData(40 + (cell.getSpeed() * 4), 20);
-        split.calcMergeTime(this.config.playerRecombineTime);
+        split.setMoveEngineData(26 + (cell.getSpeed() * 2), 22);
+        split.calcMergeTime(config.playerRecombineTime);
 
         this.setAsMovingNode(split);
         this.addNode(split);
@@ -597,6 +880,7 @@ GameServer.prototype.mergeCells = function(client, size) {
     }
 }
 GameServer.prototype.ejectMass = function(client) {
+    var config = this.getWorldConfig();
     for (var i = 0; i < client.cells.length; i++) {
         var cell = client.cells[i];
         
@@ -604,7 +888,7 @@ GameServer.prototype.ejectMass = function(client) {
             continue;
         }
        
-        if (cell.mass < this.config.playerMinMassEject) {
+        if (cell.mass < config.playerMinMassEject) {
             continue;
         }
 		
@@ -615,24 +899,24 @@ GameServer.prototype.ejectMass = function(client) {
         // Get starting position
         var size = cell.getSize() + 5;
         var startPos = {
-            x: cell.position.x + ( (size + this.config.ejectMass) * Math.sin(angle) ), 
-            y: cell.position.y + ( (size + this.config.ejectMass) * Math.cos(angle) )
+            x: cell.position.x + ( (size + config.ejectMass) * Math.sin(angle) ), 
+            y: cell.position.y + ( (size + config.ejectMass) * Math.cos(angle) )
         };
         
         // Remove mass from parent cell
-        cell.mass -= this.config.ejectMass;
+        cell.mass -= config.ejectMass;
         
         // Randomize angle
         angle += (Math.random() * .5) - .25;
         
         // Create cell
-       if(!this.config.ejectVirus) {
-	    ejected = new Entity.EjectedMass(this.getNextNodeId(), null, startPos, this.config.ejectMassGain);
+       if(!config.ejectVirus) {
+	    ejected = new Entity.EjectedMass(this.getNextNodeId(), null, startPos, config.ejectMassGain);
        } else {
-      ejected = new Entity.Virus(this.getNextNodeId(), null, startPos, this.config.ejectMassGain);
+      ejected = new Entity.Virus(this.getNextNodeId(), null, startPos, config.ejectMassGain);
        }
         ejected.setAngle(angle);
-        ejected.setMoveEngineData(this.config.ejectSpeed, 20);
+        ejected.setMoveEngineData(config.ejectSpeed, 10);
         ejected.setColor(cell.getColor());
        
         // Add to moving cells list
@@ -642,6 +926,7 @@ GameServer.prototype.ejectMass = function(client) {
 }
 
 GameServer.prototype.newCellVirused = function(client, parent, angle, mass, speed) {
+    var config = this.getWorldConfig();
     // Starting position
     var startPos = {
         x: parent.position.x, 
@@ -652,7 +937,7 @@ GameServer.prototype.newCellVirused = function(client, parent, angle, mass, spee
 	newCell = new Entity.PlayerCell(this.getNextNodeId(), client, startPos, mass);
 	newCell.setAngle(angle);
 	newCell.setMoveEngineData(speed, 10);
-	newCell.calcMergeTime(this.config.playerRecombineTime);
+	newCell.calcMergeTime(config.playerRecombineTime);
 	newCell.setCollisionOff(true); // Turn off collision
 	
     // Add to moving cells list
@@ -661,14 +946,15 @@ GameServer.prototype.newCellVirused = function(client, parent, angle, mass, spee
 }
 
 GameServer.prototype.shootVirus = function(parent) {
+    var config = this.getWorldConfig();
 	var parentPos = {
         x: parent.position.x,
         y: parent.position.y,
 	};
 	
-    var newVirus = new Entity.Virus(this.getNextNodeId(), null, parentPos, this.config.virusStartMass);
+    var newVirus = new Entity.Virus(this.getNextNodeId(), null, parentPos, config.virusStartMass);
     newVirus.setAngle(parent.getAngle());
-    newVirus.setMoveEngineData(200, 20);
+    newVirus.setMoveEngineData(150, 15);
 	
     // Add to moving cells list
     this.addNode(newVirus);
@@ -767,17 +1053,9 @@ GameServer.prototype.getCellsInRange = function(cell) {
 }
 
 GameServer.prototype.getNearestVirus = function(cell) { 
-	// More like getNearbyVirus
 	var virus = null;
-    var r = 100; // Checking radius
-	
-    var topY = cell.position.y - r;
-    var bottomY = cell.position.y + r;
-	
-    var leftX = cell.position.x - r;
-    var rightX = cell.position.x + r;
 
-    // Loop through all viruses on the map. There is probably a more efficient way of doing this but whatever
+    // Only feed viruses when the ejected mass directly touches the virus.
 	var len = this.nodesVirus.length;
     for (var i = 0;i < len;i++) {
         var check = this.nodesVirus[i];
@@ -785,19 +1063,24 @@ GameServer.prototype.getNearestVirus = function(cell) {
         if (typeof check === 'undefined') {
             continue;
         }
-		
-        if (!check.collisionCheck(bottomY,topY,rightX,leftX)) {
+
+        var dx = check.position.x - cell.position.x;
+        var dy = check.position.y - cell.position.y;
+        var feedRange = check.getSize() + cell.getSize();
+
+        if ((dx * dx + dy * dy) > (feedRange * feedRange)) {
             continue;
         }
         		
-        // Add to list of cells nearby
         virus = check;
+        break;
     }
     return virus;
 }
 
 GameServer.prototype.updateCells = function() {
-    var massDecay = 1 - ((this.config.playerMassDecayRate/1000) * this.gameMode.decayMod);
+    var config = this.getWorldConfig();
+    var massDecay = 1 - ((config.playerMassDecayRate/1000) * this.gameMode.decayMod);
     for (var i = 0; i < this.nodesPlayer.length; i++) {
         var cell = this.nodesPlayer[i];
         
@@ -811,7 +1094,7 @@ GameServer.prototype.updateCells = function() {
         }
 		
         // Mass decay
-        if (cell.mass >= this.config.playerMinMassDecay) {
+        if (cell.mass >= config.playerMinMassDecay) {
             cell.mass *= massDecay;
         }
     }
