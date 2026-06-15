@@ -111,6 +111,14 @@ Lalu restart:
 pm2 restart bubblev2
 ```
 
+Saat `maintenanceMode = 1`, hanya browser yang sudah login admin di `/admin` yang bisa membuka game. Alurnya:
+
+1. Buka `https://bubblev2.site/admin`
+2. Login admin
+3. Buka `https://bubblev2.site/` di browser yang sama
+
+Link `?maintenanceKey=...` tidak dipakai untuk bypass publik.
+
 ## Manual Update Jika Dibutuhkan
 
 Jalankan di VPS:

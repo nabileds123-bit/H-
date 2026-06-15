@@ -119,29 +119,8 @@ GameServer.prototype.start = function() {
     
     
     var serve = serveStatic(__dirname);
-    function hasMaintenanceCookie(req) {
-      var cookie = req.headers.cookie || '';
-      return cookie.indexOf('maintenanceAdmin=1') !== -1;
-    }
-
-    function hasMaintenanceKey(req) {
-      var query = req.url.split('?')[1] || '';
-      var parts = query.split('&');
-      var maintenanceKey = String(self.config.maintenanceKey || 'change-this-key');
-
-      for (var i = 0; i < parts.length; i++) {
-        var pair = parts[i].split('=');
-        try {
-          if (decodeURIComponent(pair[0] || '') == 'maintenanceKey' &&
-              decodeURIComponent(pair[1] || '') == maintenanceKey) {
-            return true;
-          }
-        } catch (e) {
-          return false;
-        }
-      }
-
-      return false;
+    function hasMaintenanceAccess(req) {
+      return AdminServer.hasSession(req);
     }
 
     function showMaintenance(res) {
@@ -181,16 +160,7 @@ GameServer.prototype.start = function() {
         return;
       }
 
-      if (parseInt(self.config.maintenanceMode) === 1 && hasMaintenanceKey(req)) {
-        res.writeHead(302, {
-          'Set-Cookie': 'maintenanceAdmin=1; Path=/; HttpOnly; SameSite=Lax',
-          'Location': '/'
-        });
-        res.end();
-        return;
-      }
-
-      if (parseInt(self.config.maintenanceMode) === 1 && !hasMaintenanceCookie(req)) {
+      if (parseInt(self.config.maintenanceMode) === 1 && !hasMaintenanceAccess(req)) {
         var maintenanceImage = String(self.config.maintenanceImage || '/img/bg.png');
         if (pathname !== maintenanceImage && pathname !== '/favicon.ico') {
           showMaintenance(res);

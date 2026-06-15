@@ -391,5 +391,8 @@ function handle(req, res, gameServer) {
 }
 
 module.exports = {
-    handle: handle
+    handle: handle,
+    hasSession: function(req) {
+        return !!getAdminSession(req);
+    }
 };
