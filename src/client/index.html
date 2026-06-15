@@ -2983,7 +2983,9 @@ $(function () {
     };
 
     window.showPremiumChatWarning = function () {
-        alert(premiumChatWarning);
+        if (typeof window.addSystemChat === 'function') {
+            window.addSystemChat(premiumChatWarning);
+        }
     };
 
     function renderAccountSkin(selector, url, title, type) {

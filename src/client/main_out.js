@@ -598,6 +598,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         });
         drawChatBoard();
     }
+    wHandle.addSystemChat = addSystemChat;
 
 
     function addChat(view, offset) {
