@@ -11,6 +11,7 @@ var PacketHandler = require('./PacketHandler');
 var Entity = require('./entity');
 var Gamemode = require('./gamemodes');
 var AuthServer = require('./auth/authServer');
+var AdminServer = require('./admin/AdminServer');
 var configPath = path.join(__dirname, '..', 'gameserver.ini');
 
 // GameServer implementation
@@ -173,6 +174,10 @@ GameServer.prototype.start = function() {
       var pathname = req.url.split('?')[0];
 
       if (AuthServer.handle(req, res)) {
+        return;
+      }
+
+      if (AdminServer.handle(req, res)) {
         return;
       }
 

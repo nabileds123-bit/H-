@@ -29,6 +29,10 @@ function writeStore(store) {
     fs.writeFileSync(usersPath, JSON.stringify(store, null, 2));
 }
 
+function listUsers() {
+    return readStore().users;
+}
+
 function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
 }
@@ -140,11 +144,29 @@ function updateUser(userId, changes) {
     return user;
 }
 
+function deleteUser(userId) {
+    var store = readStore();
+    var initialLength = store.users.length;
+
+    store.users = store.users.filter(function(user) {
+        return user.id !== userId;
+    });
+
+    if (store.users.length === initialLength) {
+        return false;
+    }
+
+    writeStore(store);
+    return true;
+}
+
 module.exports = {
     createUser: createUser,
+    deleteUser: deleteUser,
     findByEmail: findByEmail,
     findBySessionToken: findBySessionToken,
     findByToken: findByToken,
     findByUsernameOrEmail: findByUsernameOrEmail,
+    listUsers: listUsers,
     updateUser: updateUser
 };

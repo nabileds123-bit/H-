@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bubble V2 Admin</title>
+  <style>
+    body{margin:0;background:#f4f6f8;color:#1f2933;font-family:Arial,sans-serif}
+    button,input,select,textarea{font:inherit}
+    .login{max-width:360px;margin:12vh auto;padding:22px;background:#fff;border:1px solid #d9e2ec;border-radius:6px}
+    .app{display:none;min-height:100vh}
+    .top{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:#17202a;color:#fff}
+    .brand{font-weight:700}
+    .layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 52px)}
+    .nav{background:#fff;border-right:1px solid #d9e2ec;padding:12px}
+    .nav button{width:100%;height:36px;margin:2px 0;border:0;background:transparent;text-align:left;color:#334e68;border-radius:4px;padding:0 10px}
+    .nav button.active,.nav button:hover{background:#e6f0ff;color:#0b5cad}
+    .main{padding:16px;min-width:0}
+    .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    .toolbar input{height:34px;flex:1;border:1px solid #bcccdc;border-radius:4px;padding:0 10px}
+    .btn{height:34px;border:1px solid #2f80ed;border-radius:4px;background:#2f80ed;color:#fff;padding:0 12px;cursor:pointer}
+    .btn.secondary{border-color:#9fb3c8;background:#fff;color:#334e68}
+    .btn.danger{border-color:#d64545;background:#d64545}
+    .panel{background:#fff;border:1px solid #d9e2ec;border-radius:6px;overflow:hidden}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:9px 10px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}
+    th{background:#f7fafc;color:#52606d;font-size:12px;text-transform:uppercase}
+    td.actions{white-space:nowrap;width:120px}
+    .status{min-height:20px;margin:8px 0;color:#52606d}
+    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
+    .modal.open{display:block}
+    .dialog{width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 40px);overflow:auto;margin:20px auto;background:#fff;border-radius:6px}
+    .dialog-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e4e7eb}
+    .form{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px}
+    .field{display:flex;flex-direction:column;gap:5px}
+    .field.full{grid-column:1/-1}
+    .field label{font-size:12px;color:#52606d;font-weight:700}
+    .field input,.field select,.field textarea{border:1px solid #bcccdc;border-radius:4px;padding:8px}
+    .field textarea{min-height:90px}
+    .dialog-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 16px;border-top:1px solid #e4e7eb}
+    @media(max-width:760px){.layout{grid-template-columns:1fr}.nav{border-right:0;border-bottom:1px solid #d9e2ec}.form{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div id="login" class="login">
+    <h2>Bubble V2 Admin</h2>
+    <div class="field"><label>Username</label><input id="loginUser" value="admin"></div>
+    <div class="field"><label>Password</label><input id="loginPass" type="password"></div>
+    <p id="loginStatus" class="status"></p>
+    <button id="loginBtn" class="btn">Login</button>
+  </div>
+
+  <div id="app" class="app">
+    <div class="top"><div class="brand">Bubble V2 Admin</div><button id="logoutBtn" class="btn secondary">Logout</button></div>
+    <div class="layout">
+      <div id="nav" class="nav"></div>
+      <main class="main">
+        <h2 id="title"></h2>
+        <div class="toolbar"><input id="search" placeholder="Search"><button id="addBtn" class="btn">Add</button><button id="reloadBtn" class="btn secondary">Reload</button></div>
+        <p id="status" class="status"></p>
+        <div class="panel"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal" class="modal">
+    <div class="dialog">
+      <div class="dialog-head"><strong id="modalTitle"></strong><button id="closeModal" class="btn secondary">Close</button></div>
+      <form id="form" class="form"></form>
+      <div class="dialog-foot"><button id="deleteBtn" class="btn danger">Delete</button><button id="saveBtn" class="btn">Save</button></div>
+    </div>
+  </div>
+
+  <script>
+    var modules = {
+      users:{title:'User / Account',endpoint:'users',columns:['username','email','accountType','points','level','guildTag','banned'],fields:[
+        ['username','Username'],['email','Email'],['password','Password Baru','password'],['emailVerified','Email Verified','checkbox'],['accountType','Account Type','select',['Free','Premium']],['premiumUntil','Premium Until'],['points','Points','number'],['xp','XP','number'],['xpMax','XP Max','number'],['level','Level','number'],['cellColor','Cell Color'],['guildTag','Guild Tag'],['skin','Skin'],['banned','Banned','checkbox'],['banReason','Ban Reason','textarea']
+      ]},
+      premium:{title:'Premium',endpoint:'premium',columns:['username','type','startsAt','endsAt','active'],fields:[['username','Username'],['type','Type','select',['Premium','VIP','Moderator']],['startsAt','Starts At'],['endsAt','Ends At'],['active','Active','checkbox'],['notes','Notes','textarea']]},
+      points:{title:'Points',endpoint:'points',columns:['username','amount','reason','createdAt'],fields:[['username','Username'],['amount','Amount','number'],['reason','Reason'],['createdAt','Created At'],['notes','Notes','textarea']]},
+      skins:{title:'Skins',endpoint:'skins',columns:['username','name','file','status'],fields:[['username','Username'],['name','Skin Name'],['file','File'],['status','Status','select',['pending','approved','rejected']],['notes','Notes','textarea']]},
+      guilds:{title:'Guild',endpoint:'guilds',columns:['name','tag','type','leader','members'],fields:[['name','Guild Name'],['tag','Tag'],['type','Type','select',['private','public']],['leader','Leader'],['members','Members','number'],['logo','Logo'],['description','Description','textarea']]},
+      notifications:{title:'Notification',endpoint:'notifications',columns:['title','target','active','createdAt'],fields:[['title','Title'],['message','Message','textarea'],['target','Target','select',['all','user','guild']],['targetId','Target ID'],['active','Active','checkbox'],['createdAt','Created At']]},
+      highscores:{title:'Highscore',endpoint:'highscores',columns:['username','mode','period','score'],fields:[['username','Username'],['mode','Mode','select',['FFA - X5','FFA - Hardcore','1vs1','2vs2']],['period','Period','select',['today','week','month','global']],['score','Score','number'],['time','Time'],['country','Country']]},
+      battleMatches:{title:'Battle Match',endpoint:'battleMatches',columns:['mode','status','teamA','teamB','score'],fields:[['mode','Mode','select',['1vs1','2vs2']],['status','Status','select',['waiting','live','finished','cancelled']],['teamA','Team A'],['teamB','Team B'],['score','Score'],['reward','Reward','number'],['startedAt','Started At'],['endedAt','Ended At']]}
+    };
+    var current = 'users';
+    var items = [];
+    var editing = null;
+
+    function api(path, options) {
+      options = options || {};
+      options.headers = Object.assign({'Content-Type':'application/json'}, options.headers || {});
+      return fetch(path, options).then(function(res){ return res.json().then(function(body){ if(!res.ok) throw body; return body; }); });
+    }
+    function text(value) { return value == null ? '' : String(value); }
+    function esc(value) { return text(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+    function setStatus(message, error) { var el=document.getElementById('status'); el.style.color=error?'#b42318':'#52606d'; el.textContent=message||''; }
+    function showApp() { document.getElementById('login').style.display='none'; document.getElementById('app').style.display='block'; load(current); }
+    function showLogin() { document.getElementById('login').style.display='block'; document.getElementById('app').style.display='none'; }
+    function renderNav() {
+      var nav = document.getElementById('nav');
+      nav.innerHTML = Object.keys(modules).map(function(key){ return '<button data-module="'+key+'" class="'+(key===current?'active':'')+'">'+modules[key].title+'</button>'; }).join('');
+    }
+    function load(key) {
+      current = key || current;
+      renderNav();
+      document.getElementById('title').textContent = modules[current].title;
+      setStatus('Loading...');
+      api('/api/admin/' + modules[current].endpoint).then(function(data){ items = data.items || []; renderTable(); setStatus(items.length + ' item loaded.'); }).catch(function(err){ setStatus(err.message || 'Load failed.', true); });
+    }
+    function renderTable() {
+      var mod = modules[current];
+      var q = document.getElementById('search').value.toLowerCase();
+      var filtered = items.filter(function(item){ return JSON.stringify(item).toLowerCase().indexOf(q) !== -1; });
+      document.getElementById('thead').innerHTML = '<tr>' + mod.columns.map(function(c){return '<th>'+esc(c)+'</th>';}).join('') + '<th>Actions</th></tr>';
+      document.getElementById('tbody').innerHTML = filtered.map(function(item){
+        return '<tr>' + mod.columns.map(function(c){return '<td>'+esc(item[c])+'</td>';}).join('') + '<td class="actions"><button class="btn secondary" data-edit="'+esc(item.id)+'">Edit</button></td></tr>';
+      }).join('');
+    }
+    function openModal(item) {
+      editing = item || null;
+      document.getElementById('modalTitle').textContent = (editing ? 'Edit ' : 'Add ') + modules[current].title;
+      document.getElementById('deleteBtn').style.display = editing ? '' : 'none';
+      document.getElementById('form').innerHTML = modules[current].fields.map(function(field){
+        var key=field[0], label=field[1], type=field[2] || 'text', options=field[3] || [], value=editing ? editing[key] : '';
+        if (type === 'checkbox') return '<div class="field"><label>'+esc(label)+'</label><select name="'+key+'"><option value="false">No</option><option value="true" '+(value===true?'selected':'')+'>Yes</option></select></div>';
+        if (type === 'select') return '<div class="field"><label>'+esc(label)+'</label><select name="'+key+'">'+options.map(function(opt){return '<option value="'+esc(opt)+'" '+(String(value)===String(opt)?'selected':'')+'>'+esc(opt)+'</option>';}).join('')+'</select></div>';
+        if (type === 'textarea') return '<div class="field full"><label>'+esc(label)+'</label><textarea name="'+key+'">'+esc(value)+'</textarea></div>';
+        return '<div class="field"><label>'+esc(label)+'</label><input name="'+key+'" type="'+type+'" value="'+esc(value)+'"></div>';
+      }).join('');
+      document.getElementById('modal').classList.add('open');
+    }
+    function closeModal() { document.getElementById('modal').classList.remove('open'); editing = null; }
+    function formData() {
+      var data = {};
+      Array.prototype.forEach.call(document.getElementById('form').elements, function(el){
+        if (!el.name) return;
+        if (el.value === '' && el.name === 'password') return;
+        if (el.value === 'true') data[el.name] = true;
+        else if (el.value === 'false') data[el.name] = false;
+        else data[el.name] = el.type === 'number' ? Number(el.value || 0) : el.value;
+      });
+      return data;
+    }
+    function save() {
+      var endpoint = '/api/admin/' + modules[current].endpoint + (editing ? '/' + encodeURIComponent(editing.id) : '');
+      api(endpoint, {method: editing ? 'PUT' : 'POST', body: JSON.stringify(formData())}).then(function(){ closeModal(); load(current); }).catch(function(err){ setStatus(err.message || 'Save failed.', true); });
+    }
+    function remove() {
+      if (!editing || !confirm('Delete this item?')) return;
+      api('/api/admin/' + modules[current].endpoint + '/' + encodeURIComponent(editing.id), {method:'DELETE'}).then(function(){ closeModal(); load(current); }).catch(function(err){ setStatus(err.message || 'Delete failed.', true); });
+    }
+    document.getElementById('loginBtn').onclick = function(){
+      api('/api/admin/login', {method:'POST', body:JSON.stringify({username:document.getElementById('loginUser').value,password:document.getElementById('loginPass').value})}).then(showApp).catch(function(err){document.getElementById('loginStatus').textContent=err.message||'Login failed.';});
+    };
+    document.getElementById('logoutBtn').onclick = function(){ api('/api/admin/logout',{method:'POST',body:'{}'}).then(showLogin); };
+    document.getElementById('nav').onclick = function(e){ if(e.target.dataset.module) load(e.target.dataset.module); };
+    document.getElementById('addBtn').onclick = function(){ openModal(null); };
+    document.getElementById('reloadBtn').onclick = function(){ load(current); };
+    document.getElementById('search').oninput = renderTable;
+    document.getElementById('tbody').onclick = function(e){ if(e.target.dataset.edit) openModal(items.filter(function(item){return item.id===e.target.dataset.edit;})[0]); };
+    document.getElementById('closeModal').onclick = closeModal;
+    document.getElementById('saveBtn').onclick = save;
+    document.getElementById('deleteBtn').onclick = remove;
+    api('/api/admin/session').then(function(data){ data.authenticated ? showApp() : showLogin(); }).catch(showLogin);
+  </script>
+</body>
+</html>

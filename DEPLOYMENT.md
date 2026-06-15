@@ -87,6 +87,27 @@ Dari PowerShell lokal di folder project:
 
 Lalu buka GitHub tab `Actions`. Kalau hijau, auto deploy berhasil.
 
+## Admin Panel
+
+Admin panel tersedia di:
+
+```text
+https://bubblev2.site/admin
+```
+
+Set password admin di file `.env` VPS:
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=ganti_password_panjang
+```
+
+Lalu restart:
+
+```bash
+pm2 restart bubblev2
+```
+
 ## Manual Update Jika Dibutuhkan
 
 Jalankan di VPS:
