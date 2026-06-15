@@ -951,8 +951,8 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-member-row {
-        background: #fff09a;
-        border-bottom: 1px solid #f0e188;
+        background: #fff;
+        border-bottom: 1px solid #eee;
     }
 
     .guild-member-role {
@@ -3131,7 +3131,7 @@ $(function () {
         var memberId = encodeURIComponent(member.id);
 
         if (member.isSelf) {
-            return memberRole === 'leader' ? '<span class="guild-role-badge">Leader</span>' : '';
+            return '';
         }
 
         if (viewerRole === 'leader') {
