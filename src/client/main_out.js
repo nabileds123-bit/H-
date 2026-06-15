@@ -647,16 +647,18 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         var from = len - 15;
         if (from < 0) from = 0;
         for (var i = 0; i < (len - from); i++) {
-            var chatName = new UText(18, chatBoard[i + from].color);
-            chatName.setValue(chatBoard[i + from].name);
+            var chatItem = chatBoard[len - 1 - i];
+            var lineY = 20 + 24 * i;
+            var chatName = new UText(18, chatItem.color);
+            chatName.setValue(chatItem.name);
             var width = chatName.getWidth();
             var a = chatName.render();
-            ctx.drawImage(a, 15, chatCanvas.height / scaleFactor - 24 * (len - i - from));
+            ctx.drawImage(a, 15, lineY);
 
             var chatText = new UText(18, '#666666');
-            chatText.setValue(':' + chatBoard[i + from].message);
+            chatText.setValue(':' + chatItem.message);
             a = chatText.render();
-            ctx.drawImage(a, 15 + width * 1.8, chatCanvas.height / scaleFactor - 24 * (len - from - i));
+            ctx.drawImage(a, 15 + width * 1.8, lineY);
         }
         //ctx.restore();
     }
