@@ -951,7 +951,7 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-member-row {
-        background: #fff;
+        background: #fff !important;
         border-bottom: 1px solid #eee;
     }
 
@@ -989,8 +989,8 @@ $(document).on('keyup', function(input) {
         display: inline-block;
         padding: 3px 8px;
         border-radius: 3px;
-        background: #ffe27a;
-        color: #5c4a00;
+        background: transparent;
+        color: #555;
         font-size: 12px;
         font-weight: bold;
         line-height: 1;
@@ -3172,7 +3172,7 @@ $(function () {
             var roleText = role.charAt(0).toUpperCase() + role.slice(1);
 
             return [
-                '<div class="guild-member-row" data-member-id="' + member.id + '">',
+                '<div class="guild-member-row" data-member-id="' + member.id + '" data-member-role="' + role + '">',
                 '<span class="guild-member-role">' + roleText + '</span>',
                 '<span class="guild-member-name">' + escapeHtml(member.name) + '</span>',
                 '<span class="guild-member-level">' + (member.level || 1) + '</span>',
