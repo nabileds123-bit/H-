@@ -671,8 +671,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
         chatBoard.push({
             "name": chatName,
-            "color": isGuildChat ? "#ffd54a" : color,
-            "textColor": isGuildChat ? "#ffd54a" : "#777777",
+            "color": color,
+            "textColor": isGuildChat ? "#ff9800" : "#777777",
             "message": chatMessage,
             "time": Date.now(),
             "isGuild": isGuildChat
@@ -719,14 +719,14 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         chatCanvas.height = (24 * 15 + 8) * scaleFactor;
 
         ctx.scale(scaleFactor, scaleFactor);
-        ctx.font = "18px Ubuntu";
+        ctx.font = "14px Ubuntu";
         ctx.textBaseline = "top";
         ctx.globalAlpha = 1; // tidak pakai fade
 
         var startY = 8;
         var y = startY;
 
-        var lineHeight = 22;
+        var lineHeight = 18;
         var paddingX = 8;
         var chatWidth = chatCanvas.width / scaleFactor;
         var maxY = chatCanvas.height / scaleFactor - 8;
@@ -783,7 +783,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             if (y + lineHeight > maxY) break;
 
             // nama player
-            ctx.fillStyle = msg.isGuild ? "#ffd54a" : (msg.color || "#ff3333");
+            ctx.fillStyle = msg.color || "#ff3333";
             ctx.fillText(nameText, nameX, y);
 
             // pesan baris pertama
