@@ -2878,7 +2878,7 @@ $(function () {
 
     function updateGuildUi() {
         var guildTag = String(localStorage.getItem('authGuildTag') || '').trim();
-        var guildName = guildTag ? '[' + guildTag + ']' : 'N/A';
+        var guildName = guildTag || 'N/A';
 
         $('#accountGuildText').empty();
         if (guildTag) {
