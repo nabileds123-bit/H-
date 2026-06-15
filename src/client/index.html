@@ -2167,7 +2167,7 @@ $(document).on('keyup', function(input) {
                     <option value="TK-Turkey">Turkey</option>
                     <option value="JP-Tokyo">East Asia</option>
                     <option value="CN-China">China</option>
-                    <option value="SG-Singapore">Oceania</option>
+                    <option value="SG-Singapore">Southeast Asia</option>
                 </select>
             </div>
             <div>
@@ -2683,7 +2683,7 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Region</div>
-                    <div class="battle-settings-value">Oceania</div>
+                    <div id="battleLobbyRegion" class="battle-settings-value">Southeast Asia</div>
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Queue</div>
@@ -2836,9 +2836,57 @@ $(function () {
         return hardcoreRooms[Math.floor(Math.random() * hardcoreRooms.length)];
     }
 
+    function getClientTimeZone() {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        } catch (err) {
+            return '';
+        }
+    }
+
+    function getRegionForClient() {
+        var timezone = getClientTimeZone();
+
+        if (/Asia\/(Jakarta|Pontianak|Makassar|Jayapura|Singapore|Kuala_Lumpur|Bangkok|Ho_Chi_Minh|Manila|Brunei|Phnom_Penh|Vientiane|Yangon)/.test(timezone)) {
+            return 'SG-Singapore';
+        }
+
+        if (/Asia\/(Tokyo|Seoul)/.test(timezone)) {
+            return 'JP-Tokyo';
+        }
+
+        if (/Asia\/(Shanghai|Hong_Kong|Taipei|Macau|Chongqing|Urumqi)/.test(timezone)) {
+            return 'CN-China';
+        }
+
+        if (/Europe\//.test(timezone)) {
+            return 'EU-London';
+        }
+
+        if (/America\/(Los_Angeles|Vancouver|Tijuana|Phoenix|Denver|Boise|Portland|San_Francisco|Seattle)/.test(timezone)) {
+            return 'US-Fremont';
+        }
+
+        if (/America\//.test(timezone)) {
+            return 'US-Atlanta';
+        }
+
+        return 'EU-London';
+    }
+
+    function getRegionLabel(region) {
+        var option = $('#region option[value="' + region + '"]');
+        return option.length ? option.text().replace(/\s*\([^)]*\)\s*$/, '') : 'Southeast Asia';
+    }
+
+    function updateBattleRegionLabel() {
+        $('#battleLobbyRegion').text(getRegionLabel($('#region').val()));
+    }
+
     function initRegionSelection() {
         var savedRegion = localStorage.getItem('location');
-        var selectedRegion = savedRegion || $('#region').val() || 'EU-London';
+        var hasManualRegion = localStorage.getItem('regionManuallySelected') === '1';
+        var selectedRegion = hasManualRegion && savedRegion ? savedRegion : getRegionForClient();
 
         if (selectedRegion) {
             $('#region').val(selectedRegion);
@@ -2852,10 +2900,16 @@ $(function () {
             window.setRegion($('#region').val());
         }
 
+        updateBattleRegionLabel();
+
         $('#region').on('change', function () {
+            localStorage.setItem('regionManuallySelected', '1');
+
             if (typeof window.setRegion === 'function') {
                 window.setRegion(this.value);
             }
+
+            updateBattleRegionLabel();
         });
     }
 
@@ -3051,6 +3105,7 @@ $(function () {
         $('#highScoreDialog').removeClass('is-open');
         $('#accountDetailDialog').removeClass('is-open');
         $('#battleLobbyMode').text(battleLobbyInviteMode.replace('vs', ' vs '));
+        updateBattleRegionLabel();
         $('#battleLobbyPlayerCount').text(battleLobbyInviteMode === '2vs2' ? '1/4' : '1/2');
         $('#battleLobbyPlayerName').text(authUser || $('#nick').val() || 'OM STROOOOOOONG');
         $('#battleLobbyDialog').addClass('is-open');
