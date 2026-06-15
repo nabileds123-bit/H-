@@ -659,7 +659,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         chatCanvas.height = (24 * 15 + 8) * scaleFactor;
         ctx.scale(scaleFactor, scaleFactor);
         var nowtime = Date.now();
-        var startY = chatCanvas.height / scaleFactor - 24 * visibleCount;
+        // chat mulai dari atas canvas
+        var startY = 8;
 
         for (var i = 0; i < (len - from); i++) {
             var chatItem = chatBoard[i + from];
