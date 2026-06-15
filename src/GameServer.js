@@ -168,6 +168,53 @@ GameServer.prototype.start = function() {
         }
       }
 
+      if (pathname == '/client/info.php' || pathname == '/info.php') {
+        var baseRegions = [
+          'US-Fremont',
+          'US-Atlanta',
+          'BR-Brazil',
+          'EU-London',
+          'RU-Russia',
+          'TK-Turkey',
+          'JP-Tokyo',
+          'CN-China',
+          'SG-Singapore'
+        ];
+        var regions = {};
+        var onlinePlayers = 0;
+
+        for (var i = 0; i < self.allClients.length; i++) {
+          var client = self.allClients[i];
+          if (client && client.readyState === WebSocket.OPEN && client.playerTracker && client.playerTracker.getStatus()) {
+            onlinePlayers++;
+          }
+        }
+
+        for (var r = 0; r < baseRegions.length; r++) {
+          regions[baseRegions[r]] = {
+            numPlayers: baseRegions[r] === 'SG-Singapore' ? onlinePlayers : 0,
+            numRealms: 1,
+            numServers: baseRegions[r] === 'SG-Singapore' ? 1 : 0
+          };
+        }
+
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+          MASTER_START: Date.now(),
+          regions: regions,
+          totals: {
+            numPlayers: onlinePlayers,
+            numRealms: 1,
+            numServers: 1
+          }
+        }));
+        return;
+      }
+
       if (pathname == '/client/checkdir.php' || pathname == '/checkdir.php') {
         var skinsDir = path.join(__dirname, 'skins');
         fs.readdir(skinsDir, function(err, files) {

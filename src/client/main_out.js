@@ -346,7 +346,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 numPlayers[d] = numPlayers[d] || 0;
                 numPlayers[d] += a.regions[region].numPlayers
             }
-            for (var numplayer in numPlayers) wjQuery('#region option[value="' + numplayer + '"]').text(playerStat[numplayer] + " (" + numPlayers[numplayer] + " players)")
+            for (var numplayer in numPlayers) {
+                wjQuery('#region option[value="' + numplayer + '"]').text(playerStat[numplayer] + " (" + numPlayers[numplayer] + " Player)")
+            }
         }, "json")
     }
 
