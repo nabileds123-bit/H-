@@ -9,7 +9,7 @@ var RESET_EXPIRES = 60 * 60 * 1000;
 var PLAYER_SKIN_COST = 150;
 var GUILD_SKIN_COST = 50;
 var PREMIUM_COST = 500;
-var PREMIUM_DAYS = 30;
+var PREMIUM_DAYS = 7;
 var MAX_SKIN_BYTES = 2 * 1024 * 1024;
 var CELL_COLORS = [
     '#000000',
@@ -79,6 +79,20 @@ function isValidPassword(value) {
 function normalizeCellColor(value) {
     var color = String(value || '').trim().toUpperCase();
     return CELL_COLORS.indexOf(color) !== -1 ? color : null;
+}
+
+function isPremiumActive(user) {
+    if (String(user.accountType || '').toLowerCase() !== 'premium') return false;
+
+    var premiumUntil = String(user.premiumUntil || '').trim();
+    if (!premiumUntil) return true;
+
+    var expiresAt = Date.parse(premiumUntil);
+    if (isNaN(expiresAt)) {
+        expiresAt = parseInt(premiumUntil, 10);
+    }
+
+    return !expiresAt || expiresAt > Date.now();
 }
 
 function publicAuthUser(user, lastLoginAt) {
@@ -455,6 +469,13 @@ function handleBuyPremium(req, res) {
             return sendJson(res, 401, { ok: false, message: 'Please login again.' });
         }
 
+        if (isPremiumActive(user)) {
+            return sendJson(res, 400, {
+                ok: false,
+                message: 'Premium masih aktif. Tidak perlu membeli ulang sebelum expired.'
+            });
+        }
+
         var currentPoints = parseInt(user.points, 10) || 0;
         if (currentPoints < PREMIUM_COST) {
             return sendJson(res, 400, {
@@ -464,15 +485,7 @@ function handleBuyPremium(req, res) {
         }
 
         var now = Date.now();
-        var currentPremiumUntil = String(user.premiumUntil || '').trim();
-        var currentExpiresAt = currentPremiumUntil ? Date.parse(currentPremiumUntil) : 0;
-
-        if (isNaN(currentExpiresAt)) {
-            currentExpiresAt = parseInt(currentPremiumUntil, 10) || 0;
-        }
-
-        var startsAt = currentExpiresAt > now ? currentExpiresAt : now;
-        var premiumUntil = new Date(startsAt + PREMIUM_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        var premiumUntil = new Date(now + PREMIUM_DAYS * 24 * 60 * 60 * 1000).toISOString();
         var updatedUser = users.updateUser(user.id, {
             accountType: 'Premium',
             premiumUntil: premiumUntil,

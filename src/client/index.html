@@ -3061,9 +3061,15 @@ $(function () {
 
     function showAccountView() {
         $('#homeView, #instructions, #loginView, #registerView, #forgotPasswordView, #resetPasswordView, #changePasswordView, #uploadSkinView').hide();
+        var premiumActive = hasActivePremium();
         $('#accountNick').text(authUser || '-');
-        $('#accountType').text(localStorage.getItem('authAccountType') || 'Free');
-        $('#buyPremiumLink').text(hasActivePremium() ? '(Extend Premium)' : '(Buy Premium)');
+        $('#accountType')
+            .text(premiumActive ? 'Premium' : 'Free')
+            .toggleClass('account-premium', premiumActive)
+            .toggleClass('account-free', !premiumActive);
+        $('#buyPremiumLink')
+            .text('(Buy Premium)')
+            .toggle(!premiumActive);
         $('#accountStatus').removeClass('text-danger text-success').addClass('text-muted').text('');
         $('#accountPoints').text(localStorage.getItem('authPoints') || '0');
         $('#accountLevel').text(localStorage.getItem('authLevel') || '1');
