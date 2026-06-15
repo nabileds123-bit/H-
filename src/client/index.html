@@ -3170,9 +3170,32 @@ $(function () {
     }
 
     function renderGuildMembers() {
-        var rows = guildMembers.map(function(member, index) {
+        var memberRank = 0;
+        var sortedMembers = guildMembers.slice().sort(function(left, right) {
+            var leftRole = String(left.role || 'member').toLowerCase();
+            var rightRole = String(right.role || 'member').toLowerCase();
+            var order = { leader: 0, staff: 1, member: 2 };
+            var leftOrder = order.hasOwnProperty(leftRole) ? order[leftRole] : order.member;
+            var rightOrder = order.hasOwnProperty(rightRole) ? order[rightRole] : order.member;
+
+            if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+            if (leftRole === 'member' && rightRole === 'member') {
+                return (parseInt(right.level, 10) || 0) - (parseInt(left.level, 10) || 0);
+            }
+
+            return 0;
+        });
+
+        var rows = sortedMembers.map(function(member) {
             var role = String(member.role || 'member').toLowerCase();
-            var roleText = role.charAt(0).toUpperCase() + role.slice(1);
+            var roleText = '';
+
+            if (role === 'leader') {
+                roleText = 'Leader';
+            } else if (role === 'member') {
+                memberRank += 1;
+                roleText = String(memberRank);
+            }
 
             return [
                 '<div class="guild-member-row" data-member-id="' + member.id + '" data-member-role="' + role + '">',
