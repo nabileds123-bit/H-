@@ -664,6 +664,7 @@ GameServer.prototype.mainLoop = function() {
                     // Update leaderboard with the gamemode's method
                     this.leaderboard = [];
                     this.gameMode.updateLB(this);
+                    this.updateMatchLeaderboardStats(world);
                     world.tickMain = 0;
                 }
             });
@@ -738,12 +739,133 @@ GameServer.prototype.sendGuildChatPacket = function(client, sender, message) {
     client.sendPacket(new Packet.Chat(sender, message, flags));
 }
 
+GameServer.prototype.getXpMax = function(level) {
+    level = Math.max(1, parseInt(level, 10) || 1);
+    return 500 + (level - 1) * 250 + Math.floor(Math.pow(level - 1, 1.7) * 120);
+}
+
+GameServer.prototype.getTopPositionBonus = function(rank) {
+    rank = parseInt(rank, 10) || 0;
+    if (rank === 1) return 50;
+    if (rank === 2) return 30;
+    if (rank === 3) return 20;
+    if (rank >= 4 && rank <= 10) return 10;
+    return 0;
+}
+
+GameServer.prototype.calculateMatchXp = function(player) {
+    var now = Date.now();
+    var timeAliveSeconds = Math.floor(Math.max(0, now - (player.matchStartTime || now)) / 1000);
+    var leaderboardTimeSeconds = Math.floor(Math.max(0, player.matchLeaderboardTimeMs || 0) / 1000);
+    var leaderboardBonus = Math.floor(leaderboardTimeSeconds / 10);
+    var topPositionBonus = this.getTopPositionBonus(player.matchTopPosition);
+
+    var xpGain =
+        (player.matchFoodEaten || 0) +
+        (player.matchCellsEaten || 0) * 8 +
+        Math.floor((player.matchHighestMass || 0) / 50) +
+        Math.floor(timeAliveSeconds / 20) +
+        leaderboardBonus +
+        topPositionBonus;
+
+    xpGain = Math.min(xpGain, 500);
+    xpGain = Math.max(xpGain, 1);
+    return xpGain;
+}
+
+GameServer.prototype.applyMatchXp = function(player) {
+    var xpGain = this.calculateMatchXp(player);
+    var userId = player.authUser && player.authUser.id;
+
+    if (!userId) {
+        return {
+            xpGain: 0,
+            xp: 0,
+            xpMax: this.getXpMax(1),
+            level: 1,
+            leveledUp: 0
+        };
+    }
+
+    var currentUser = userStore.findByUsernameOrEmail(player.authUser.username);
+    var level = Math.max(1, parseInt(currentUser && currentUser.level, 10) || 1);
+    var xp = Math.max(0, parseInt(currentUser && currentUser.xp, 10) || 0) + xpGain;
+    var xpMax = this.getXpMax(level);
+    var leveledUp = 0;
+
+    while (xp >= xpMax) {
+        xp -= xpMax;
+        level++;
+        leveledUp++;
+        xpMax = this.getXpMax(level);
+    }
+
+    var updatedUser = userStore.updateUser(userId, {
+        xp: xp,
+        xpMax: xpMax,
+        level: level
+    });
+
+    if (updatedUser) {
+        player.authUser.xp = xp;
+        player.authUser.xpMax = xpMax;
+        player.authUser.level = level;
+    }
+
+    return {
+        xpGain: xpGain,
+        xp: xp,
+        xpMax: xpMax,
+        level: level,
+        leveledUp: leveledUp
+    };
+}
+
+GameServer.prototype.updateMatchLeaderboardStats = function(world) {
+    var now = Date.now();
+    var leaderboard = world && world.leaderboard ? world.leaderboard : this.leaderboard;
+    var clients = world && world.clients ? world.clients : this.clients;
+
+    for (var i = 0; i < clients.length; i++) {
+        var socket = clients[i];
+        var player = socket && socket.playerTracker;
+        if (!player || player.cells.length <= 0 || !player.matchStartTime) continue;
+
+        var lastCheck = player.matchLastLeaderboardCheck || now;
+        var delta = now - lastCheck;
+        var rank = 0;
+
+        for (var j = 0; j < leaderboard.length; j++) {
+            if (leaderboard[j] === player) {
+                rank = j + 1;
+                break;
+            }
+        }
+
+        if (rank === 1) {
+            player.matchLeaderboardTimeMs = (player.matchLeaderboardTimeMs || 0) + delta;
+        }
+
+        if (rank > 0 && (player.matchTopPosition === 0 || rank < player.matchTopPosition)) {
+            player.matchTopPosition = rank;
+        }
+
+        player.matchLastLeaderboardCheck = now;
+    }
+}
+
 GameServer.prototype.sendMatchResult = function(player) {
     if (!player || !player.socket) return;
+    var xpResult = this.applyMatchXp(player);
 
     var payload = JSON.stringify({
         foodEaten: player.matchFoodEaten || 0,
-        cellsEaten: player.matchCellsEaten || 0
+        cellsEaten: player.matchCellsEaten || 0,
+        xpGain: xpResult.xpGain || 0,
+        xp: xpResult.xp || 0,
+        xpMax: xpResult.xpMax || this.getXpMax(1),
+        level: xpResult.level || 1,
+        leveledUp: xpResult.leveledUp || 0
     });
 
     var buf = new ArrayBuffer(1 + payload.length * 2 + 2);
@@ -799,6 +921,11 @@ GameServer.prototype.spawnPlayer = function(client) {
    client.matchFoodEaten = 0;
    client.matchCellsEaten = 0;
    client.matchResultSent = false;
+   client.matchStartTime = Date.now();
+   client.matchHighestMass = 0;
+   client.matchLeaderboardTimeMs = 0;
+   client.matchTopPosition = 0;
+   client.matchLastLeaderboardCheck = Date.now();
    if(config.serverGamemode == 2) {
    var pos = this.getCertainPosition(0,0);
    } else {

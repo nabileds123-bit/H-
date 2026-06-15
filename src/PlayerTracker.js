@@ -19,6 +19,11 @@ function PlayerTracker(gameServer, socket) {
     this.matchFoodEaten = 0;
     this.matchCellsEaten = 0;
     this.matchResultSent = false;
+    this.matchStartTime = 0;
+    this.matchHighestMass = 0;
+    this.matchLeaderboardTimeMs = 0;
+    this.matchTopPosition = 0;
+    this.matchLastLeaderboardCheck = 0;
     
     this.team = 0;
     this.spectate = false;
@@ -125,6 +130,13 @@ PlayerTracker.prototype.update = function() {
         // Eject mass
         this.gameServer.ejectMass(this);
         this.socket.packetHandler.pressW = false;
+    }
+
+    if (this.cells.length > 0) {
+        var currentMass = ~~(this.getScore(true) / 100);
+        if (currentMass > this.matchHighestMass) {
+            this.matchHighestMass = currentMass;
+        }
     }
     
 	// Remove nodes from visible nodes if possible

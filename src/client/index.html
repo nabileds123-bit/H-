@@ -3796,6 +3796,7 @@ $(function () {
             $('#helloXpPanel').removeClass('is-visible');
         }
     }
+    window.updatePlayerExpVisibility = updatePlayerExpVisibility;
 
     function refreshInitialHomeXp() {
         if (!isLoggedIn() || resetToken) return;

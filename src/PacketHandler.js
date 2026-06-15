@@ -41,6 +41,9 @@ function applyAuthUserToClient(client, user) {
         guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
         activeSkinType: user.activeSkinType || 'player'
     };
+    client.authUser.xp = parseInt(user.xp, 10) || 0;
+    client.authUser.xpMax = parseInt(user.xpMax, 10) || 0;
+    client.authUser.level = parseInt(user.level, 10) || 1;
     client.setGuildTag(client.authUser.guildTag);
 }
 
