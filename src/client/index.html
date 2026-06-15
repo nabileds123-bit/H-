@@ -927,7 +927,7 @@ $(document).on('keyup', function(input) {
     .guild-member-head,
     .guild-member-row {
         display: grid;
-        grid-template-columns: 82px 1fr 50px;
+        grid-template-columns: 82px 1fr 38px 24px;
         align-items: center;
         min-height: 36px;
         font-size: 14px;
@@ -947,7 +947,7 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-member-head span:nth-child(3) {
-        text-align: center;
+        text-align: left;
     }
 
     .guild-member-row {
@@ -982,7 +982,20 @@ $(document).on('keyup', function(input) {
 
     .guild-member-level,
     .guild-member-status {
-        text-align: center;
+        text-align: left;
+    }
+
+    .guild-member-online {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #aaa;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18);
+    }
+
+    .guild-member-online.is-online {
+        background: #70c900;
     }
 
     .guild-member-actions {
@@ -2459,6 +2472,7 @@ $(document).on('keyup', function(input) {
                         <span>#</span>
                         <span>Name</span>
                         <span>Level</span>
+                        <span></span>
                     </div>
                     <div id="guildMemberList">
                     </div>
@@ -3202,6 +3216,7 @@ $(function () {
                 '<span class="guild-member-role">' + roleText + getGuildActionHtml(member) + '</span>',
                 '<span class="guild-member-name">' + escapeHtml(member.name) + '</span>',
                 '<span class="guild-member-level">' + (member.level || 1) + '</span>',
+                '<span class="guild-member-status"><span class="guild-member-online ' + (member.online ? 'is-online' : '') + '"></span></span>',
                 '</div>'
             ].join('');
         });
@@ -3231,9 +3246,9 @@ $(function () {
             text: '[' + guildTag + ']'
         }));
         guildMembers = [
-            { id: 'leader', name: leaderName, role: 'leader', level: 1, isSelf: guildViewerRole === 'leader' },
-            { id: 'staff', name: 'Staff Player', role: 'staff', level: 1, isSelf: guildViewerRole === 'staff' },
-            { id: 'member', name: 'Member Player', role: 'member', level: 1, isSelf: guildViewerRole === 'member' }
+            { id: 'leader', name: leaderName, role: 'leader', level: 1, online: true, isSelf: guildViewerRole === 'leader' },
+            { id: 'staff', name: 'Staff Player', role: 'staff', level: 1, online: true, isSelf: guildViewerRole === 'staff' },
+            { id: 'member', name: 'Member Player', role: 'member', level: 1, online: false, isSelf: guildViewerRole === 'member' }
         ];
         renderGuildMembers();
         $('#guildDetailView').css('display', 'flex');
