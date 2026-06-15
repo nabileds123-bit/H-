@@ -85,7 +85,9 @@ function GameServer(mult, prt) {
 	    serverPlaceholder: 'Nick',
         maintenanceMode: 0,
         maintenanceKey: 'change-this-key',
-        maintenanceImage: '/img/bg.png'
+        maintenanceImage: '/img/bg.png',
+        disabledWorlds: '',
+        defaultWorld: ''
     };
     // Parse config
     this.loadConfig();
@@ -288,7 +290,7 @@ GameServer.prototype.start = function() {
     }
     
     // Start Main Loop
-    setInterval(this.mainLoop.bind(this), 1);
+    setInterval(this.mainLoop.bind(this), 50);
     
     // Done
     console.log("[Game] Listening on port %d", listenPort);
@@ -335,7 +337,7 @@ GameServer.prototype.start = function() {
         ws.remotePort = ws._socket.remotePort;
         ws.playerTracker = new PlayerTracker(this, ws);
         ws.packetHandler = new PacketHandler(this, ws);
-        this.setClientWorld(ws, ':x5');
+        this.setClientWorld(ws, this.getDefaultWorldId());
         ws.on('message', ws.packetHandler.handleMessage.bind(ws.packetHandler));
 
         var bindObject = { server: this, socket: ws };
@@ -369,17 +371,35 @@ GameServer.prototype.createWorld = function(id, gameMode, config) {
 }
 
 GameServer.prototype.initWorlds = function() {
-    this.worlds[':x5'] = this.createWorld(':x5', new Gamemode.X5(), this.getModeConfig('x5'));
-    this.worlds[':hardcore:1'] = this.createWorld(':hardcore:1', new Gamemode.FFA(), this.getModeConfig('hardcore'));
-    this.worlds[':hardcore:2'] = this.createWorld(':hardcore:2', new Gamemode.FFA(), this.getModeConfig('hardcore'));
-    this.worlds[':teams'] = this.createWorld(':teams', new Gamemode.Teams(), this.getModeConfig('teams'));
-    this.worlds[':experimental'] = this.createWorld(':experimental', new Gamemode.Experimental(), this.getModeConfig('experimental'));
-    this.worlds[':battle:1v1'] = this.createWorld(':battle:1v1', new Gamemode.FFA(), this.getModeConfig('battle1v1'));
-    this.worlds[':battle:2v2'] = this.createWorld(':battle:2v2', new Gamemode.FFA(), this.getModeConfig('battle2v2'));
-    this.setActiveWorld(this.worlds[':x5']);
+    if (!this.isWorldDisabled(':x5')) {
+        this.worlds[':x5'] = this.createWorld(':x5', new Gamemode.X5(), this.getModeConfig('x5'));
+    }
+    if (!this.isWorldDisabled(':hardcore:1')) {
+        this.worlds[':hardcore:1'] = this.createWorld(':hardcore:1', new Gamemode.FFA(), this.getModeConfig('hardcore'));
+    }
+    if (!this.isWorldDisabled(':hardcore:2')) {
+        this.worlds[':hardcore:2'] = this.createWorld(':hardcore:2', new Gamemode.FFA(), this.getModeConfig('hardcore'));
+    }
+    if (!this.isWorldDisabled(':teams')) {
+        this.worlds[':teams'] = this.createWorld(':teams', new Gamemode.Teams(), this.getModeConfig('teams'));
+    }
+    if (!this.isWorldDisabled(':experimental')) {
+        this.worlds[':experimental'] = this.createWorld(':experimental', new Gamemode.Experimental(), this.getModeConfig('experimental'));
+    }
+    if (!this.isWorldDisabled(':battle:1v1')) {
+        this.worlds[':battle:1v1'] = this.createWorld(':battle:1v1', new Gamemode.FFA(), this.getModeConfig('battle1v1'));
+    }
+    if (!this.isWorldDisabled(':battle:2v2')) {
+        this.worlds[':battle:2v2'] = this.createWorld(':battle:2v2', new Gamemode.FFA(), this.getModeConfig('battle2v2'));
+    }
+    this.setActiveWorld(this.worlds[this.getDefaultWorldId()]);
 }
 
 GameServer.prototype.setActiveWorld = function(world) {
+    if (!world) {
+        throw new Error('No enabled game world is available.');
+    }
+
     this.activeWorld = world;
     this.clients = world.clients;
     this.nodes = world.nodes;
@@ -397,6 +417,45 @@ GameServer.prototype.saveActiveWorld = function() {
 
     this.activeWorld.currentFood = this.currentFood;
     this.activeWorld.leaderboard = this.leaderboard;
+}
+
+GameServer.prototype.isWorldDisabled = function(worldId) {
+    var disabled = String(this.config.disabledWorlds || '').split(',');
+    worldId = String(worldId || '').trim().toLowerCase();
+
+    for (var i = 0; i < disabled.length; i++) {
+        if (String(disabled[i] || '').trim().toLowerCase() === worldId) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+GameServer.prototype.getDefaultWorldId = function() {
+    var preferred = String(this.config.defaultWorld || '').trim();
+    var fallbacks = [
+        preferred,
+        ':hardcore:1',
+        ':x5',
+        ':battle:1v1',
+        ':battle:2v2',
+        ':hardcore:2',
+        ':teams',
+        ':experimental'
+    ];
+
+    for (var i = 0; i < fallbacks.length; i++) {
+        if (fallbacks[i] && this.worlds[fallbacks[i]]) {
+            return fallbacks[i];
+        }
+    }
+
+    for (var worldId in this.worlds) {
+        return worldId;
+    }
+
+    throw new Error('No enabled game world is available.');
 }
 
 GameServer.prototype.getModeConfig = function(prefix) {
@@ -446,9 +505,11 @@ GameServer.prototype.ensureWorldInitialized = function(world) {
 
 GameServer.prototype.withWorld = function(world, callback) {
     var previous = this.activeWorld;
+    var fallback = this.worlds[this.getDefaultWorldId()];
+
     this.saveActiveWorld();
-    this.ensureWorldInitialized(world || this.worlds[':x5']);
-    this.setActiveWorld(world || this.worlds[':x5']);
+    this.ensureWorldInitialized(world || fallback);
+    this.setActiveWorld(world || fallback);
 
     var result = callback.call(this);
 
@@ -461,20 +522,24 @@ GameServer.prototype.withWorld = function(world, callback) {
 
 GameServer.prototype.resolveWorldId = function(mode) {
     if (mode == ':hardcore') {
-        return Math.random() < 0.5 ? ':hardcore:1' : ':hardcore:2';
+        if (this.worlds[':hardcore:1'] && this.worlds[':hardcore:2']) {
+            return Math.random() < 0.5 ? ':hardcore:1' : ':hardcore:2';
+        }
+        if (this.worlds[':hardcore:1']) return ':hardcore:1';
+        if (this.worlds[':hardcore:2']) return ':hardcore:2';
     }
 
     if (this.worlds[mode]) {
         return mode;
     }
 
-    return ':x5';
+    return this.getDefaultWorldId();
 }
 
 GameServer.prototype.setClientWorld = function(socket, mode) {
     var world = this.worlds[this.resolveWorldId(mode)];
     if (!world) {
-        world = this.worlds[':x5'];
+        world = this.worlds[this.getDefaultWorldId()];
     }
 
     socket.sendPacket(new Packet.ClearNodes());
@@ -638,9 +703,22 @@ GameServer.prototype.mainLoop = function() {
     this.time = local;
 
     if (this.tick >= 50) {
+        var worldsToUpdate = [];
+        if (this.activeWorld && this.activeWorld.clients.length > 0) {
+            worldsToUpdate.push(this.activeWorld);
+        }
+
         for (var worldId in this.worlds) {
             var world = this.worlds[worldId];
-            this.withWorld(this.worlds[worldId], function() {
+            if (!world || world === this.activeWorld || world.clients.length <= 0) {
+                continue;
+            }
+            worldsToUpdate.push(world);
+        }
+
+        for (var i = 0; i < worldsToUpdate.length; i++) {
+            var world = worldsToUpdate[i];
+            this.withWorld(world, function() {
                 var config = this.getWorldConfig();
 
                 // Loop main functions
