@@ -645,33 +645,46 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     }
 
     function drawChatBoard() {
-        //chatCanvas = null;
-        if (chatBoard.length < 1) return;
+        var nowtime = Date.now();
+        var CHAT_LIFE_TIME = 15000;     // chat mulai hilang setelah 15 detik
+        var CHAT_REMOVE_DELAY = 1000;   // hilang 1 chat tiap 1 detik
+        var CHAT_MAX_WIDTH = 560;   // kecilkan kalau mau lebih cepat turun ke bawah
+
+        if (!drawChatBoard.lastRemoveTime) {
+            drawChatBoard.lastRemoveTime = 0;
+        }
+
+        // hapus chat paling lama duluan, 1 per 1
+        if (
+            chatBoard.length > 0 &&
+            nowtime - chatBoard[0].time >= CHAT_LIFE_TIME &&
+            nowtime - drawChatBoard.lastRemoveTime >= CHAT_REMOVE_DELAY
+        ) {
+            chatBoard.shift();
+            drawChatBoard.lastRemoveTime = nowtime;
+        }
+
+        if (chatBoard.length < 1) {
+            chatCanvas = null;
+            return;
+        }
 
         chatCanvas = document.createElement("canvas");
         var ctx = chatCanvas.getContext("2d");
-        var scaleFactor = Math.min(Math.max(canvasWidth / 1200, 0.75),1); //scale factor = 0.75 to 1
-        chatCanvas.width = 1000 * scaleFactor;
-        chatCanvas.height = (24 * 15 + 8) * scaleFactor;
-        ctx.scale(scaleFactor, scaleFactor);
-        var nowtime = Date.now();
 
-        // durasi chat tampil, contoh 15 detik
-        var CHAT_LIFE_TIME = 15000;
-
-        // hapus chat lama 1 per 1, bukan semuanya sekaligus
-        if (chatBoard.length > 0 && nowtime - chatBoard[0].time > CHAT_LIFE_TIME) {
-            chatBoard.shift();
-        }
-
-        // kalau setelah dihapus tidak ada chat, stop
-        if (chatBoard.length < 1) return;
-
-        // hitung ulang setelah chat lama dihapus
+        var scaleFactor = Math.min(Math.max(canvasWidth / 1200, 0.75), 1);
         var maxChatVisible = 15;
         var visibleCount = Math.min(chatBoard.length, maxChatVisible);
 
-        // posisi awal tetap dari atas
+        // ini yang bikin chat tidak tembus ke kanan
+        chatCanvas.width = Math.min(canvasWidth - 16, CHAT_MAX_WIDTH);
+        chatCanvas.height = (24 * 15 + 8) * scaleFactor;
+
+        ctx.scale(scaleFactor, scaleFactor);
+        ctx.font = "18px Ubuntu";
+        ctx.textBaseline = "top";
+        ctx.globalAlpha = 1; // tidak pakai fade
+
         var startY = 8;
         var y = startY;
 
@@ -688,9 +701,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
             for (var i = 0; i < text.length; i++) {
                 var testLine = line + text[i];
-                var testWidth = ctx.measureText(testLine).width;
 
-                if (testWidth > maxWidth && line.length > 0) {
+                if (ctx.measureText(testLine).width > maxWidth && line.length > 0) {
                     lines.push(line);
                     line = text[i];
                 } else {
@@ -708,47 +720,41 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         for (var i = 0; i < visibleCount; i++) {
             var msg = chatBoard[chatBoard.length - visibleCount + i];
 
-            // tidak pakai fade
-            ctx.globalAlpha = 1;
-            ctx.font = "18px Ubuntu";
-            ctx.textBaseline = "top";
-
             var nameText = msg.name + ": ";
             var nameX = paddingX;
-            var msgX = nameX + ctx.measureText(nameText).width;
+            var nameWidth = ctx.measureText(nameText).width;
+            var msgX = nameX + nameWidth;
 
             var firstLineWidth = chatWidth - msgX - paddingX;
             var nextLineWidth = chatWidth - paddingX * 2;
 
-            var messageText = msg.message || "";
+            var temp = wrapText(ctx, msg.message || "", firstLineWidth);
             var lines = [];
-
-            // wrap khusus: baris pertama setelah nama, baris lanjut mulai dari kiri
-            var temp = wrapText(ctx, messageText, firstLineWidth);
 
             if (temp.length > 0) {
                 lines.push(temp[0]);
 
                 var restText = temp.slice(1).join("");
                 if (restText.length > 0) {
-                    var restLines = wrapText(ctx, restText, nextLineWidth);
-                    lines = lines.concat(restLines);
+                    lines = lines.concat(wrapText(ctx, restText, nextLineWidth));
                 }
+            } else {
+                lines.push("");
             }
 
             if (y + lineHeight > maxY) break;
 
-            // gambar nama
+            // nama player
             ctx.fillStyle = msg.color || "#ff3333";
             ctx.fillText(nameText, nameX, y);
 
-            // gambar pesan baris pertama
+            // pesan baris pertama
             ctx.fillStyle = "#777777";
-            ctx.fillText(lines[0] || "", msgX, y);
+            ctx.fillText(lines[0], msgX, y);
 
             y += lineHeight;
 
-            // gambar lanjutan pesan ke bawah
+            // pesan lanjutan turun ke bawah
             for (var j = 1; j < lines.length; j++) {
                 if (y + lineHeight > maxY) break;
 
@@ -758,8 +764,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 y += lineHeight;
             }
         }
+
         ctx.globalAlpha = 1;
-        //ctx.restore();
     }
 
 
@@ -1070,7 +1076,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
         drawSplitIcon(ctx);
         drawTouch(ctx);
-        //drawChatBoard();
+        drawChatBoard();
         var deltatime = Date.now() - oldtime;
         deltatime > 1E3 / 60 ? z -= .01 : deltatime < 1E3 / 65 && (z += .01);
         .4 > z && (z = .4);
