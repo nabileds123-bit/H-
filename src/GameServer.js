@@ -102,6 +102,7 @@ function GameServer(mult, prt) {
 module.exports = GameServer;
 
 GameServer.prototype.start = function() {
+    var self = this;
     // Gamemode configurations
     for (var worldId in this.worlds) {
         this.ensureWorldInitialized(this.worlds[worldId]);
@@ -117,10 +118,6 @@ GameServer.prototype.start = function() {
     
     
     var serve = serveStatic(__dirname);
-    var maintenanceMode = parseInt(this.config.maintenanceMode) === 1;
-    var maintenanceKey = String(this.config.maintenanceKey || 'change-this-key');
-    var maintenanceImage = String(this.config.maintenanceImage || '/img/bg.png');
-
     function hasMaintenanceCookie(req) {
       var cookie = req.headers.cookie || '';
       return cookie.indexOf('maintenanceAdmin=1') !== -1;
@@ -129,6 +126,7 @@ GameServer.prototype.start = function() {
     function hasMaintenanceKey(req) {
       var query = req.url.split('?')[1] || '';
       var parts = query.split('&');
+      var maintenanceKey = String(self.config.maintenanceKey || 'change-this-key');
 
       for (var i = 0; i < parts.length; i++) {
         var pair = parts[i].split('=');
@@ -146,6 +144,7 @@ GameServer.prototype.start = function() {
     }
 
     function showMaintenance(res) {
+      var maintenanceImage = String(self.config.maintenanceImage || '/img/bg.png');
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store'
@@ -177,11 +176,11 @@ GameServer.prototype.start = function() {
         return;
       }
 
-      if (AdminServer.handle(req, res)) {
+      if (AdminServer.handle(req, res, self)) {
         return;
       }
 
-      if (maintenanceMode && hasMaintenanceKey(req)) {
+      if (parseInt(self.config.maintenanceMode) === 1 && hasMaintenanceKey(req)) {
         res.writeHead(302, {
           'Set-Cookie': 'maintenanceAdmin=1; Path=/; HttpOnly; SameSite=Lax',
           'Location': '/'
@@ -190,7 +189,8 @@ GameServer.prototype.start = function() {
         return;
       }
 
-      if (maintenanceMode && !hasMaintenanceCookie(req)) {
+      if (parseInt(self.config.maintenanceMode) === 1 && !hasMaintenanceCookie(req)) {
+        var maintenanceImage = String(self.config.maintenanceImage || '/img/bg.png');
         if (pathname !== maintenanceImage && pathname !== '/favicon.ico') {
           showMaintenance(res);
           return;

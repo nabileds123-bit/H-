@@ -76,6 +76,7 @@
       users:{title:'User / Account',endpoint:'users',columns:['username','email','accountType','points','level','guildTag','banned'],fields:[
         ['username','Username'],['email','Email'],['password','Password Baru','password'],['emailVerified','Email Verified','checkbox'],['accountType','Account Type','select',['Free','Premium']],['premiumUntil','Premium Until'],['points','Points','number'],['xp','XP','number'],['xpMax','XP Max','number'],['level','Level','number'],['cellColor','Cell Color'],['guildTag','Guild Tag'],['skin','Skin'],['banned','Banned','checkbox'],['banReason','Ban Reason','textarea']
       ]},
+      config:{title:'Server Config',endpoint:'config',columns:['key','value'],fields:[['key','Key'],['value','Value']]},
       premium:{title:'Premium',endpoint:'premium',columns:['username','type','startsAt','endsAt','active'],fields:[['username','Username'],['type','Type','select',['Premium','VIP','Moderator']],['startsAt','Starts At'],['endsAt','Ends At'],['active','Active','checkbox'],['notes','Notes','textarea']]},
       points:{title:'Points',endpoint:'points',columns:['username','amount','reason','createdAt'],fields:[['username','Username'],['amount','Amount','number'],['reason','Reason'],['createdAt','Created At'],['notes','Notes','textarea']]},
       skins:{title:'Skins',endpoint:'skins',columns:['username','name','file','status'],fields:[['username','Username'],['name','Skin Name'],['file','File'],['status','Status','select',['pending','approved','rejected']],['notes','Notes','textarea']]},

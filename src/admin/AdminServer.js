@@ -4,9 +4,11 @@ var url = require('url');
 var passwords = require('../auth/password');
 var users = require('../auth/userStore');
 var adminStore = require('./adminStore');
+var ini = require('../modules/ini');
 
 var sessions = {};
 var adminHtmlPath = path.join(__dirname, 'admin.html');
+var configPath = path.join(__dirname, '..', '..', 'gameserver.ini');
 var collections = {
     premium: true,
     points: true,
@@ -16,6 +18,53 @@ var collections = {
     highscores: true,
     battleMatches: true
 };
+
+function readConfig() {
+    try {
+        return ini.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (e) {
+        return {};
+    }
+}
+
+function configItems(config) {
+    return Object.keys(config).sort().map(function(key) {
+        return { id: key, key: key, value: config[key] };
+    });
+}
+
+function normalizeConfigValue(value) {
+    if (typeof value === 'number') return value;
+    if (value === true || value === false) return value ? 1 : 0;
+
+    var text = String(value == null ? '' : value);
+    if (text !== '' && !isNaN(text)) {
+        return parseFloat(text);
+    }
+
+    return text;
+}
+
+function writeConfigValue(key, value) {
+    var text = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '';
+    var lines = text.split(/\r?\n/);
+    var found = false;
+    var output = lines.map(function(line) {
+        if (/^\s*[#;]/.test(line) || line.indexOf('=') === -1) return line;
+
+        var currentKey = line.split('=')[0].trim();
+        if (currentKey !== key) return line;
+
+        found = true;
+        return key + ' = ' + value;
+    });
+
+    if (!found) {
+        output.push(key + ' = ' + value);
+    }
+
+    fs.writeFileSync(configPath, output.join('\n'));
+}
 
 function sendJson(res, status, body) {
     res.writeHead(status, {
@@ -241,7 +290,50 @@ function handleCollection(req, res, collection, parts) {
     sendJson(res, 404, { ok: false, message: 'Admin route not found.' });
 }
 
-function handle(req, res) {
+function handleConfig(req, res, parts, gameServer) {
+    if (!requireAdmin(req, res)) return;
+
+    if (req.method === 'GET' && parts.length === 0) {
+        return sendJson(res, 200, { ok: true, items: configItems(readConfig()) });
+    }
+
+    if ((req.method === 'POST' && parts.length === 0) || (req.method === 'PUT' && parts.length === 1)) {
+        return readBody(req, function(err, body) {
+            if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+            var key = req.method === 'PUT' ? parts[0] : String(body.key || '').trim();
+            if (!/^[A-Za-z0-9_]+$/.test(key)) {
+                return sendJson(res, 400, { ok: false, message: 'Config key is invalid.' });
+            }
+
+            var value = normalizeConfigValue(body.value);
+            writeConfigValue(key, value);
+
+            if (gameServer) {
+                gameServer.config[key] = value;
+                if (typeof gameServer.getModeConfig === 'function') {
+                    if (gameServer.worlds[':x5']) gameServer.worlds[':x5'].config = gameServer.getModeConfig('x5');
+                    if (gameServer.worlds[':hardcore:1']) gameServer.worlds[':hardcore:1'].config = gameServer.getModeConfig('hardcore');
+                    if (gameServer.worlds[':hardcore:2']) gameServer.worlds[':hardcore:2'].config = gameServer.getModeConfig('hardcore');
+                    if (gameServer.worlds[':teams']) gameServer.worlds[':teams'].config = gameServer.getModeConfig('teams');
+                    if (gameServer.worlds[':experimental']) gameServer.worlds[':experimental'].config = gameServer.getModeConfig('experimental');
+                    if (gameServer.worlds[':battle:1v1']) gameServer.worlds[':battle:1v1'].config = gameServer.getModeConfig('battle1v1');
+                    if (gameServer.worlds[':battle:2v2']) gameServer.worlds[':battle:2v2'].config = gameServer.getModeConfig('battle2v2');
+                }
+            }
+
+            sendJson(res, 200, { ok: true, item: { id: key, key: key, value: value } });
+        });
+    }
+
+    if (req.method === 'DELETE' && parts.length === 1) {
+        return sendJson(res, 400, { ok: false, message: 'Config delete is disabled for safety.' });
+    }
+
+    sendJson(res, 404, { ok: false, message: 'Config route not found.' });
+}
+
+function handle(req, res, gameServer) {
     var parsed = url.parse(req.url, true);
     var pathname = parsed.pathname;
 
@@ -282,6 +374,11 @@ function handle(req, res) {
 
     if (collection === 'users') {
         handleUsers(req, res, parts);
+        return true;
+    }
+
+    if (collection === 'config') {
+        handleConfig(req, res, parts, gameServer);
         return true;
     }
 
