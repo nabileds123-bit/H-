@@ -651,32 +651,98 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         chatCanvas = document.createElement("canvas");
         var ctx = chatCanvas.getContext("2d");
         var scaleFactor = Math.min(Math.max(canvasWidth / 1200, 0.75),1); //scale factor = 0.75 to 1
-        var len = chatBoard.length;
-        var from = len - 15;
-        if (from < 0) from = 0;
-        var visibleCount = len - from;
+        var maxChatVisible = 15;
+        var visibleCount = Math.min(chatBoard.length, maxChatVisible);
         chatCanvas.width = 1000 * scaleFactor;
         chatCanvas.height = (24 * 15 + 8) * scaleFactor;
         ctx.scale(scaleFactor, scaleFactor);
         var nowtime = Date.now();
-        // chat mulai dari atas canvas
+        // posisi awal tetap dari atas
         var startY = 8;
+        var y = startY;
 
-        for (var i = 0; i < (len - from); i++) {
-            var chatItem = chatBoard[i + from];
-            var lineY = startY + 24 * i;
-            var deltat = nowtime - chatItem.time;
+        var lineHeight = 22;
+        var paddingX = 8;
+        var chatWidth = chatCanvas.width / scaleFactor;
+        var maxY = chatCanvas.height / scaleFactor - 8;
+
+        function wrapText(ctx, text, maxWidth) {
+            var lines = [];
+            var line = "";
+
+            text = String(text || "");
+
+            for (var i = 0; i < text.length; i++) {
+                var testLine = line + text[i];
+                var testWidth = ctx.measureText(testLine).width;
+
+                if (testWidth > maxWidth && line.length > 0) {
+                    lines.push(line);
+                    line = text[i];
+                } else {
+                    line = testLine;
+                }
+            }
+
+            if (line.length > 0) {
+                lines.push(line);
+            }
+
+            return lines;
+        }
+
+        for (var i = 0; i < visibleCount; i++) {
+            var msg = chatBoard[chatBoard.length - visibleCount + i];
+            var deltat = nowtime - msg.time;
+
             ctx.globalAlpha = 0.8 * Math.exp(-deltat / 25000);
-            var chatName = new UText(18, chatItem.color);
-            chatName.setValue(chatItem.name);
-            var width = chatName.getWidth();
-            var a = chatName.render();
-            ctx.drawImage(a, 15, lineY);
+            ctx.font = "18px Ubuntu";
+            ctx.textBaseline = "top";
 
-            var chatText = new UText(18, '#666666');
-            chatText.setValue(':' + chatItem.message);
-            a = chatText.render();
-            ctx.drawImage(a, 15 + width * 1.8, lineY);
+            var nameText = msg.name + ": ";
+            var nameX = paddingX;
+            var msgX = nameX + ctx.measureText(nameText).width;
+
+            var firstLineWidth = chatWidth - msgX - paddingX;
+            var nextLineWidth = chatWidth - paddingX * 2;
+
+            var messageText = msg.message || "";
+            var lines = [];
+
+            // wrap khusus: baris pertama setelah nama, baris lanjut mulai dari kiri
+            var temp = wrapText(ctx, messageText, firstLineWidth);
+
+            if (temp.length > 0) {
+                lines.push(temp[0]);
+
+                var restText = temp.slice(1).join("");
+                if (restText.length > 0) {
+                    var restLines = wrapText(ctx, restText, nextLineWidth);
+                    lines = lines.concat(restLines);
+                }
+            }
+
+            if (y + lineHeight > maxY) break;
+
+            // gambar nama
+            ctx.fillStyle = msg.color || "#ff3333";
+            ctx.fillText(nameText, nameX, y);
+
+            // gambar pesan baris pertama
+            ctx.fillStyle = "#777777";
+            ctx.fillText(lines[0] || "", msgX, y);
+
+            y += lineHeight;
+
+            // gambar lanjutan pesan ke bawah
+            for (var j = 1; j < lines.length; j++) {
+                if (y + lineHeight > maxY) break;
+
+                ctx.fillStyle = "#777777";
+                ctx.fillText(lines[j], paddingX, y);
+
+                y += lineHeight;
+            }
         }
         ctx.globalAlpha = 1;
         //ctx.restore();
