@@ -7,6 +7,9 @@ var adminStore = require('./adminStore');
 var ini = require('../modules/ini');
 
 var sessions = {};
+var SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
+var dataDir = path.join(__dirname, '..', '..', 'data');
+var sessionsPath = path.join(dataDir, 'adminSessions.json');
 var adminHtmlPath = path.join(__dirname, 'admin.html');
 var configPath = path.join(__dirname, '..', '..', 'gameserver.ini');
 var collections = {
@@ -18,6 +21,34 @@ var collections = {
     highscores: true,
     battleMatches: true
 };
+
+function ensureSessionStore() {
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir);
+    }
+
+    if (!fs.existsSync(sessionsPath)) {
+        fs.writeFileSync(sessionsPath, JSON.stringify({ sessions: {} }, null, 2));
+    }
+}
+
+function readSessions() {
+    ensureSessionStore();
+
+    try {
+        return JSON.parse(fs.readFileSync(sessionsPath, 'utf8')).sessions || {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function writeSessions(nextSessions) {
+    ensureSessionStore();
+    sessions = nextSessions || {};
+    fs.writeFileSync(sessionsPath, JSON.stringify({ sessions: sessions }, null, 2));
+}
+
+sessions = readSessions();
 
 function readConfig() {
     try {
@@ -117,11 +148,15 @@ function getAdminSession(req) {
     var session = token && sessions[token];
 
     if (!session || session.expiresAt <= Date.now()) {
-        if (token) delete sessions[token];
+        if (token) {
+            delete sessions[token];
+            writeSessions(sessions);
+        }
         return null;
     }
 
-    session.expiresAt = Date.now() + 12 * 60 * 60 * 1000;
+    session.expiresAt = Date.now() + SESSION_TTL;
+    writeSessions(sessions);
     return session;
 }
 
@@ -194,13 +229,14 @@ function handleLogin(req, res) {
         var token = passwords.createToken();
         sessions[token] = {
             username: username,
-            expiresAt: Date.now() + 12 * 60 * 60 * 1000
+            expiresAt: Date.now() + SESSION_TTL
         };
+        writeSessions(sessions);
 
         res.writeHead(200, {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-store',
-            'Set-Cookie': 'bubbleAdmin=' + encodeURIComponent(token) + '; Path=/; HttpOnly; SameSite=Lax'
+            'Set-Cookie': 'bubbleAdmin=' + encodeURIComponent(token) + '; Path=/; Max-Age=' + Math.floor(SESSION_TTL / 1000) + '; HttpOnly; SameSite=Lax'
         });
         res.end(JSON.stringify({ ok: true, user: { username: username } }));
     });
@@ -403,7 +439,10 @@ function handle(req, res, gameServer) {
 
     if (req.method === 'POST' && pathname === '/api/admin/logout') {
         var token = getCookie(req, 'bubbleAdmin');
-        if (token) delete sessions[token];
+        if (token) {
+            delete sessions[token];
+            writeSessions(sessions);
+        }
         res.writeHead(200, {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-store',

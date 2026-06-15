@@ -119,6 +119,8 @@ Saat `maintenanceMode = 1`, hanya browser yang sudah login admin di `/admin` yan
 
 Link `?maintenanceKey=...` tidak dipakai untuk bypass publik.
 
+Session admin tersimpan sampai 30 hari dan tetap hidup setelah PM2 restart. Klik `Logout` di admin panel untuk mencabut akses browser tersebut.
+
 ## Manual Update Jika Dibutuhkan
 
 Jalankan di VPS:
