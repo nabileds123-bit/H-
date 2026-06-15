@@ -1122,6 +1122,30 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         wasAliveLastFrame = isAlive;
     }
 
+    function getGameUIFont() {
+        var selectors = [
+            "#helloDialog",
+            ".helloDialog",
+            ".hello-dialog",
+            "#overlays",
+            "body"
+        ];
+
+        for (var i = 0; i < selectors.length; i++) {
+            var el = document.querySelector(selectors[i]);
+
+            if (el) {
+                var font = window.getComputedStyle(el).fontFamily;
+
+                if (font && font !== "initial" && font !== "inherit") {
+                    return font;
+                }
+            }
+        }
+
+        return "Ubuntu, Arial, sans-serif";
+    }
+
     function showMatchResult() {
         matchResultVisible = true;
 
@@ -1131,60 +1155,82 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         if (!modal) {
             modal = document.createElement("div");
             modal.id = "matchResultModal";
-            modal.style.position = "fixed";
-            modal.style.left = "50%";
-            modal.style.top = "50%";
-            modal.style.transform = "translate(-50%, -50%)";
-            modal.style.width = "390px";
-            modal.style.maxWidth = "92vw";
-            modal.style.background = "#ffffff";
-            modal.style.borderRadius = "14px";
-            modal.style.boxShadow = "0 10px 40px rgba(0,0,0,0.35)";
-            modal.style.zIndex = "99999";
-            modal.style.padding = "18px";
-            modal.style.fontFamily = "Ubuntu, Arial, sans-serif";
-            modal.style.textAlign = "center";
-
             document.body.appendChild(modal);
         }
 
-        modal.innerHTML = ""
-            + '<div style="font-size:26px;font-weight:700;margin-bottom:14px;">Match Results</div>'
-            + '<div style="display:flex;justify-content:space-between;text-align:center;margin-bottom:10px;">'
-            + '  <div style="width:48%;">'
-            + '    <div style="font-size:18px;font-weight:700;">' + matchStats.foodEaten + '</div>'
-            + '    <div style="font-size:12px;color:#666;">food eaten</div>'
-            + '  </div>'
-            + '  <div style="width:48%;">'
-            + '    <div style="font-size:18px;font-weight:700;">' + matchStats.highestMass + '</div>'
-            + '    <div style="font-size:12px;color:#666;">highest mass</div>'
-            + '  </div>'
-            + '</div>'
+        modal.style.position = "fixed";
+        modal.style.left = "50%";
+        modal.style.top = "50%";
+        modal.style.transform = "translate(-50%, -50%)";
+        modal.style.width = "400px";
+        modal.style.maxWidth = "92vw";
+        modal.style.height = "540px";
+        modal.style.maxHeight = "92vh";
+        modal.style.background = "#f7f7f7";
+        modal.style.borderRadius = "16px";
+        modal.style.boxShadow = "0 12px 40px rgba(0,0,0,0.35)";
+        modal.style.zIndex = "99999";
+        modal.style.fontFamily = getGameUIFont();
+        modal.style.overflow = "hidden";
+        modal.style.display = "flex";
+        modal.style.flexDirection = "column";
 
-            + '<div style="display:flex;justify-content:space-between;text-align:center;margin-bottom:10px;">'
-            + '  <div style="width:48%;">'
-            + '    <div style="font-size:18px;font-weight:700;">' + formatMatchTime(aliveMs) + '</div>'
-            + '    <div style="font-size:12px;color:#666;">time alive</div>'
-            + '  </div>'
-            + '  <div style="width:48%;">'
-            + '    <div style="font-size:18px;font-weight:700;">' + formatMatchTime(matchStats.leaderboardTimeMs) + '</div>'
-            + '    <div style="font-size:12px;color:#666;">leaderboard time</div>'
-            + '  </div>'
-            + '</div>'
+        modal.innerHTML =
+            '<div style="padding:18px 18px 10px 18px; flex:1; display:flex; flex-direction:column;">' +
 
-            + '<div style="display:flex;justify-content:space-between;text-align:center;margin-bottom:10px;">'
-            + '  <div style="width:48%;">'
-            + '    <div style="font-size:18px;font-weight:700;">' + matchStats.cellsEaten + '</div>'
-            + '    <div style="font-size:12px;color:#666;">cells eaten</div>'
-            + '  </div>'
-            + '  <div style="width:48%;">'
-            + '    <div style="font-size:18px;font-weight:700;">' + (matchStats.topPosition || "-") + '</div>'
-            + '    <div style="font-size:12px;color:#666;">top position</div>'
-            + '  </div>'
-            + '</div>'
+                '<div style="text-align:center; font-size:26px; font-weight:700; color:#333; margin-bottom:16px;">Match Results</div>' +
 
-            + '<canvas id="matchResultChart" width="340" height="120" style="width:100%;height:120px;margin:10px 0 14px 0;"></canvas>'
-            + '<button id="matchResultBackBtn" style="width:100%;height:40px;border:none;border-radius:6px;background:#2f80ed;color:#fff;font-size:16px;font-weight:700;cursor:pointer;">Kembali</button>';
+                '<div style="display:grid; grid-template-columns:1fr 1fr; row-gap:14px; column-gap:10px; text-align:center; margin-bottom:14px;">' +
+
+                    '<div>' +
+                        '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.foodEaten || 0) + '</div>' +
+                        '<div style="font-size:12px; color:#666; margin-top:2px;">food eaten</div>' +
+                    '</div>' +
+
+                    '<div>' +
+                        '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.highestMass || 0) + '</div>' +
+                        '<div style="font-size:12px; color:#666; margin-top:2px;">highest mass</div>' +
+                    '</div>' +
+
+                    '<div>' +
+                        '<div style="font-size:18px; font-weight:700; color:#333;">' + formatMatchTime(aliveMs) + '</div>' +
+                        '<div style="font-size:12px; color:#666; margin-top:2px;">time alive</div>' +
+                    '</div>' +
+
+                    '<div>' +
+                        '<div style="font-size:18px; font-weight:700; color:#333;">' + formatMatchTime(matchStats.leaderboardTimeMs || 0) + '</div>' +
+                        '<div style="font-size:12px; color:#666; margin-top:2px;">leaderboard time</div>' +
+                    '</div>' +
+
+                    '<div>' +
+                        '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.cellsEaten || 0) + '</div>' +
+                        '<div style="font-size:12px; color:#666; margin-top:2px;">cells eaten</div>' +
+                    '</div>' +
+
+                    '<div>' +
+                        '<div style="font-size:18px; font-weight:700; color:#333;">' + (matchStats.topPosition || "-") + '</div>' +
+                        '<div style="font-size:12px; color:#666; margin-top:2px;">top position</div>' +
+                    '</div>' +
+
+                '</div>' +
+
+                '<div style="background:#efedf4; border-radius:0; padding:10px; margin:0 0 14px 0;">' +
+                    '<canvas id="matchResultChart" width="340" height="110" style="display:block; width:100%; height:110px;"></canvas>' +
+                '</div>' +
+
+                '<button id="matchResultBackBtn" style="width:100%; height:40px; border:none; border-radius:6px; background:#347ee8; color:#fff; font-size:16px; font-weight:700; cursor:pointer; margin-top:auto;">Kembali</button>' +
+
+            '</div>' +
+
+            '<div style="height:54px; border-top:1px solid #e5e5e5; display:flex; align-items:center; justify-content:center; font-size:12px; color:#9a9a9a; background:#f7f7f7;">' +
+                '<span style="margin:0 4px;">Utama</span>' +
+                '<span style="color:#c4c4c4;">|</span>' +
+                '<span style="margin:0 4px; color:#4f86d9;">Akun</span>' +
+                '<span style="color:#c4c4c4;">|</span>' +
+                '<span style="margin:0 4px; color:#4f86d9;">Community</span>' +
+                '<span style="color:#c4c4c4;">|</span>' +
+                '<span style="margin:0 4px; color:#4f86d9;">About</span>' +
+            '</div>';
 
         drawMatchResultChart();
 
@@ -1224,8 +1270,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
         var data = matchStats.massHistory || [];
         if (data.length < 2) {
-            ctx.fillStyle = "#cccccc";
-            ctx.font = "14px Ubuntu";
+            ctx.fillStyle = "#d7c9ff";
+            ctx.font = "14px " + getGameUIFont();
             ctx.textAlign = "center";
             ctx.fillText("No chart data", w / 2, h / 2);
             return;
@@ -1239,43 +1285,40 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             if (data[i].mass > maxMass) maxMass = data[i].mass;
         }
 
-        if (minMass === Infinity) minMass = 0;
+        if (!isFinite(minMass)) minMass = 0;
         if (maxMass <= minMass) maxMass = minMass + 1;
 
-        ctx.fillStyle = "rgba(180, 150, 255, 0.08)";
-        ctx.fillRect(0, 0, w, h);
+        var padX = 10;
+        var padY = 8;
+        var baseY = h - padY;
 
         ctx.beginPath();
-
         for (var j = 0; j < data.length; j++) {
-            var x = (j / (data.length - 1)) * (w - 20) + 10;
-            var y = h - 10 - ((data[j].mass - minMass) / (maxMass - minMass)) * (h - 20);
+            var x = padX + (j / (data.length - 1)) * (w - padX * 2);
+            var y = baseY - ((data[j].mass - minMass) / (maxMass - minMass)) * (h - padY * 2);
 
-            if (j === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
+            if (j === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
         }
 
-        ctx.lineTo(w - 10, h - 10);
-        ctx.lineTo(10, h - 10);
+        ctx.lineTo(w - padX, baseY);
+        ctx.lineTo(padX, baseY);
         ctx.closePath();
 
-        ctx.fillStyle = "rgba(180, 150, 255, 0.18)";
+        ctx.fillStyle = "rgba(186, 166, 255, 0.18)";
         ctx.fill();
 
         ctx.beginPath();
         for (var k = 0; k < data.length; k++) {
-            var lx = (k / (data.length - 1)) * (w - 20) + 10;
-            var ly = h - 10 - ((data[k].mass - minMass) / (maxMass - minMass)) * (h - 20);
+            var lx = padX + (k / (data.length - 1)) * (w - padX * 2);
+            var ly = baseY - ((data[k].mass - minMass) / (maxMass - minMass)) * (h - padY * 2);
 
             if (k === 0) ctx.moveTo(lx, ly);
             else ctx.lineTo(lx, ly);
         }
 
-        ctx.strokeStyle = "rgba(180, 150, 255, 0.65)";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#c9b3ff";
+        ctx.lineWidth = 3;
         ctx.stroke();
     }
 

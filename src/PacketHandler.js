@@ -147,7 +147,7 @@ this.merg = true;
             if (client.isPaused) {
                 break;
             }
-            this.pressW = true;
+            this.gameServer.ejectMass(client);
             break;
         case 90:
             // Pause game input while menu overlay is open
