@@ -651,12 +651,26 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         chatCanvas = document.createElement("canvas");
         var ctx = chatCanvas.getContext("2d");
         var scaleFactor = Math.min(Math.max(canvasWidth / 1200, 0.75),1); //scale factor = 0.75 to 1
-        var maxChatVisible = 15;
-        var visibleCount = Math.min(chatBoard.length, maxChatVisible);
         chatCanvas.width = 1000 * scaleFactor;
         chatCanvas.height = (24 * 15 + 8) * scaleFactor;
         ctx.scale(scaleFactor, scaleFactor);
         var nowtime = Date.now();
+
+        // durasi chat tampil, contoh 15 detik
+        var CHAT_LIFE_TIME = 15000;
+
+        // hapus chat lama 1 per 1, bukan semuanya sekaligus
+        if (chatBoard.length > 0 && nowtime - chatBoard[0].time > CHAT_LIFE_TIME) {
+            chatBoard.shift();
+        }
+
+        // kalau setelah dihapus tidak ada chat, stop
+        if (chatBoard.length < 1) return;
+
+        // hitung ulang setelah chat lama dihapus
+        var maxChatVisible = 15;
+        var visibleCount = Math.min(chatBoard.length, maxChatVisible);
+
         // posisi awal tetap dari atas
         var startY = 8;
         var y = startY;
@@ -693,9 +707,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
         for (var i = 0; i < visibleCount; i++) {
             var msg = chatBoard[chatBoard.length - visibleCount + i];
-            var deltat = nowtime - msg.time;
 
-            ctx.globalAlpha = 0.8 * Math.exp(-deltat / 25000);
+            // tidak pakai fade
+            ctx.globalAlpha = 1;
             ctx.font = "18px Ubuntu";
             ctx.textBaseline = "top";
 
