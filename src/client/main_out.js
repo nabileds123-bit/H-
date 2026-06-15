@@ -935,7 +935,13 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
         ctx.restore();
         lbCanvas && lbCanvas.width && ctx.drawImage(lbCanvas, canvasWidth - lbCanvas.width - 10, 10); // draw Leader Board
-        if (chatCanvas != null) ctx.drawImage(chatCanvas, 0, canvasHeight - chatCanvas.height - 50); // draw Leader Board
+        if (chatCanvas != null) {
+            var chatLines = Math.min(chatBoard.length, 15);
+            var chatScale = Math.min(Math.max(canvasWidth / 1200, 0.75), 1);
+            var chatHeight = Math.max(24 * chatLines + 8, 32) * chatScale;
+            var chatInputTop = canvasHeight - 40;
+            ctx.drawImage(chatCanvas, 0, chatInputTop - chatHeight - 8);
+        }
 
         userScore = Math.max(userScore, calcUserScore());
         if (0 != userScore) {
