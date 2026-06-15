@@ -654,10 +654,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         var len = chatBoard.length;
         var from = len - 15;
         if (from < 0) from = 0;
-        var visibleCount = len - from;
-
         chatCanvas.width = 1000 * scaleFactor;
-        chatCanvas.height = Math.max(32, 24 * visibleCount + 8) * scaleFactor;
+        chatCanvas.height = (24 * 15 + 8) * scaleFactor;
         ctx.scale(scaleFactor, scaleFactor);
         var nowtime = Date.now();
 
