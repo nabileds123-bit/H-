@@ -14,6 +14,7 @@ var AuthServer = require('./auth/authServer');
 var AdminServer = require('./admin/AdminServer');
 var userStore = require('./auth/userStore');
 var configPath = path.join(__dirname, '..', 'gameserver.ini');
+var adminConfigPath = path.join(__dirname, '..', 'data', 'adminConfig.json');
 
 // GameServer implementation
 function GameServer(mult, prt) {
@@ -1254,6 +1255,20 @@ GameServer.prototype.loadConfig = function() {
     	
         // Create a new config
         fs.writeFileSync(configPath, ini.stringify(this.config));
+    }
+
+    try {
+        if (fs.existsSync(adminConfigPath)) {
+            var adminConfig = JSON.parse(fs.readFileSync(adminConfigPath, 'utf8'));
+            for (var key in adminConfig) {
+                if (Object.prototype.hasOwnProperty.call(adminConfig, key)) {
+                    this.config[key] = adminConfig[key];
+                }
+            }
+            console.log("[Game] Loaded admin config overrides");
+        }
+    } catch (err) {
+        console.log("[Game] Failed to load admin config overrides: " + err.message);
     }
 }
 

@@ -12,6 +12,7 @@ var dataDir = path.join(__dirname, '..', '..', 'data');
 var sessionsPath = path.join(dataDir, 'adminSessions.json');
 var adminHtmlPath = path.join(__dirname, 'admin.html');
 var configPath = path.join(__dirname, '..', '..', 'gameserver.ini');
+var adminConfigPath = path.join(dataDir, 'adminConfig.json');
 var collections = {
     premium: true,
     points: true,
@@ -56,6 +57,37 @@ function readConfig() {
     } catch (e) {
         return {};
     }
+}
+
+function readAdminConfigOverrides() {
+    try {
+        return JSON.parse(fs.readFileSync(adminConfigPath, 'utf8'));
+    } catch (e) {
+        return {};
+    }
+}
+
+function writeAdminConfigOverride(key, value) {
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir);
+    }
+
+    var overrides = readAdminConfigOverrides();
+    overrides[key] = value;
+    fs.writeFileSync(adminConfigPath, JSON.stringify(overrides, null, 2));
+}
+
+function readMergedConfig() {
+    var config = readConfig();
+    var overrides = readAdminConfigOverrides();
+
+    for (var key in overrides) {
+        if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+            config[key] = overrides[key];
+        }
+    }
+
+    return config;
 }
 
 function configItems(config) {
@@ -381,7 +413,7 @@ function handleConfig(req, res, parts, gameServer) {
     if (!requireAdmin(req, res)) return;
 
     if (req.method === 'GET' && parts.length === 0) {
-        return sendJson(res, 200, { ok: true, items: configItems(readConfig()) });
+        return sendJson(res, 200, { ok: true, items: configItems(readMergedConfig()) });
     }
 
     if ((req.method === 'POST' && parts.length === 0) || (req.method === 'PUT' && parts.length === 1)) {
@@ -395,6 +427,7 @@ function handleConfig(req, res, parts, gameServer) {
 
             var value = normalizeConfigValue(body.value);
             writeConfigValue(key, value);
+            writeAdminConfigOverride(key, value);
 
             if (gameServer) {
                 gameServer.config[key] = value;

@@ -1,5 +1,6 @@
 .env
 data/admin.json
+data/adminConfig.json
 data/adminSessions.json
 data/users.json
 node_modules/

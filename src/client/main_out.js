@@ -1678,6 +1678,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         posY = nodeY = ~~((topPos + bottomPos) / 2),
         posSize = 1,
         gameMode = ":x5",
+        pendingModeSwitch = false,
         teamScores = null,
         ma = false,
         hasOverlay = true,
@@ -1702,8 +1703,12 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     wHandle.hasActivePlayerCells = function () {
         return playerCells && playerCells.length > 0;
     };
-    wHandle.resumeCurrentGame = function () {
+    wHandle.resumeCurrentGame = function (desiredMode) {
         if (!wHandle.hasActivePlayerCells()) {
+            return false;
+        }
+
+        if (desiredMode && desiredMode != gameMode) {
             return false;
         }
 
@@ -1712,7 +1717,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         return true;
     };
     wHandle.setNick = function (arg) {
-        if (wHandle.resumeCurrentGame()) {
+        if (!pendingModeSwitch && wHandle.resumeCurrentGame()) {
             return;
         }
 
@@ -1724,6 +1729,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
         userNickName = authUser || guestNick;
         sendNickName();
+        pendingModeSwitch = false;
         resetMatchStats();
         userScore = 0
     };
@@ -1744,7 +1750,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         showMass = arg
     };
     wHandle.spectate = function () {
-        if (wHandle.resumeCurrentGame()) {
+        if (!pendingModeSwitch && wHandle.resumeCurrentGame()) {
             return;
         }
 
@@ -1756,11 +1762,13 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         } else {
             wsConnect();
         }
+        pendingModeSwitch = false;
         hideOverlays()
     };
     wHandle.setGameMode = function (arg, forceReset) {
         if (forceReset || arg != gameMode) {
             gameMode = arg;
+            pendingModeSwitch = true;
             sendGameMode();
             showConnecting();
         }
@@ -2108,6 +2116,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 if (!hasNormalSkin) {
                     b || ctx.stroke();
                     ctx.fill();
+                } else {
+                    ctx.fill();
                 }
                 if (hasNormalSkin) {
                     ctx.save();
@@ -2115,10 +2125,10 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     ctx.drawImage(e, this.x - this.size, this.y - this.size, 2 * this.size, 2 * this.size);
                     ctx.restore();
                 }
-                if ((showColor || 15 < this.size) && !b) {
-                    ctx.lineWidth = hasNormalSkin ? Math.max(3, this.size * .035) : ctx.lineWidth;
+                if (showColor || 15 < this.size) {
+                    ctx.lineWidth = hasNormalSkin ? Math.max(3, this.size * .035) : Math.max(2, this.size * .04);
                     ctx.strokeStyle = hasNormalSkin ? this.color : '#000000';
-                    ctx.globalAlpha *= hasNormalSkin ? .95 : .1;
+                    ctx.globalAlpha *= hasNormalSkin ? .95 : .22;
                     ctx.stroke();
                 }
                 ctx.globalAlpha = 1;

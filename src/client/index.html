@@ -3191,7 +3191,9 @@ $(function () {
     }
 
     window.playSelectedMode = function () {
-        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
+        var targetMode = typeof window.getSelectedGameModeForConnection === 'function' ? window.getSelectedGameModeForConnection() : null;
+
+        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame(targetMode)) {
             return;
         }
 
@@ -3224,7 +3226,7 @@ $(function () {
         }
 
         if (typeof window.setGameMode === 'function') {
-            window.setGameMode(window.getSelectedGameModeForConnection(), true);
+            window.setGameMode(targetMode, true);
         }
 
         setNick(document.getElementById('nick').value);
@@ -4235,12 +4237,14 @@ $(function () {
     });
 
     $('#spectateBtn').on('click', function () {
-        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
+        var targetMode = typeof window.getSelectedGameModeForConnection === 'function' ? window.getSelectedGameModeForConnection() : null;
+
+        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame(targetMode)) {
             return false;
         }
 
         if (typeof window.setGameMode === 'function' && typeof window.getSelectedGameModeForConnection === 'function') {
-            window.setGameMode(window.getSelectedGameModeForConnection(), true);
+            window.setGameMode(targetMode, true);
         }
 
         if (typeof window.spectate === 'function') {
