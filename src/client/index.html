@@ -927,7 +927,7 @@ $(document).on('keyup', function(input) {
     .guild-member-head,
     .guild-member-row {
         display: grid;
-        grid-template-columns: 82px 1fr 50px 58px;
+        grid-template-columns: 128px 1fr 50px;
         align-items: center;
         min-height: 36px;
         font-size: 14px;
@@ -961,6 +961,9 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-member-role {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         padding-left: 8px;
         min-width: 0;
         overflow: hidden;
@@ -983,11 +986,7 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-member-actions {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        min-width: 0;
+        display: none;
     }
 
     .guild-role-badge {
@@ -2460,7 +2459,6 @@ $(document).on('keyup', function(input) {
                         <span>#</span>
                         <span>Name</span>
                         <span>Level</span>
-                        <span></span>
                     </div>
                     <div id="guildMemberList">
                     </div>
@@ -3178,10 +3176,9 @@ $(function () {
 
             return [
                 '<div class="guild-member-row" data-member-id="' + member.id + '" data-member-role="' + role + '">',
-                '<span class="guild-member-role">' + roleText + '</span>',
+                '<span class="guild-member-role">' + roleText + getGuildActionHtml(member) + '</span>',
                 '<span class="guild-member-name">' + escapeHtml(member.name) + '</span>',
                 '<span class="guild-member-level">' + (member.level || 1) + '</span>',
-                '<span class="guild-member-actions">' + getGuildActionHtml(member) + '</span>',
                 '</div>'
             ].join('');
         });
