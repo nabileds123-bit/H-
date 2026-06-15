@@ -369,6 +369,11 @@ $(document).on('keyup', function(input) {
         color: #000;
     }
 
+    #communityDropup .guild-prefix-link {
+        text-align: center;
+        font-weight: 700;
+    }
+
     #guildDialog,
     #notificationDialog,
     #highScoreDialog,
@@ -2783,8 +2788,8 @@ $(document).on('keyup', function(input) {
     <a href="#friends" data-route="friends"><span class="dropup-icon fa fa-user-plus"></span><span>Friends</span></a>
     <a href="#high-score" data-route="high-score"><span class="dropup-icon glyphicon glyphicon-stats"></span><span>Highscore</span></a>
     <a href="#search-player" data-route="search-player"><span class="dropup-icon glyphicon glyphicon-search"></span><span>Cari Player</span></a>
-    <a href="#guild-detail" data-route="my-guild" id="myGuildDropupLink" style="display:none;"><span class="dropup-icon glyphicon glyphicon-tower"></span><span id="myGuildDropupText">Guild</span></a>
     <a href="#guild" data-route="guild"><span class="dropup-icon glyphicon glyphicon-tower"></span><span>Guilds</span></a>
+    <a href="#guild-detail" data-route="my-guild" id="myGuildDropupLink" class="guild-prefix-link" style="display:none;"><span id="myGuildDropupText">Guild</span></a>
 </div>
 
 <div style="font-family:'Ubuntu'">&nbsp;</div>
@@ -2861,7 +2866,6 @@ $(function () {
         if (!url) return false;
 
         var activeType = localStorage.getItem('authActiveSkinType') || 'player';
-        var label = $('<span>', { text: title || 'Skin' });
 
         $(selector)
             .empty()
@@ -2871,8 +2875,7 @@ $(function () {
                 class: 'account-skin-preview',
                 src: url,
                 alt: title || 'Skin'
-            }))
-            .append(label);
+            }));
         return true;
     }
 
