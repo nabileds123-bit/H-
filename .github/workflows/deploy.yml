@@ -1,65 +1,22 @@
-name: Deploy to VPS
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy via SSH
-        env:
-          MAIN_SECRET: ${{ secrets.MAIN }}
-        run: |
-          set -e
-
-          echo "$MAIN_SECRET" > main.secret
-
-          VPS_HOST=$(grep '^VPS_HOST=' main.secret | cut -d= -f2-)
-          VPS_USER=$(grep '^VPS_USER=' main.secret | cut -d= -f2-)
-          VPS_PORT=$(grep '^VPS_PORT=' main.secret | cut -d= -f2-)
-
-          mkdir -p ~/.ssh
-          awk '/^VPS_SSH_KEY<<EOF$/{flag=1;next}/^EOF$/{flag=0}flag' main.secret > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" <<'EOSSH'
             set -e
 
             APP_DIR="/var/www/bubblev2"
             APP_NAME="bubblev2"
-            REPO_URL="https://github.com/nabileds123-bit/COBA.git"
-
-            apt update -y
-            apt install -y git curl
-
-            if ! command -v node >/dev/null 2>&1; then
-              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-              apt install -y nodejs
-            fi
-
-            if ! command -v pm2 >/dev/null 2>&1; then
-              npm install -g pm2
-            fi
-
-            if [ ! -d "$APP_DIR/.git" ]; then
-              rm -rf "$APP_DIR"
-              git clone "$REPO_URL" "$APP_DIR"
-            fi
 
             cd "$APP_DIR"
-            git fetch --all
-            git reset --hard origin/main
-            npm install --production
 
-            if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
-              pm2 restart "$APP_NAME"
-            else
-              pm2 start ecosystem.config.js
-            fi
+            echo "=== Pull latest code ==="
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "=== Install dependencies ==="
+            npm install --omit=dev
+
+            echo "=== Restart PM2 ==="
+            pm2 restart "$APP_NAME" --update-env || pm2 start src/index.js --name "$APP_NAME" -- --game
 
             pm2 save
+
+            echo "=== Deploy success ==="
           EOSSH
