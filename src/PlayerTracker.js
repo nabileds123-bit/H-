@@ -228,7 +228,17 @@ PlayerTracker.prototype.calcViewBox = function() {
             this.socket.sendPacket(new Packet.UpdatePosition(this.spectatedPlayer.centerPos.x,this.spectatedPlayer.centerPos.y,specZoom));
             return this.spectatedPlayer.visibleNodes;
         } else {
-            return []; // Nothing
+            var config = this.gameServer.getWorldConfig ? this.gameServer.getWorldConfig(world) : this.gameServer.config;
+            this.centerPos.x = (config.borderLeft + config.borderRight) / 2;
+            this.centerPos.y = (config.borderTop + config.borderBottom) / 2;
+            this.sightRange = Math.max(config.borderRight - config.borderLeft, config.borderBottom - config.borderTop);
+            this.viewBox.topY = config.borderTop;
+            this.viewBox.bottomY = config.borderBottom;
+            this.viewBox.leftX = config.borderLeft;
+            this.viewBox.rightX = config.borderRight;
+            this.viewBox.width = this.sightRange;
+            this.socket.sendPacket(new Packet.UpdatePosition(this.centerPos.x, this.centerPos.y, 0.4));
+            return nodes.slice(0);
         }
     }
 		
