@@ -647,7 +647,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         var from = len - 15;
         if (from < 0) from = 0;
         for (var i = 0; i < (len - from); i++) {
-            var chatItem = chatBoard[len - 1 - i];
+            var chatItem = chatBoard[i + from];
             var lineY = 20 + 24 * i;
             var chatName = new UText(18, chatItem.color);
             chatName.setValue(chatItem.name);
