@@ -59,7 +59,7 @@ function readBody(req, callback, maxBytes) {
 }
 
 function isValidUsername(username) {
-    return /^[a-zA-Z0-9_]{3,15}$/.test(username || '');
+    return /^[a-zA-Z0-9_]{1,15}$/.test(username || '');
 }
 
 function isValidEmail(value) {
@@ -131,7 +131,7 @@ function handleRegister(req, res) {
         var password = String(body.password || '');
 
         if (!isValidUsername(username)) {
-            return sendJson(res, 400, { ok: false, message: 'Username must be 3-15 letters, numbers, or underscore.' });
+            return sendJson(res, 400, { ok: false, message: 'Username must be 1-15 letters, numbers, or underscore.' });
         }
 
         if (!isValidEmail(userEmail)) {
