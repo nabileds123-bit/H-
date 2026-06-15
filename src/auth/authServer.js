@@ -94,6 +94,7 @@ function publicAuthUser(user, lastLoginAt) {
         skin: user.skin || '',
         skinUrl: user.skinUrl || '',
         skinPath: user.skinPath || '',
+        activeSkinType: user.activeSkinType || 'player',
         guildTag: user.guildTag || '',
         guildSkinUrl: user.guildSkinUrl || '',
         guildSkinPath: user.guildSkinPath || ''
@@ -328,6 +329,42 @@ function handleCellColor(req, res) {
     });
 }
 
+function handleActiveSkin(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var token = String(body.token || '');
+        var type = String(body.type || 'player').toLowerCase();
+        var user = users.findBySessionToken(token);
+
+        if (!user) {
+            return sendJson(res, 401, { ok: false, message: 'Please login again.' });
+        }
+
+        if (type !== 'player' && type !== 'guild') {
+            return sendJson(res, 400, { ok: false, message: 'Skin type is not valid.' });
+        }
+
+        if (type === 'player' && !user.skinUrl) {
+            return sendJson(res, 400, { ok: false, message: 'Upload player skin first.' });
+        }
+
+        if (type === 'guild' && (!user.guildTag || !user.guildSkinUrl)) {
+            return sendJson(res, 400, { ok: false, message: 'Upload guild skin first.' });
+        }
+
+        var updatedUser = users.updateUser(user.id, {
+            activeSkinType: type
+        });
+
+        sendJson(res, 200, {
+            ok: true,
+            message: 'Active skin saved.',
+            user: publicAuthUser(updatedUser)
+        });
+    });
+}
+
 function handleUploadSkin(req, res) {
     readBody(req, function(err, body) {
         if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
@@ -382,11 +419,13 @@ function handleUploadSkin(req, res) {
                 changes.guildSkinUrl = result.url;
                 changes.guildSkinPath = result.path;
                 changes.guildSkinUploadedAt = Date.now();
+                if (!user.skinUrl) changes.activeSkinType = 'guild';
             } else {
                 changes.skin = user.username;
                 changes.skinUrl = result.url;
                 changes.skinPath = result.path;
                 changes.skinUploadedAt = Date.now();
+                changes.activeSkinType = user.activeSkinType || 'player';
             }
 
             var updatedUser = users.updateUser(user.id, changes);
@@ -443,6 +482,11 @@ function handle(req, res) {
 
     if (req.method === 'POST' && pathname === '/api/auth/cell-color') {
         handleCellColor(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/auth/active-skin') {
+        handleActiveSkin(req, res);
         return true;
     }
 

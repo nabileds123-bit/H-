@@ -192,6 +192,7 @@ function normalizeUserChanges(body) {
         'skin',
         'skinUrl',
         'skinPath',
+        'activeSkinType',
         'guildSkinUrl',
         'guildSkinPath',
         'banned',

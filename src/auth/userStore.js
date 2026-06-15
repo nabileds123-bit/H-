@@ -126,6 +126,7 @@ function createUser(data) {
         skin: '',
         skinUrl: '',
         skinPath: '',
+        activeSkinType: 'player',
         guildTag: '',
         guildSkinUrl: '',
         guildSkinPath: '',

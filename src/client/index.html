@@ -1701,7 +1701,17 @@ $(document).on('keyup', function(input) {
     }
 
     .account-skin-list {
-        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-height: 0;
+        margin-right: 10px;
+        vertical-align: middle;
+        font-size: 12px;
+    }
+
+    .account-skin-list:empty {
+        display: none;
     }
 
     .account-skin-preview {
@@ -1709,8 +1719,26 @@ $(document).on('keyup', function(input) {
         height: 42px;
         border: 1px solid #777;
         background: #111;
+        object-fit: cover;
         padding: 2px;
-        margin-right: 6px;
+        display: block;
+    }
+
+    .account-skin-choice {
+        margin: 0;
+        font-weight: normal;
+        color: #333;
+        cursor: pointer;
+    }
+
+    .account-skin-choice input {
+        margin: 0 4px 0 0;
+        vertical-align: -2px;
+    }
+
+    #accountSkinRow .account-label,
+    #accountSkinRow .account-value {
+        vertical-align: middle;
     }
 
     .account-upload {
@@ -2264,8 +2292,8 @@ $(document).on('keyup', function(input) {
                 <div id="accountSkinRow" class="account-row" style="display:none;">
                     <div class="account-label">Skin:</div>
                     <div class="account-value">
-                        <div id="accountPlayerSkin" class="account-skin-list"></div>
-                        <div id="accountGuildSkin" class="account-skin-list"></div>
+                        <label id="accountPlayerSkin" class="account-skin-list account-skin-choice"></label>
+                        <label id="accountGuildSkin" class="account-skin-list account-skin-choice"></label>
                     </div>
                 </div>
                 <div class="account-row">
@@ -2820,20 +2848,31 @@ $(function () {
         localStorage.setItem('authLevel', user.level || localStorage.getItem('authLevel') || 1);
         localStorage.setItem('authSkin', user.skin || '');
         localStorage.setItem('authSkinUrl', user.skinUrl || '');
+        localStorage.setItem('authActiveSkinType', user.activeSkinType || 'player');
         localStorage.setItem('authGuildTag', user.guildTag || '');
         localStorage.setItem('authGuildSkinUrl', user.guildSkinUrl || '');
     }
 
-    function renderAccountSkin(selector, url, title) {
+    function renderAccountSkin(selector, url, title, type) {
         if (!url) return false;
 
-        $(selector).html(
-            $('<img>', {
+        var activeType = localStorage.getItem('authActiveSkinType') || 'player';
+        var label = $('<span>', { text: title || 'Skin' });
+
+        $(selector)
+            .empty()
+            .append($('<input>', {
+                type: 'radio',
+                name: 'accountActiveSkin',
+                value: type || 'player',
+                checked: activeType === (type || 'player')
+            }))
+            .append($('<img>', {
                 class: 'account-skin-preview',
                 src: url,
                 alt: title || 'Skin'
-            })
-        );
+            }))
+            .append(label);
         return true;
     }
 
@@ -2877,8 +2916,9 @@ $(function () {
         $('#accountLastLogin').text(formatLoginTime(localStorage.getItem('authLastLogin')));
         $('#accountSkinRow').hide();
         $('#accountPlayerSkin, #accountGuildSkin').empty();
-        if (renderAccountSkin('#accountPlayerSkin', localStorage.getItem('authSkinUrl'), 'Player skin') ||
-            renderAccountSkin('#accountGuildSkin', localStorage.getItem('authGuildSkinUrl'), 'Guild skin')) {
+        var hasPlayerSkin = renderAccountSkin('#accountPlayerSkin', localStorage.getItem('authSkinUrl'), 'Player', 'player');
+        var hasGuildSkin = renderAccountSkin('#accountGuildSkin', localStorage.getItem('authGuildSkinUrl'), 'Guild', 'guild');
+        if (hasPlayerSkin || hasGuildSkin) {
             $('#accountSkinRow').show();
         }
         $('#cellColorPalette').removeClass('is-open');
@@ -4117,6 +4157,24 @@ $(function () {
             showAuthStatus('#skinUploadStatus', 'Failed to read skin file.', true);
         };
         reader.readAsDataURL(file);
+    });
+
+    $('#accountSkinRow').on('change', 'input[name="accountActiveSkin"]', function () {
+        var selectedType = this.value;
+
+        postAuth('/api/auth/active-skin', {
+            token: localStorage.getItem('authToken'),
+            type: selectedType
+        }, function (err, response) {
+            if (err) {
+                alert(err);
+                showAccountView();
+                return;
+            }
+
+            storeAuthUser(response.user);
+            showAccountView();
+        });
     });
 
     $('#profileCellColor').on('click', function () {
