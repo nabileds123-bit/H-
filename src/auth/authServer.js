@@ -8,6 +8,8 @@ var VERIFY_EXPIRES = 24 * 60 * 60 * 1000;
 var RESET_EXPIRES = 60 * 60 * 1000;
 var PLAYER_SKIN_COST = 150;
 var GUILD_SKIN_COST = 50;
+var PREMIUM_COST = 500;
+var PREMIUM_DAYS = 30;
 var MAX_SKIN_BYTES = 2 * 1024 * 1024;
 var CELL_COLORS = [
     '#000000',
@@ -442,6 +444,51 @@ function handleUploadSkin(req, res) {
     }, 1024 * 1024 * 4);
 }
 
+function handleBuyPremium(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var token = String(body.token || '');
+        var user = users.findBySessionToken(token);
+
+        if (!user) {
+            return sendJson(res, 401, { ok: false, message: 'Please login again.' });
+        }
+
+        var currentPoints = parseInt(user.points, 10) || 0;
+        if (currentPoints < PREMIUM_COST) {
+            return sendJson(res, 400, {
+                ok: false,
+                message: 'Points tidak cukup. Butuh ' + PREMIUM_COST + ' points untuk membeli Premium.'
+            });
+        }
+
+        var now = Date.now();
+        var currentPremiumUntil = String(user.premiumUntil || '').trim();
+        var currentExpiresAt = currentPremiumUntil ? Date.parse(currentPremiumUntil) : 0;
+
+        if (isNaN(currentExpiresAt)) {
+            currentExpiresAt = parseInt(currentPremiumUntil, 10) || 0;
+        }
+
+        var startsAt = currentExpiresAt > now ? currentExpiresAt : now;
+        var premiumUntil = new Date(startsAt + PREMIUM_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        var updatedUser = users.updateUser(user.id, {
+            accountType: 'Premium',
+            premiumUntil: premiumUntil,
+            points: currentPoints - PREMIUM_COST
+        });
+
+        sendJson(res, 200, {
+            ok: true,
+            message: 'Premium aktif selama ' + PREMIUM_DAYS + ' hari. ' + PREMIUM_COST + ' points deducted.',
+            cost: PREMIUM_COST,
+            days: PREMIUM_DAYS,
+            user: publicAuthUser(updatedUser)
+        });
+    });
+}
+
 function handle(req, res) {
     var parsed = url.parse(req.url, true);
     var pathname = parsed.pathname;
@@ -492,6 +539,11 @@ function handle(req, res) {
 
     if (req.method === 'POST' && pathname === '/api/auth/upload-skin') {
         handleUploadSkin(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/auth/buy-premium') {
+        handleBuyPremium(req, res);
         return true;
     }
 

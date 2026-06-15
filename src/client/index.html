@@ -2336,6 +2336,7 @@ $(document).on('keyup', function(input) {
                     <div class="account-value" style="display:block; width:auto;">Last Login - <span id="accountLastLogin">-</span></div>
                 </div>
             </div>
+            <p id="accountStatus" class="text-muted text-center" style="margin-top:10px;"></p>
             <button type="button" id="openUploadSkin" class="btn btn-warning account-upload">Upload your skin (required. 150 points)</button>
         </div>
         <div id="uploadSkinView" style="display:none;">
@@ -3062,6 +3063,8 @@ $(function () {
         $('#homeView, #instructions, #loginView, #registerView, #forgotPasswordView, #resetPasswordView, #changePasswordView, #uploadSkinView').hide();
         $('#accountNick').text(authUser || '-');
         $('#accountType').text(localStorage.getItem('authAccountType') || 'Free');
+        $('#buyPremiumLink').text(hasActivePremium() ? '(Extend Premium)' : '(Buy Premium)');
+        $('#accountStatus').removeClass('text-danger text-success').addClass('text-muted').text('');
         $('#accountPoints').text(localStorage.getItem('authPoints') || '0');
         $('#accountLevel').text(localStorage.getItem('authLevel') || '1');
         $('#accountLastLogin').text(formatLoginTime(localStorage.getItem('authLastLogin')));
@@ -4418,6 +4421,31 @@ $(function () {
         }, function (err, response) {
             showAuthStatus('#changePasswordStatus', err || response.message, !!err);
         });
+    });
+
+    $('#buyPremiumLink').on('click', function (event) {
+        event.preventDefault();
+
+        if (!localStorage.getItem('authToken')) {
+            showAuthStatus('#accountStatus', 'Please login first.', true);
+            return false;
+        }
+
+        showAuthStatus('#accountStatus', 'Processing Premium purchase...', false);
+        postAuth('/api/auth/buy-premium', {
+            token: localStorage.getItem('authToken')
+        }, function (err, response) {
+            if (err) {
+                showAuthStatus('#accountStatus', err, true);
+                return;
+            }
+
+            storeAuthUser(response.user);
+            showAccountView();
+            showAuthStatus('#accountStatus', response.message || 'Premium activated.', false);
+        });
+
+        return false;
     });
 
     $('#openUploadSkin').on('click', function () {
