@@ -210,7 +210,7 @@ PacketHandler.prototype.setNickname = function(newNick) {
             guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
             activeSkinType: user.activeSkinType || 'player'
         };
-        client.setGuildTag(client.authUser.activeSkinType === 'guild' ? client.authUser.guildTag : '');
+        client.setGuildTag(client.authUser.guildTag);
 
         if (!usesTeams && user.cellColor && user.cellColor !== '#000000') {
             var color = hexToColor(user.cellColor);

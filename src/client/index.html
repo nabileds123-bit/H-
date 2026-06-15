@@ -1726,14 +1726,17 @@ $(document).on('keyup', function(input) {
 
     .account-skin-choice {
         margin: 0;
+        padding: 3px;
+        border: 1px solid transparent;
+        border-radius: 3px;
         font-weight: normal;
         color: #333;
         cursor: pointer;
     }
 
-    .account-skin-choice input {
-        margin: 0 4px 0 0;
-        vertical-align: -2px;
+    .account-skin-choice.is-active {
+        border-color: #337ab7;
+        background: #eef6ff;
     }
 
     #accountSkinRow .account-label,
@@ -2861,12 +2864,8 @@ $(function () {
 
         $(selector)
             .empty()
-            .append($('<input>', {
-                type: 'radio',
-                name: 'accountActiveSkin',
-                value: type || 'player',
-                checked: activeType === (type || 'player')
-            }))
+            .attr('data-skin-type', type || 'player')
+            .toggleClass('is-active', activeType === (type || 'player'))
             .append($('<img>', {
                 class: 'account-skin-preview',
                 src: url,
@@ -4159,8 +4158,9 @@ $(function () {
         reader.readAsDataURL(file);
     });
 
-    $('#accountSkinRow').on('change', 'input[name="accountActiveSkin"]', function () {
-        var selectedType = this.value;
+    $('#accountSkinRow').on('click', '.account-skin-choice', function () {
+        var selectedType = $(this).attr('data-skin-type');
+        if (!selectedType) return;
 
         postAuth('/api/auth/active-skin', {
             token: localStorage.getItem('authToken'),

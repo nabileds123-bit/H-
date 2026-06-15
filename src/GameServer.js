@@ -186,13 +186,19 @@ GameServer.prototype.start = function() {
 
           userStore.listUsers().forEach(function(user) {
             var playerName = String(user.username || user.skin || '').trim();
+            var guildTag = String(user.guildTag || '').trim();
+            var activeSkinType = String(user.activeSkinType || 'player').toLowerCase();
+
+            if (activeSkinType === 'guild' && guildTag && user.guildSkinUrl) {
+              names.push(guildTag);
+              skinFiles[guildTag.toLowerCase()] = user.guildSkinUrl;
+              return;
+            }
+
             if (playerName && user.skinUrl) {
               names.push(playerName);
               skinFiles[playerName.toLowerCase()] = user.skinUrl;
-            }
-
-            var guildTag = String(user.guildTag || '').trim();
-            if (guildTag && user.guildSkinUrl) {
+            } else if (guildTag && user.guildSkinUrl) {
               names.push(guildTag);
               skinFiles[guildTag.toLowerCase()] = user.guildSkinUrl;
             }

@@ -1169,12 +1169,6 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         noRanking = false;
     splitIcon.src = "split.png";
     ejectIcon.src = "feed.png";
-    var guestNoNameSkins = [
-        "8", "nasa", "berlusconi", "blatter", "boris", "bush",
-        "cameron", "chavez", "clinton", "dilma", "fidel",
-        "hillary", "hitler", "hollande", "kim jong un",
-        "obama", "palin", "putin", "stalin", "trump", "tsipras"
-    ];
     var wCanvas = document.createElement("canvas");
     var playerStat = null;
     wHandle.isSpectating = false;
@@ -1183,7 +1177,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         var authUser = null != wHandle.localStorage ? wHandle.localStorage.authUser : null;
         var guestNick = String(arg || '').trim();
         if (!authUser && !guestNick) {
-            guestNick = guestNoNameSkins[Math.floor(Math.random() * guestNoNameSkins.length)];
+            guestNick = knownNameDict_noDisp[Math.floor(Math.random() * knownNameDict_noDisp.length)];
         }
         userNickName = authUser || guestNick;
         sendNickName();
@@ -1329,7 +1323,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         scoreText = null,
         skins = {},
         knownNameDict = "poland;usa;china;russia;canada;australia;spain;brazil;germany;ukraine;france;sweden;hitler;north korea;south korea;japan;united kingdom;earth;greece;latvia;lithuania;estonia;finland;norway;cia;maldivas;austria;nigeria;reddit;yaranaika;confederate;9gag;indiana;4chan;italy;bulgaria;tumblr;2ch.hk;hong kong;portugal;jamaica;german empire;mexico;sanik;switzerland;croatia;chile;indonesia;bangladesh;thailand;iran;iraq;peru;moon;botswana;bosnia;netherlands;european union;taiwan;pakistan;hungary;satanist;qing dynasty;matriarchy;patriarchy;feminism;ireland;texas;facepunch;prodota;cambodia;steam;piccolo;india;kc;denmark;quebec;ayy lmao;sealand;bait;tsarist russia;origin;vinesauce;stalin;belgium;luxembourg;stussy;prussia;8ch;argentina;scotland;sir;romania;belarus;wojak;doge;nasa;byzantium;imperial japan;french kingdom;somalia;turkey;mars;pokerface;8;irs;receita federal;facebook".split(";"),
-        knownNameDict_noDisp = ["8", "nasa", "Amruflxryns"],
+        knownNameDict_noDisp = ["8", "nasa", "berlusconi", "blatter", "boris", "bush","cameron", "chavez", "clinton", "dilma", "fidel","hillary", "hitler", "hollande", "kim jong un","obama", "palin", "putin", "stalin", "trump", "tsipras"],
         ib = ["_canvas'blob"];
         Cell.prototype = {
         id: 0,
@@ -1532,10 +1526,14 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 }
                 ctx.closePath();
                 var skinName = this.name.toLowerCase();
+                var clanSkinName = '';
+                var playerSkinName = skinName;
                 if (skinName.indexOf('[') != -1) {
                     var clanStart = skinName.indexOf('[');
                     var clanEnd = skinName.indexOf(']');
-                    skinName = skinName.slice(clanStart + 1, clanEnd);
+                    clanSkinName = skinName.slice(clanStart + 1, clanEnd);
+                    playerSkinName = skinName.slice(clanEnd + 1).trim();
+                    skinName = skinFileMap[playerSkinName] ? playerSkinName : clanSkinName;
                     //console.log(skinName);
                 }
 
@@ -1580,7 +1578,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 //draw name
                 if (0 != this.id) {
                     var b = ~~this.y;
-                    if ((showName || c) && this.name && this.nameCache && (null == e || -1 == knownNameDict_noDisp.indexOf(skinName))) {
+                    if ((showName || c) && this.name && this.nameCache && -1 == knownNameDict_noDisp.indexOf(skinName)) {
                         ncache = this.nameCache;
                         ncache.setValue(this.name);
                         ncache.setSize(this.getNameSize());
