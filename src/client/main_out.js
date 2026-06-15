@@ -647,8 +647,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     function drawChatBoard() {
         var nowtime = Date.now();
         var CHAT_LIFE_TIME = 15000;     // chat mulai hilang setelah 15 detik
-        var CHAT_REMOVE_DELAY = 1000;   // hilang 1 chat tiap 1 detik
-        var CHAT_MAX_WIDTH = 560;   // kecilkan kalau mau lebih cepat turun ke bawah
+        var CHAT_REMOVE_DELAY = 5000;   // hilang 1 chat tiap 5 detik
+        var CHAT_MAX_WIDTH = 320;   // kecilkan kalau mau lebih cepat turun ke bawah
 
         if (!drawChatBoard.lastRemoveTime) {
             drawChatBoard.lastRemoveTime = 0;
