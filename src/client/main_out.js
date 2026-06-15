@@ -633,14 +633,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         chatCanvas.height = 550 * scaleFactor;
         ctx.scale(scaleFactor, scaleFactor);
         var nowtime = Date.now();
-        var lasttime = 0;
-        if (chatBoard.length >= 1)
-            lasttime = chatBoard[chatBoard.length - 1].time;
-        else return;
-        var deltat = nowtime - lasttime;
-
-        ctx.globalAlpha = 0.8 * Math.exp(-deltat / 25000);
-        //console.log(deltat);
+        if (chatBoard.length < 1) return;
 
 
         var len = chatBoard.length;
@@ -649,6 +642,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         for (var i = 0; i < (len - from); i++) {
             var chatItem = chatBoard[i + from];
             var lineY = 20 + 24 * i;
+            var deltat = nowtime - chatItem.time;
+            ctx.globalAlpha = 0.8 * Math.exp(-deltat / 25000);
             var chatName = new UText(18, chatItem.color);
             chatName.setValue(chatItem.name);
             var width = chatName.getWidth();
@@ -660,6 +655,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             a = chatText.render();
             ctx.drawImage(a, 15 + width * 1.8, lineY);
         }
+        ctx.globalAlpha = 1;
         //ctx.restore();
     }
 
