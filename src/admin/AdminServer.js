@@ -259,6 +259,42 @@ function handleUsers(req, res, parts) {
     sendJson(res, 404, { ok: false, message: 'User route not found.' });
 }
 
+function applyPointTransaction(body) {
+    var username = String(body.username || '').trim();
+    var amount = parseInt(body.amount, 10);
+    var user = username ? users.findByUsernameOrEmail(username) : null;
+
+    if (!user) {
+        return { error: 'User not found.' };
+    }
+
+    if (isNaN(amount) || amount === 0) {
+        return { error: 'Amount must be a non-zero number.' };
+    }
+
+    var currentPoints = parseInt(user.points, 10) || 0;
+    var nextPoints = currentPoints + amount;
+
+    if (nextPoints < 0) {
+        return { error: 'Points cannot be below 0.' };
+    }
+
+    var updatedUser = users.updateUser(user.id, {
+        points: nextPoints
+    });
+
+    return {
+        item: Object.assign({}, body, {
+            username: updatedUser.username,
+            amount: amount,
+            userId: updatedUser.id,
+            balanceBefore: currentPoints,
+            balanceAfter: nextPoints,
+            createdAt: body.createdAt || Date.now()
+        })
+    };
+}
+
 function handleCollection(req, res, collection, parts) {
     if (!collections[collection]) return sendJson(res, 404, { ok: false, message: 'Collection not found.' });
     if (!requireAdmin(req, res)) return;
@@ -270,6 +306,16 @@ function handleCollection(req, res, collection, parts) {
     if (req.method === 'POST' && parts.length === 0) {
         return readBody(req, function(err, body) {
             if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+            if (collection === 'points') {
+                var transaction = applyPointTransaction(body);
+                if (transaction.error) {
+                    return sendJson(res, 400, { ok: false, message: transaction.error });
+                }
+
+                return sendJson(res, 200, { ok: true, item: adminStore.create(collection, transaction.item) });
+            }
+
             sendJson(res, 200, { ok: true, item: adminStore.create(collection, body) });
         });
     }
