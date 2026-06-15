@@ -5,7 +5,9 @@
      * Example: 127.0.0.1:443
      *
      */
-    var CONNECTION_URL = window.location.hostname + ":" + window.location.port;
+    var CONNECTION_PORT = window.location.port ? ":" + window.location.port : "";
+    var CONNECTION_URL = window.location.hostname + CONNECTION_PORT;
+    var CONNECTION_PROTOCOL = window.location.protocol === "https:" ? "wss://" : "ws://";
     /**
      * Enter path to the skin image folder
      * To take skins from the official server enter: "http://agar.io/skins/"
@@ -384,7 +386,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function attemptConnection() {
         console.log("Find " + w + gameMode);
-        wsConnect("ws://" + CONNECTION_URL)
+        wsConnect(CONNECTION_PROTOCOL + CONNECTION_URL)
     }
 
     function showConnecting() {
@@ -406,7 +408,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             ws = null
         }
         var c = CONNECTION_URL;
-        wsUrl = "ws://" + c;
+        wsUrl = CONNECTION_PROTOCOL + c;
         nodesOnScreen = [];
         playerCells = [];
         nodes = {};
