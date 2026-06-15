@@ -639,9 +639,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         var len = chatBoard.length;
         var from = len - 15;
         if (from < 0) from = 0;
+        var visibleCount = len - from;
+        var startY = chatCanvas.height / scaleFactor - 24 * visibleCount;
         for (var i = 0; i < (len - from); i++) {
             var chatItem = chatBoard[i + from];
-            var lineY = 20 + 24 * i;
+            var lineY = startY + 24 * i;
             var deltat = nowtime - chatItem.time;
             ctx.globalAlpha = 0.8 * Math.exp(-deltat / 25000);
             var chatName = new UText(18, chatItem.color);
