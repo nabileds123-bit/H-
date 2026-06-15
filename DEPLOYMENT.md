@@ -103,7 +103,7 @@ Di GitHub repo, buka `Settings` -> `Secrets and variables` -> `Actions` ->
 - `VPS_HOST` = `141.11.25.59`
 - `VPS_USER` = `root`
 - `VPS_PORT` = `22`
-- `VPS_SSH_KEY` = isi private key `~/.ssh/github_deploy_bubblev2`
+- `VPS_SSH_KEY` = isi private key dari `~/.ssh/github_deploy_bubblev2`
 
 Setelah itu, setiap commit yang di-push ke `main` akan otomatis pull/restart di
 VPS.
