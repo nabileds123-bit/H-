@@ -100,6 +100,9 @@ Set password admin di file `.env` VPS:
 ```env
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=ganti_password_panjang
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_BUCKET=skins
 ```
 
 Lalu restart:

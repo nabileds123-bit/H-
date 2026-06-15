@@ -1253,11 +1253,22 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     var response = [];
     var skinFileMap = {};
 
-    function rememberSkinFiles(names) {
+    function rememberSkinFiles(names, files) {
         if (!names || !names.length) return;
 
+        if (files) {
+            for (var key in files) {
+                if (files.hasOwnProperty(key) && files[key]) {
+                    skinFileMap[String(key).toLowerCase()] = files[key];
+                }
+            }
+        }
+
         for (var i = 0; i < names.length; i++) {
-            skinFileMap[String(names[i]).toLowerCase()] = names[i];
+            var key = String(names[i]).toLowerCase();
+            if (!skinFileMap[key]) {
+                skinFileMap[key] = names[i];
+            }
         }
     }
 
@@ -1269,7 +1280,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         success: function (data) {
             //alert(data["names"]);
             response = JSON.parse(data["names"]);
-            rememberSkinFiles(response);
+            rememberSkinFiles(response, data["files"] ? JSON.parse(data["files"]) : null);
         },
         error: function () {
             response = [];
@@ -1289,7 +1300,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         success: function (data) {
             //alert(data["names"]);
             response = JSON.parse(data["names"]);
-            rememberSkinFiles(response);
+            rememberSkinFiles(response, data["files"] ? JSON.parse(data["files"]) : null);
         },
             error: function () {
                 response = [];
@@ -1532,7 +1543,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     if (-1 != knownNameDict.indexOf(skinName)) {
                         if (!skins.hasOwnProperty(skinName)) {
                             skins[skinName] = new Image;
-                            skins[skinName].src = SKIN_URL + (skinFileMap[skinName] || skinName) + '.png';
+                            var skinFile = skinFileMap[skinName] || skinName;
+                            skins[skinName].src = /^https?:\/\//i.test(skinFile) ? skinFile : SKIN_URL + skinFile + '.png';
                         }
                         if (0 != skins[skinName].width && skins[skinName].complete) {
                             c = skins[skinName];

@@ -2,9 +2,13 @@ var url = require('url');
 var passwords = require('./password');
 var users = require('./userStore');
 var email = require('./email');
+var skinStorage = require('./skinStorage');
 
 var VERIFY_EXPIRES = 24 * 60 * 60 * 1000;
 var RESET_EXPIRES = 60 * 60 * 1000;
+var PLAYER_SKIN_COST = 150;
+var GUILD_SKIN_COST = 50;
+var MAX_SKIN_BYTES = 2 * 1024 * 1024;
 var CELL_COLORS = [
     '#000000',
     '#6FCA36',
@@ -34,12 +38,13 @@ function sendHtml(res, status, html) {
     res.end(html);
 }
 
-function readBody(req, callback) {
+function readBody(req, callback, maxBytes) {
     var body = '';
+    var limit = maxBytes || 1024 * 32;
 
     req.on('data', function(chunk) {
         body += chunk;
-        if (body.length > 1024 * 32) {
+        if (body.length > limit) {
             req.connection.destroy();
         }
     });
@@ -72,6 +77,48 @@ function isValidPassword(value) {
 function normalizeCellColor(value) {
     var color = String(value || '').trim().toUpperCase();
     return CELL_COLORS.indexOf(color) !== -1 ? color : null;
+}
+
+function publicAuthUser(user, lastLoginAt) {
+    return {
+        username: user.username,
+        email: user.email,
+        lastLoginAt: lastLoginAt || user.lastLoginAt || Date.now(),
+        cellColor: user.cellColor || '#000000',
+        accountType: user.accountType || 'Free',
+        premiumUntil: user.premiumUntil || '',
+        points: parseInt(user.points, 10) || 0,
+        xp: parseInt(user.xp, 10) || 0,
+        xpMax: parseInt(user.xpMax, 10) || 0,
+        level: parseInt(user.level, 10) || 1,
+        skin: user.skin || '',
+        skinUrl: user.skinUrl || '',
+        skinPath: user.skinPath || '',
+        guildTag: user.guildTag || '',
+        guildSkinUrl: user.guildSkinUrl || '',
+        guildSkinPath: user.guildSkinPath || ''
+    };
+}
+
+function safeSkinSegment(value, fallback) {
+    var text = String(value || fallback || '').trim().toLowerCase();
+    text = text.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+    return text || String(fallback || 'skin').toLowerCase();
+}
+
+function decodePngDataUrl(dataUrl) {
+    var match = /^data:image\/png;base64,([a-z0-9+/=\r\n]+)$/i.exec(String(dataUrl || ''));
+    if (!match) return null;
+
+    var buffer = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
+    if (!buffer.length || buffer.length > MAX_SKIN_BYTES) return null;
+    if (buffer.length < 8 ||
+        buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4e || buffer[3] !== 0x47 ||
+        buffer[4] !== 0x0d || buffer[5] !== 0x0a || buffer[6] !== 0x1a || buffer[7] !== 0x0a) {
+        return null;
+    }
+
+    return buffer;
 }
 
 function handleRegister(req, res) {
@@ -168,12 +215,7 @@ function handleLogin(req, res) {
             ok: true,
             message: 'Login success.',
             token: sessionToken,
-            user: {
-                username: user.username,
-                email: user.email,
-                lastLoginAt: lastLoginAt,
-                cellColor: user.cellColor || '#000000'
-            }
+            user: publicAuthUser(user, lastLoginAt)
         });
     });
 }
@@ -286,6 +328,81 @@ function handleCellColor(req, res) {
     });
 }
 
+function handleUploadSkin(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var token = String(body.token || '');
+        var type = String(body.type || 'player').toLowerCase();
+        var user = users.findBySessionToken(token);
+        var buffer = decodePngDataUrl(body.dataUrl);
+
+        if (!user) {
+            return sendJson(res, 401, { ok: false, message: 'Please login again.' });
+        }
+
+        if (type !== 'player' && type !== 'guild') {
+            return sendJson(res, 400, { ok: false, message: 'Skin type is not valid.' });
+        }
+
+        if (!buffer) {
+            return sendJson(res, 400, { ok: false, message: 'Skin must be a PNG file and max 2MB.' });
+        }
+
+        if (!skinStorage.isConfigured()) {
+            return sendJson(res, 503, { ok: false, message: 'Supabase storage is not configured.' });
+        }
+
+        var cost = type === 'guild' ? GUILD_SKIN_COST : PLAYER_SKIN_COST;
+        var currentPoints = parseInt(user.points, 10) || 0;
+        if (currentPoints < cost) {
+            return sendJson(res, 400, {
+                ok: false,
+                message: 'Points tidak cukup. Butuh ' + cost + ' points.'
+            });
+        }
+
+        var name = type === 'guild'
+            ? safeSkinSegment(body.guildTag || user.guildTag, user.username)
+            : safeSkinSegment(user.username, user.id);
+        var objectPath = type + '/' + name + '-' + Date.now() + '.png';
+
+        skinStorage.uploadPng(objectPath, buffer, function(uploadErr, result) {
+            if (uploadErr) {
+                console.log('[Auth] Skin upload failed: %s', uploadErr.message);
+                return sendJson(res, 502, { ok: false, message: uploadErr.message });
+            }
+
+            var changes = {
+                points: currentPoints - cost
+            };
+
+            if (type === 'guild') {
+                changes.guildTag = String(body.guildTag || user.guildTag || '').trim();
+                changes.guildSkinUrl = result.url;
+                changes.guildSkinPath = result.path;
+                changes.guildSkinUploadedAt = Date.now();
+            } else {
+                changes.skin = user.username;
+                changes.skinUrl = result.url;
+                changes.skinPath = result.path;
+                changes.skinUploadedAt = Date.now();
+            }
+
+            var updatedUser = users.updateUser(user.id, changes);
+            sendJson(res, 200, {
+                ok: true,
+                message: (type === 'guild' ? 'Guild skin' : 'Player skin') + ' uploaded. ' + cost + ' points deducted.',
+                cost: cost,
+                type: type,
+                url: result.url,
+                path: result.path,
+                user: publicAuthUser(updatedUser)
+            });
+        });
+    }, 1024 * 1024 * 4);
+}
+
 function handle(req, res) {
     var parsed = url.parse(req.url, true);
     var pathname = parsed.pathname;
@@ -326,6 +443,11 @@ function handle(req, res) {
 
     if (req.method === 'POST' && pathname === '/api/auth/cell-color') {
         handleCellColor(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/auth/upload-skin') {
+        handleUploadSkin(req, res);
         return true;
     }
 

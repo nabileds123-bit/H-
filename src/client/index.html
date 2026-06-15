@@ -2270,11 +2270,11 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="account-row">
                     <div class="account-label">Level:</div>
-                    <div class="account-value">1</div>
+                    <div class="account-value"><span id="accountLevel">1</span></div>
                 </div>
                 <div class="account-row">
                     <div class="account-label">Points:</div>
-                    <div class="account-value">0</div>
+                    <div class="account-value"><span id="accountPoints">0</span></div>
                 </div>
                 <div class="account-row">
                     <div class="account-label">Guild:</div>
@@ -2807,6 +2807,36 @@ $(function () {
         });
     }
 
+    function storeAuthUser(user) {
+        if (!user) return;
+
+        localStorage.setItem('authUser', user.username || localStorage.getItem('authUser') || '');
+        localStorage.setItem('authLastLogin', user.lastLoginAt || localStorage.getItem('authLastLogin') || Date.now());
+        localStorage.setItem('cellColor', user.cellColor || '#000000');
+        localStorage.setItem('authAccountType', user.accountType || 'Free');
+        localStorage.setItem('authPoints', user.points || 0);
+        localStorage.setItem('authXp', user.xp || localStorage.getItem('authXp') || 0);
+        localStorage.setItem('authXpMax', user.xpMax || localStorage.getItem('authXpMax') || 0);
+        localStorage.setItem('authLevel', user.level || localStorage.getItem('authLevel') || 1);
+        localStorage.setItem('authSkin', user.skin || '');
+        localStorage.setItem('authSkinUrl', user.skinUrl || '');
+        localStorage.setItem('authGuildTag', user.guildTag || '');
+        localStorage.setItem('authGuildSkinUrl', user.guildSkinUrl || '');
+    }
+
+    function renderAccountSkin(selector, url, title) {
+        if (!url) return false;
+
+        $(selector).html(
+            $('<img>', {
+                class: 'account-skin-preview',
+                src: url,
+                alt: title || 'Skin'
+            })
+        );
+        return true;
+    }
+
     function showHomeView() {
         $('#loginView, #registerView, #forgotPasswordView, #resetPasswordView, #accountView, #changePasswordView, #uploadSkinView').hide();
         $('#homeView, #instructions').show();
@@ -2841,9 +2871,16 @@ $(function () {
     function showAccountView() {
         $('#homeView, #instructions, #loginView, #registerView, #forgotPasswordView, #resetPasswordView, #changePasswordView, #uploadSkinView').hide();
         $('#accountNick').text(authUser || '-');
+        $('#accountType').text(localStorage.getItem('authAccountType') || 'Free');
+        $('#accountPoints').text(localStorage.getItem('authPoints') || '0');
+        $('#accountLevel').text(localStorage.getItem('authLevel') || '1');
         $('#accountLastLogin').text(formatLoginTime(localStorage.getItem('authLastLogin')));
         $('#accountSkinRow').hide();
         $('#accountPlayerSkin, #accountGuildSkin').empty();
+        if (renderAccountSkin('#accountPlayerSkin', localStorage.getItem('authSkinUrl'), 'Player skin') ||
+            renderAccountSkin('#accountGuildSkin', localStorage.getItem('authGuildSkinUrl'), 'Guild skin')) {
+            $('#accountSkinRow').show();
+        }
         $('#cellColorPalette').removeClass('is-open');
         $('#accountView').show();
         updatePlayerExpVisibility();
@@ -3773,9 +3810,43 @@ $(function () {
             return;
         }
 
-        status.removeClass('text-danger').addClass('text-success').text('Opening guild detail preview.').show();
-        closeGuildCreateDialog();
-        openGuildDetailView(name, tag, logoFile ? URL.createObjectURL(logoFile) : '');
+        if (!logoFile) {
+            status.removeClass('text-danger').addClass('text-success').text('Opening guild detail preview.').show();
+            closeGuildCreateDialog();
+            openGuildDetailView(name, tag, '');
+            return;
+        }
+
+        if (!localStorage.getItem('authToken')) {
+            status.removeClass('text-success').addClass('text-danger').text('Login dulu untuk upload guild skin.').show();
+            return;
+        }
+
+        status.removeClass('text-danger').addClass('text-success').text('Uploading guild skin...').show();
+        var reader = new FileReader();
+        reader.onload = function (readerEvent) {
+            postAuth('/api/auth/upload-skin', {
+                token: localStorage.getItem('authToken'),
+                type: 'guild',
+                guildTag: tag,
+                fileName: logoFile.name,
+                dataUrl: readerEvent.target.result
+            }, function (err, response) {
+                if (err) {
+                    status.removeClass('text-success').addClass('text-danger').text(err).show();
+                    return;
+                }
+
+                storeAuthUser(response.user);
+                status.removeClass('text-danger').addClass('text-success').text(response.message || 'Guild skin uploaded.').show();
+                closeGuildCreateDialog();
+                openGuildDetailView(name, tag, response.url || '');
+            });
+        };
+        reader.onerror = function () {
+            status.removeClass('text-success').addClass('text-danger').text('Gagal membaca file guild skin.').show();
+        };
+        reader.readAsDataURL(logoFile);
     });
 
     $('#battleSpectateBtn').on('click', function () {
@@ -3933,12 +4004,7 @@ $(function () {
         }, function (err, response) {
             if (!err && response.token) {
                 localStorage.setItem('authToken', response.token);
-                localStorage.setItem('authUser', response.user.username);
-                localStorage.setItem('authLastLogin', response.user.lastLoginAt || Date.now());
-                localStorage.setItem('cellColor', response.user.cellColor || '#000000');
-                localStorage.setItem('authXp', response.user.xp || localStorage.getItem('authXp') || 0);
-                localStorage.setItem('authXpMax', response.user.xpMax || localStorage.getItem('authXpMax') || 0);
-                localStorage.setItem('authLevel', response.user.level || localStorage.getItem('authLevel') || 1);
+                storeAuthUser(response.user);
                 window.location.reload();
                 return;
             }
@@ -4023,7 +4089,34 @@ $(function () {
             return;
         }
 
-        showAuthStatus('#skinUploadStatus', 'Upload backend is not ready yet.', true);
+        if (!localStorage.getItem('authToken')) {
+            showAuthStatus('#skinUploadStatus', 'Please login before uploading skin.', true);
+            return;
+        }
+
+        showAuthStatus('#skinUploadStatus', 'Uploading skin...', false);
+        var reader = new FileReader();
+        reader.onload = function (event) {
+            postAuth('/api/auth/upload-skin', {
+                token: localStorage.getItem('authToken'),
+                type: 'player',
+                fileName: file.name,
+                dataUrl: event.target.result
+            }, function (err, response) {
+                if (err) {
+                    showAuthStatus('#skinUploadStatus', err, true);
+                    return;
+                }
+
+                storeAuthUser(response.user);
+                showAuthStatus('#skinUploadStatus', response.message || 'Skin uploaded.', false);
+                setTimeout(showAccountView, 700);
+            });
+        };
+        reader.onerror = function () {
+            showAuthStatus('#skinUploadStatus', 'Failed to read skin file.', true);
+        };
+        reader.readAsDataURL(file);
     });
 
     $('#profileCellColor').on('click', function () {

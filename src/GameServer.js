@@ -12,6 +12,7 @@ var Entity = require('./entity');
 var Gamemode = require('./gamemodes');
 var AuthServer = require('./auth/authServer');
 var AdminServer = require('./admin/AdminServer');
+var userStore = require('./auth/userStore');
 var configPath = path.join(__dirname, '..', 'gameserver.ini');
 
 // GameServer implementation
@@ -201,6 +202,7 @@ GameServer.prototype.start = function() {
         var skinsDir = path.join(__dirname, 'skins');
         fs.readdir(skinsDir, function(err, files) {
           var names = [];
+          var skinFiles = {};
 
           if (!err && files) {
             names = files
@@ -212,9 +214,24 @@ GameServer.prototype.start = function() {
               });
           }
 
+          userStore.listUsers().forEach(function(user) {
+            var playerName = String(user.username || user.skin || '').trim();
+            if (playerName && user.skinUrl) {
+              names.push(playerName);
+              skinFiles[playerName.toLowerCase()] = user.skinUrl;
+            }
+
+            var guildTag = String(user.guildTag || '').trim();
+            if (guildTag && user.guildSkinUrl) {
+              names.push(guildTag);
+              skinFiles[guildTag.toLowerCase()] = user.guildSkinUrl;
+            }
+          });
+
           var payload = {
             action: 'test',
-            names: JSON.stringify(names)
+            names: JSON.stringify(names),
+            files: JSON.stringify(skinFiles)
           };
           payload.json = JSON.stringify(payload);
 

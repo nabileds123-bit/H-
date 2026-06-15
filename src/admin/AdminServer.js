@@ -155,6 +155,10 @@ function normalizeUserChanges(body) {
         'cellColor',
         'guildTag',
         'skin',
+        'skinUrl',
+        'skinPath',
+        'guildSkinUrl',
+        'guildSkinPath',
         'banned',
         'banReason'
     ];
