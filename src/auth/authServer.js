@@ -43,15 +43,20 @@ function sendHtml(res, status, html) {
 function readBody(req, callback, maxBytes) {
     var body = '';
     var limit = maxBytes || 1024 * 32;
+    var tooLarge = false;
 
     req.on('data', function(chunk) {
+        if (tooLarge) return;
         body += chunk;
         if (body.length > limit) {
-            req.connection.destroy();
+            tooLarge = true;
+            callback({ status: 413, message: 'Request body is too large.' });
         }
     });
 
     req.on('end', function() {
+        if (tooLarge) return;
+
         try {
             callback(null, body ? JSON.parse(body) : {});
         } catch (e) {
@@ -383,7 +388,7 @@ function handleActiveSkin(req, res) {
 
 function handleUploadSkin(req, res) {
     readBody(req, function(err, body) {
-        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+        if (err) return sendJson(res, err.status || 400, { ok: false, message: err.message || 'Invalid request.' });
 
         var token = String(body.token || '');
         var type = String(body.type || 'player').toLowerCase();

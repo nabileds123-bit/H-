@@ -2828,6 +2828,7 @@ $(function () {
     var guildList = [];
     var guildMembers = [];
     var premiumChatWarning = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
+    var MAX_SKIN_UPLOAD_BYTES = 2 * 1024 * 1024;
 
     function getCurrentGuildViewerName() {
         return authUser || $('#accountNick').text() || 'amen';
@@ -2934,6 +2935,10 @@ $(function () {
             },
             error: function (xhr) {
                 var response = xhr.responseJSON || {};
+                if (xhr.status === 413) {
+                    callback('Upload file terlalu besar. Maksimal 2MB PNG.');
+                    return;
+                }
                 callback(response.message || 'Request failed.');
             }
         });
@@ -3558,6 +3563,9 @@ $(function () {
         if (!file) return '';
         if (!/\.png$/i.test(file.name) || file.type !== 'image/png') {
             return 'Guild skin must be a PNG file.';
+        }
+        if (file.size > MAX_SKIN_UPLOAD_BYTES) {
+            return 'Guild skin maksimal 2MB.';
         }
         return '';
     }
@@ -4500,6 +4508,11 @@ $(function () {
 
         if (!file) {
             showAuthStatus('#skinUploadStatus', 'Please select a .png skin first.', true);
+            return;
+        }
+
+        if (file.size > MAX_SKIN_UPLOAD_BYTES) {
+            showAuthStatus('#skinUploadStatus', 'Skin maksimal 2MB PNG.', true);
             return;
         }
 

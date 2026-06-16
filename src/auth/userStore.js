@@ -18,7 +18,14 @@ function readStore() {
     ensureStore();
 
     try {
-        return JSON.parse(fs.readFileSync(usersPath, 'utf8'));
+        var store = JSON.parse(fs.readFileSync(usersPath, 'utf8'));
+        var normalized = normalizeStore(store);
+
+        if (normalized.changed) {
+            writeStore(normalized.store);
+        }
+
+        return normalized.store;
     } catch (e) {
         return { users: [] };
     }
@@ -27,6 +34,35 @@ function readStore() {
 function writeStore(store) {
     ensureStore();
     fs.writeFileSync(usersPath, JSON.stringify(store, null, 2));
+}
+
+function createUserId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function normalizeStore(store) {
+    var changed = false;
+
+    if (!store || !Array.isArray(store.users)) {
+        store = { users: [] };
+        changed = true;
+    }
+
+    store.users = store.users.map(function(user) {
+        if (!user || typeof user !== 'object') {
+            changed = true;
+            return { id: createUserId(), username: '', email: '', createdAt: Date.now(), updatedAt: Date.now() };
+        }
+
+        if (!user.id) {
+            user = Object.assign({}, user, { id: createUserId(), updatedAt: Date.now() });
+            changed = true;
+        }
+
+        return user;
+    });
+
+    return { store: store, changed: changed };
 }
 
 function listUsers() {
@@ -60,8 +96,8 @@ function findByUsernameOrEmail(identifier) {
 
     return store.users.find(function(user) {
         var userGmail = user.gmailCanonicalEmail || normalizeGmailEmail(user.email);
-        return user.username.toLowerCase() === value ||
-            user.email.toLowerCase() === value ||
+        return String(user.username || '').toLowerCase() === value ||
+            String(user.email || '').toLowerCase() === value ||
             (gmailValue && userGmail === gmailValue);
     }) || null;
 }
@@ -73,7 +109,7 @@ function findByEmail(email) {
 
     return store.users.find(function(user) {
         var userGmail = user.gmailCanonicalEmail || normalizeGmailEmail(user.email);
-        return user.email === normalized || (gmailValue && userGmail === gmailValue);
+        return String(user.email || '').toLowerCase() === normalized || (gmailValue && userGmail === gmailValue);
     }) || null;
 }
 
@@ -101,8 +137,8 @@ function createUser(data) {
 
     var duplicate = store.users.find(function(user) {
         var userGmail = user.gmailCanonicalEmail || normalizeGmailEmail(user.email);
-        return user.username.toLowerCase() === username.toLowerCase() ||
-            user.email === email ||
+        return String(user.username || '').toLowerCase() === username.toLowerCase() ||
+            String(user.email || '').toLowerCase() === email ||
             (gmailCanonicalEmail && userGmail === gmailCanonicalEmail);
     });
 
@@ -111,7 +147,7 @@ function createUser(data) {
     }
 
     var user = {
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+        id: createUserId(),
         username: username,
         email: email,
         gmailCanonicalEmail: gmailCanonicalEmail,
@@ -146,7 +182,7 @@ function updateUser(userId, changes) {
     var user = null;
 
     store.users = store.users.map(function(item) {
-        if (item.id !== userId) return item;
+        if (!matchesUserId(item, userId)) return item;
 
         user = Object.assign({}, item, changes, { updatedAt: Date.now() });
         return user;
@@ -161,7 +197,7 @@ function deleteUser(userId) {
     var initialLength = store.users.length;
 
     store.users = store.users.filter(function(user) {
-        return user.id !== userId;
+        return !matchesUserId(user, userId);
     });
 
     if (store.users.length === initialLength) {
@@ -170,6 +206,15 @@ function deleteUser(userId) {
 
     writeStore(store);
     return true;
+}
+
+function matchesUserId(user, userId) {
+    var value = String(userId || '').trim();
+    if (!user || !value) return false;
+
+    return String(user.id || '') === value ||
+        String(user.username || '').toLowerCase() === value.toLowerCase() ||
+        String(user.email || '').toLowerCase() === value.toLowerCase();
 }
 
 module.exports = {
