@@ -2571,19 +2571,19 @@ $(document).on('keyup', function(input) {
                 <div id="accountDetailProfile" class="account-detail-pane active">
                     <div class="account-detail-table">
                         <div class="account-detail-row">
-                            <span class="account-detail-label">Nama:</span>
+                            <span class="account-detail-label">Name:</span>
                             <span id="accountDetailName" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
-                            <span class="account-detail-label">Tingkatan:</span>
+                            <span class="account-detail-label">Level:</span>
                             <span id="accountDetailLevel" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
-                            <span class="account-detail-label">Poin:</span>
+                            <span class="account-detail-label">Points:</span>
                             <span id="accountDetailPoints" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
-                            <span class="account-detail-label">Klan:</span>
+                            <span class="account-detail-label">Clan:</span>
                             <span class="account-detail-value"><a id="accountDetailGuild" href="#guild-detail"></a></span>
                         </div>
                         <div class="account-detail-row">
@@ -2596,8 +2596,8 @@ $(document).on('keyup', function(input) {
                         </div>
                     </div>
                     <div class="account-detail-skins">
-                        <div class="account-detail-skin"></div>
-                        <div class="account-detail-skin alt"></div>
+                        <div id="accountDetailPlayerSkin" class="account-detail-skin"></div>
+                        <div id="accountDetailGuildSkin" class="account-detail-skin alt"></div>
                     </div>
                     <form id="accountDetailSearchForm" class="account-detail-search">
                         <input id="accountDetailSearchInput" class="form-control" type="text" placeholder="Cari">
@@ -3652,21 +3652,41 @@ $(function () {
         if (!timestamp || isNaN(timestamp)) return '-';
 
         var seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
-        if (seconds < 60) return 'baru saja';
+        if (seconds < 60) return 'just now';
 
         var minutes = Math.floor(seconds / 60);
-        if (minutes < 60) return minutes + ' menit lalu';
+        if (minutes < 60) return minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
 
         var hours = Math.floor(minutes / 60);
-        if (hours < 24) return hours + ' jam lalu';
+        if (hours < 24) return hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
 
         var days = Math.floor(hours / 24);
-        return days + ' hari lalu';
+        return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+    }
+
+    function renderAccountDetailSkin(selector, url) {
+        var skinUrl = String(url || '').trim();
+        var skin = $(selector);
+
+        if (!skinUrl) {
+            skin.hide().css('background-image', '');
+            return false;
+        }
+
+        skin
+            .show()
+            .css('background-image', 'url("' + skinUrl.replace(/"/g, '\\"') + '")')
+            .css('background-size', 'cover')
+            .css('background-position', 'center');
+
+        return true;
     }
 
     function renderAccountDetailProfile(user) {
         var guildTag = String(user.guildTag || '').trim();
         var statusText = hasActivePremiumForUser(user) ? 'Premium Account' : (user.accountType || 'Free Account');
+        var hasPlayerSkin = renderAccountDetailSkin('#accountDetailPlayerSkin', user.skinUrl);
+        var hasGuildSkin = renderAccountDetailSkin('#accountDetailGuildSkin', user.guildSkinUrl);
 
         $('#accountDetailTitle, #accountDetailName').text(user.username || '-');
         $('#accountDetailLevel').text(parseInt(user.level, 10) || 1);
@@ -3687,7 +3707,8 @@ $(function () {
             $('#accountDetailGuild').text('-').attr('href', '#guild-detail').data('guild-tag', '').data('guild-name', '').data('guild-logo', '');
         }
 
-        $('#accountDetailProfile .account-detail-table, #accountDetailProfile .account-detail-skins').show();
+        $('#accountDetailProfile .account-detail-table').show();
+        $('#accountDetailProfile .account-detail-skins').toggle(hasPlayerSkin || hasGuildSkin);
         setAccountDetailMessage('', false);
     }
 
@@ -3713,14 +3734,14 @@ $(function () {
             return;
         }
 
-        resetAccountDetailProfile('Mencari akun...', false);
+        resetAccountDetailProfile('Searching account...', false);
         $('#accountDetailSearchInput').val(query);
 
         postAuth('/api/auth/search-player', {
             query: query
         }, function (err, response) {
             if (err || !response || !response.user) {
-                resetAccountDetailProfile('Akun "' + query + '" tidak ditemukan.', true);
+                resetAccountDetailProfile('Account "' + query + '" was not found.', true);
                 $('#accountDetailSearchInput').val(query);
                 return;
             }

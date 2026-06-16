@@ -400,7 +400,7 @@ function handleSearchPlayer(req, res) {
 
         var user = users.findByUsernameOrEmail(query);
         if (!user || String(user.username || '').toLowerCase() !== query.toLowerCase()) {
-            return sendJson(res, 404, { ok: false, message: 'Akun tidak ditemukan.' });
+            return sendJson(res, 404, { ok: false, message: 'Account was not found.' });
         }
 
         sendJson(res, 200, {
