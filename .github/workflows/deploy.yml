@@ -13,8 +13,10 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          echo "${{ secrets.VPS_SSH_KEY_B64 }}" | base64 -d > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
+          ssh-keygen -l -f ~/.ssh/deploy_key
 
       - name: Deploy to VPS
         run: |
