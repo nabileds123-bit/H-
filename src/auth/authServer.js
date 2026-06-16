@@ -3,6 +3,7 @@ var passwords = require('./password');
 var users = require('./userStore');
 var email = require('./email');
 var skinStorage = require('./skinStorage');
+var adminStore = require('../admin/adminStore');
 
 var VERIFY_EXPIRES = 24 * 60 * 60 * 1000;
 var RESET_EXPIRES = 60 * 60 * 1000;
@@ -588,16 +589,508 @@ function handleBuyPremium(req, res) {
     });
 }
 
+function createId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function normalizeGuildTag(value) {
+    return String(value || '').trim().toUpperCase();
+}
+
+function isValidGuildTag(value) {
+    return /^[A-Z0-9]{1,4}$/.test(normalizeGuildTag(value));
+}
+
+function isValidGuildName(value) {
+    return /^[A-Za-z0-9 ]{1,32}$/.test(String(value || '').trim());
+}
+
+function findGuildByTag(tag) {
+    var normalized = normalizeGuildTag(tag);
+    if (!normalized) return null;
+
+    return (adminStore.list('guilds') || []).filter(function(guild) {
+        return normalizeGuildTag(guild.tag || guild.id || guild.name) === normalized;
+    })[0] || null;
+}
+
+function parseGuildMembers(guild) {
+    var source = guild && (guild.membersList || guild.membersJson || guild.memberList);
+    var parsed = [];
+
+    if (Array.isArray(source)) {
+        parsed = source;
+    } else if (typeof source === 'string' && source.trim()) {
+        try {
+            parsed = JSON.parse(source);
+        } catch (e) {
+            parsed = source.split(/\r?\n/).map(function(line) {
+                var parts = line.split('|');
+                return {
+                    name: String(parts[0] || '').trim(),
+                    role: String(parts[1] || 'member').trim(),
+                    level: parseInt(parts[2], 10) || 1
+                };
+            });
+        }
+    }
+
+    parsed = parsed.filter(function(member) {
+        return member && String(member.name || member.username || '').trim();
+    }).map(function(member) {
+        var name = String(member.name || member.username || '').trim();
+        return {
+            id: String(member.id || member.userId || name),
+            name: name,
+            role: String(member.role || 'member').toLowerCase(),
+            level: parseInt(member.level, 10) || 1
+        };
+    });
+
+    var leaderName = String(guild && guild.leader || '').trim();
+    if (leaderName) {
+        var hasLeader = parsed.some(function(member) {
+            return String(member.name || '').toLowerCase() === leaderName.toLowerCase();
+        });
+        if (!hasLeader) {
+            parsed.unshift({
+                id: leaderName,
+                name: leaderName,
+                role: 'leader',
+                level: parseInt(guild.leaderLevel, 10) || 1
+            });
+        }
+    }
+
+    return parsed;
+}
+
+function serializeGuildMembers(members) {
+    return JSON.stringify((members || []).map(function(member) {
+        return {
+            id: member.id || member.name,
+            name: member.name,
+            role: member.role || 'member',
+            level: parseInt(member.level, 10) || 1
+        };
+    }));
+}
+
+function getGuildRole(user, guild) {
+    if (!user || !guild) return 'guest';
+    var userName = String(user.username || '').trim().toLowerCase();
+    var userGuild = normalizeGuildTag(user.guildTag);
+    var guildTag = normalizeGuildTag(guild.tag || guild.id || guild.name);
+
+    if (!userName || !userGuild || userGuild !== guildTag) return 'guest';
+    if (String(guild.leader || '').trim().toLowerCase() === userName) return 'leader';
+
+    var member = parseGuildMembers(guild).filter(function(item) {
+        return String(item.name || '').trim().toLowerCase() === userName;
+    })[0];
+    return member ? String(member.role || 'member').toLowerCase() : 'member';
+}
+
+function ensureGuildForUser(user) {
+    var tag = normalizeGuildTag(user && user.guildTag);
+    if (!tag) return null;
+
+    var guild = findGuildByTag(tag);
+    if (guild) return guild;
+
+    return adminStore.create('guilds', {
+        id: tag,
+        name: tag + ' Guild',
+        tag: tag,
+        type: 'private',
+        leader: user.username,
+        leaderLevel: parseInt(user.level, 10) || 1,
+        members: 1,
+        membersList: serializeGuildMembers([{
+            id: user.id,
+            name: user.username,
+            role: 'leader',
+            level: parseInt(user.level, 10) || 1
+        }]),
+        description: '',
+        logo: user.guildSkinUrl || ''
+    });
+}
+
+function publicGuild(guild) {
+    return guild ? {
+        id: guild.id || guild.tag,
+        name: guild.name || guild.tag || 'Guild',
+        tag: normalizeGuildTag(guild.tag || guild.id || guild.name),
+        type: guild.type || 'private',
+        leader: guild.leader || '',
+        leaderLevel: parseInt(guild.leaderLevel, 10) || 1,
+        members: parseInt(guild.members, 10) || parseGuildMembers(guild).length || 1,
+        membersList: guild.membersList || serializeGuildMembers(parseGuildMembers(guild)),
+        description: guild.description || guild.bio || '',
+        bio: guild.bio || guild.description || '',
+        logo: guild.logo || guild.guildSkinUrl || ''
+    } : null;
+}
+
+function publicInvite(invite) {
+    var guild = findGuildByTag(invite.guild_tag || invite.guild_id);
+    return {
+        id: invite.id,
+        guild_id: invite.guild_id,
+        guild_tag: normalizeGuildTag(invite.guild_tag || invite.guild_id),
+        guild_name: invite.guild_name || (guild && guild.name) || invite.guild_id,
+        inviter_username: invite.inviter_username || '',
+        target_user_id: invite.target_user_id,
+        status: invite.status || 'pending',
+        created_at: invite.created_at || invite.createdAt || Date.now()
+    };
+}
+
+function pendingInvitesForUser(user) {
+    return (adminStore.list('guildInvites') || []).filter(function(invite) {
+        return invite.status === 'pending' && String(invite.target_user_id || '') === String(user.id || '');
+    }).map(publicInvite);
+}
+
+function removeGuildInvites(guildTag) {
+    (adminStore.list('guildInvites') || []).forEach(function(invite) {
+        if (normalizeGuildTag(invite.guild_tag || invite.guild_id) === normalizeGuildTag(guildTag)) {
+            adminStore.remove('guildInvites', invite.id);
+        }
+    });
+}
+
+function removeUserPendingInvites(userId) {
+    (adminStore.list('guildInvites') || []).forEach(function(invite) {
+        if (invite.status === 'pending' && String(invite.target_user_id || '') === String(userId || '')) {
+            adminStore.remove('guildInvites', invite.id);
+        }
+    });
+}
+
+function handleGuildInvites(req, res, query) {
+    var user = users.findBySessionToken(String(query.token || ''));
+    if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+    sendJson(res, 200, {
+        ok: true,
+        items: pendingInvitesForUser(user)
+    });
+}
+
+function handleNotifications(req, res, query) {
+    var user = users.findBySessionToken(String(query.token || ''));
+    if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+    sendJson(res, 200, {
+        ok: true,
+        items: pendingInvitesForUser(user).map(function(invite) {
+            return {
+                id: 'guild-invite-' + invite.id,
+                type: 'guild_invite',
+                inviteId: invite.id,
+                message: 'You have been invited to join [' + invite.guild_tag + '] ' + invite.guild_name,
+                invite: invite
+            };
+        })
+    });
+}
+
+function handleGuildInvite(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var guild = ensureGuildForUser(user);
+        if (!guild) return sendJson(res, 404, { ok: false, message: 'Guild not found.' });
+
+        var role = getGuildRole(user, guild);
+        if (role !== 'leader' && role !== 'staff') {
+            return sendJson(res, 403, { ok: false, message: 'You do not have permission.' });
+        }
+
+        var target = users.findByUsernameOrEmail(String(body.target || body.username || '').trim());
+        if (!target) return sendJson(res, 404, { ok: false, message: 'Target player not found.' });
+
+        var guildTag = normalizeGuildTag(guild.tag || guild.id);
+        if (normalizeGuildTag(target.guildTag) === guildTag) {
+            return sendJson(res, 400, { ok: false, message: 'Player is already a member of this guild.' });
+        }
+        if (normalizeGuildTag(target.guildTag)) {
+            return sendJson(res, 400, { ok: false, message: 'Player already in a guild.' });
+        }
+
+        var duplicate = (adminStore.list('guildInvites') || []).some(function(invite) {
+            return invite.status === 'pending' &&
+                String(invite.target_user_id || '') === String(target.id || '') &&
+                normalizeGuildTag(invite.guild_tag || invite.guild_id) === guildTag;
+        });
+        if (duplicate) return sendJson(res, 409, { ok: false, message: 'Invite already pending.' });
+
+        var invite = adminStore.create('guildInvites', {
+            id: createId(),
+            guild_id: guildTag,
+            guild_tag: guildTag,
+            guild_name: guild.name || guildTag,
+            inviter_user_id: user.id,
+            inviter_username: user.username,
+            target_user_id: target.id,
+            target_username: target.username,
+            status: 'pending',
+            created_at: Date.now()
+        });
+
+        sendJson(res, 200, { ok: true, message: 'Guild invite sent.', invite: publicInvite(invite) });
+    });
+}
+
+function handleGuildInviteAccept(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+        if (normalizeGuildTag(user.guildTag)) return sendJson(res, 400, { ok: false, message: 'You are already in a guild.' });
+
+        var invite = (adminStore.list('guildInvites') || []).filter(function(item) {
+            return item.id === body.inviteId && item.status === 'pending' && String(item.target_user_id || '') === String(user.id || '');
+        })[0];
+        if (!invite) return sendJson(res, 404, { ok: false, message: 'Invite not found.' });
+
+        var guild = findGuildByTag(invite.guild_tag || invite.guild_id);
+        if (!guild) return sendJson(res, 404, { ok: false, message: 'Guild not found.' });
+
+        var members = parseGuildMembers(guild);
+        members.push({
+            id: user.id,
+            name: user.username,
+            role: 'member',
+            level: parseInt(user.level, 10) || 1
+        });
+        guild = adminStore.update('guilds', guild.id, {
+            members: members.length,
+            membersList: serializeGuildMembers(members)
+        }) || guild;
+        adminStore.remove('guildInvites', invite.id);
+        removeUserPendingInvites(user.id);
+
+        var updatedUser = users.updateUser(user.id, {
+            guildTag: normalizeGuildTag(guild.tag || guild.id),
+            guildSkinUrl: guild.logo || guild.guildSkinUrl || ''
+        });
+
+        sendJson(res, 200, {
+            ok: true,
+            message: 'Joined guild.',
+            guild: publicGuild(guild),
+            user: publicAuthUser(updatedUser)
+        });
+    });
+}
+
+function handleGuildInviteDecline(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var invite = (adminStore.list('guildInvites') || []).filter(function(item) {
+            return item.id === body.inviteId && item.status === 'pending' && String(item.target_user_id || '') === String(user.id || '');
+        })[0];
+        if (!invite) return sendJson(res, 404, { ok: false, message: 'Invite not found.' });
+
+        adminStore.remove('guildInvites', invite.id);
+        sendJson(res, 200, { ok: true, message: 'Guild invite declined.' });
+    });
+}
+
+function handleGuildEdit(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var guild = ensureGuildForUser(user);
+        if (!guild) return sendJson(res, 404, { ok: false, message: 'Guild not found.' });
+        if (getGuildRole(user, guild) !== 'leader') {
+            return sendJson(res, 403, { ok: false, message: 'You do not have permission.' });
+        }
+
+        var nextName = String(body.name || '').trim();
+        var nextTag = normalizeGuildTag(body.tag || guild.tag);
+        if (!isValidGuildName(nextName)) return sendJson(res, 400, { ok: false, message: 'Guild name is not valid.' });
+        if (!isValidGuildTag(nextTag)) return sendJson(res, 400, { ok: false, message: 'Guild prefix is not valid.' });
+
+        var oldTag = normalizeGuildTag(guild.tag || guild.id);
+        var duplicate = findGuildByTag(nextTag);
+        if (duplicate && duplicate.id !== guild.id) {
+            return sendJson(res, 409, { ok: false, message: 'Guild prefix already exists.' });
+        }
+
+        var updatedGuild = adminStore.update('guilds', guild.id, {
+            name: nextName,
+            tag: nextTag,
+            description: String(body.description || '').trim(),
+            bio: String(body.description || '').trim(),
+            logo: String(body.logo || guild.logo || '').trim()
+        }) || guild;
+
+        if (oldTag !== nextTag) {
+            users.listUsers().forEach(function(item) {
+                if (normalizeGuildTag(item.guildTag) === oldTag) {
+                    users.updateUser(item.id, { guildTag: nextTag });
+                }
+            });
+            (adminStore.list('guildInvites') || []).forEach(function(invite) {
+                if (normalizeGuildTag(invite.guild_tag || invite.guild_id) === oldTag) {
+                    adminStore.update('guildInvites', invite.id, {
+                        guild_id: nextTag,
+                        guild_tag: nextTag,
+                        guild_name: nextName
+                    });
+                }
+            });
+        }
+
+        var updatedUser = users.findByIdOrUsernameOrEmail(user.id);
+        sendJson(res, 200, {
+            ok: true,
+            message: 'Guild updated.',
+            guild: publicGuild(updatedGuild),
+            user: publicAuthUser(updatedUser)
+        });
+    });
+}
+
+function handleGuildDelete(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var guild = ensureGuildForUser(user);
+        if (!guild) return sendJson(res, 404, { ok: false, message: 'Guild not found.' });
+        if (getGuildRole(user, guild) !== 'leader') {
+            return sendJson(res, 403, { ok: false, message: 'You do not have permission.' });
+        }
+
+        var guildTag = normalizeGuildTag(guild.tag || guild.id);
+        if (normalizeGuildTag(body.confirm || '') !== guildTag && String(body.confirm || '').trim() !== String(guild.name || '').trim()) {
+            return sendJson(res, 400, { ok: false, message: 'Guild delete confirmation did not match.' });
+        }
+
+        users.listUsers().forEach(function(item) {
+            if (normalizeGuildTag(item.guildTag) === guildTag) {
+                users.updateUser(item.id, {
+                    guildTag: '',
+                    guildSkinUrl: '',
+                    guildSkinPath: '',
+                    activeSkinType: item.activeSkinType === 'guild' ? 'player' : item.activeSkinType
+                });
+            }
+        });
+        removeGuildInvites(guildTag);
+        adminStore.remove('guilds', guild.id);
+
+        sendJson(res, 200, { ok: true, message: 'Guild deleted.', user: publicAuthUser(users.findByIdOrUsernameOrEmail(user.id)) });
+    });
+}
+
+function handleGuildLeave(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var guild = findGuildByTag(user.guildTag);
+        if (!guild) return sendJson(res, 404, { ok: false, message: 'Guild not found.' });
+
+        var role = getGuildRole(user, guild);
+        if (role === 'leader') {
+            return sendJson(res, 403, { ok: false, message: 'Leader cannot leave guild. Delete guild or transfer leadership first.' });
+        }
+        if (role !== 'staff' && role !== 'member') {
+            return sendJson(res, 403, { ok: false, message: 'You do not have permission.' });
+        }
+
+        var members = parseGuildMembers(guild).filter(function(member) {
+            return String(member.name || '').toLowerCase() !== String(user.username || '').toLowerCase();
+        });
+        adminStore.update('guilds', guild.id, {
+            members: members.length,
+            membersList: serializeGuildMembers(members)
+        });
+
+        var updatedUser = users.updateUser(user.id, {
+            guildTag: '',
+            guildSkinUrl: '',
+            guildSkinPath: '',
+            activeSkinType: user.activeSkinType === 'guild' ? 'player' : user.activeSkinType
+        });
+
+        sendJson(res, 200, { ok: true, message: 'Left guild.', user: publicAuthUser(updatedUser) });
+    });
+}
+
 function handle(req, res) {
     var parsed = url.parse(req.url, true);
     var pathname = parsed.pathname;
 
-    if (pathname.indexOf('/api/auth/') !== 0) {
+    if (pathname.indexOf('/api/auth/') !== 0 &&
+        pathname.indexOf('/api/guild/') !== 0 &&
+        pathname !== '/api/notifications') {
         return false;
     }
 
     if (req.method === 'OPTIONS') {
         sendJson(res, 200, { ok: true });
+        return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/guild/invites') {
+        handleGuildInvites(req, res, parsed.query || {});
+        return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/notifications') {
+        handleNotifications(req, res, parsed.query || {});
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/invite') {
+        handleGuildInvite(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/invite/accept') {
+        handleGuildInviteAccept(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/invite/decline') {
+        handleGuildInviteDecline(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/edit') {
+        handleGuildEdit(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/delete') {
+        handleGuildDelete(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/leave') {
+        handleGuildLeave(req, res);
         return true;
     }
 

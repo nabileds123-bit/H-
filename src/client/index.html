@@ -926,6 +926,51 @@ $(document).on('keyup', function(input) {
         text-align: center;
     }
 
+    .guild-invite-panel {
+        display: none;
+        margin: 0 0 10px 0;
+        border: 1px solid #ddd;
+        background: #fafafa;
+    }
+
+    .guild-invite-item,
+    .notification-item {
+        padding: 9px 10px;
+        border-bottom: 1px solid #e5e5e5;
+        color: #333;
+        font-size: 13px;
+    }
+
+    .guild-invite-item:last-child,
+    .notification-item:last-child {
+        border-bottom: 0;
+    }
+
+    .guild-invite-title,
+    .notification-title {
+        font-weight: 700;
+        margin-bottom: 3px;
+    }
+
+    .guild-invite-meta,
+    .notification-meta {
+        color: #777;
+        font-size: 12px;
+    }
+
+    .guild-invite-actions,
+    .notification-actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+    }
+
+    .guild-invite-actions .btn,
+    .notification-actions .btn {
+        padding: 3px 9px;
+        font-size: 12px;
+    }
+
     #guildDetailView {
         display: none;
         height: 452px;
@@ -2577,6 +2622,7 @@ $(document).on('keyup', function(input) {
         <div class="spa-page-body">
             <div id="guildListView">
                 <input id="guildSearch" type="text" class="form-control guild-search" placeholder="Search">
+                <div id="guildInvitePanel" class="guild-invite-panel"></div>
                 <div class="guild-period-tabs">
                     <button type="button" class="guild-period-tab active" data-guild-period="week">This Week</button>
                     <span>|</span>
@@ -2622,6 +2668,7 @@ $(document).on('keyup', function(input) {
                         <button id="guildInvitePlayerBtn" type="button" class="btn btn-success">Invite player</button>
                         <button id="guildEditBtn" type="button" class="btn btn-success">Edit</button>
                         <button id="guildDeleteBtn" type="button" class="btn btn-danger">Delete</button>
+                        <button id="guildLeaveBtn" type="button" class="btn btn-danger">Leave</button>
                     </div>
                 </div>
                 <div id="guildDetailInfo" class="guild-detail-pane">
@@ -2972,6 +3019,7 @@ $(function () {
     var activeGuildDetail = null;
     var guildList = [];
     var guildMembers = [];
+    var guildInvites = [];
     var premiumChatWarning = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
     var MAX_PLAYER_SKIN_UPLOAD_BYTES = 500 * 1024;
     var MAX_GUILD_SKIN_UPLOAD_BYTES = 200 * 1024;
@@ -3002,13 +3050,20 @@ $(function () {
         return null;
     }
 
-    function resolveGuildViewerRole(tag) {
-        return isCurrentViewerGuild(tag) ? 'leader' : 'guest';
-    }
+    function resolveGuildViewerRole(tag, guildItem) {
+        if (!isCurrentViewerGuild(tag)) return 'guest';
 
-    function getGuildAdminUrl(guild) {
-        var query = encodeURIComponent((guild && (guild.tag || guild.name)) || '');
-        return '/admin?module=guilds&search=' + query;
+        var currentName = getCurrentGuildViewerName().toLowerCase();
+        if (guildItem && String(guildItem.leader || '').trim().toLowerCase() === currentName) return 'leader';
+
+        var members = parseGuildMemberList(guildItem, guildItem && guildItem.leader || 'Leader', true);
+        for (var i = 0; i < members.length; i++) {
+            if (String(members[i].name || '').trim().toLowerCase() === currentName) {
+                return String(members[i].role || 'member').toLowerCase();
+            }
+        }
+
+        return 'member';
     }
 
     function parseGuildMemberList(guildItem, leaderName, viewerOwnsGuild) {
@@ -3273,6 +3328,137 @@ $(function () {
             }
 
             if (callback) callback();
+        });
+    }
+
+    function getAuthToken() {
+        return localStorage.getItem('authToken') || '';
+    }
+
+    function formatInviteTime(value) {
+        var date = new Date(parseInt(value, 10) || Date.parse(value));
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleString();
+    }
+
+    function renderGuildInviteActions(invite) {
+        return [
+            '<div class="guild-invite-actions">',
+            '<button type="button" class="btn btn-success guild-invite-accept" data-invite-id="' + escapeHtml(invite.id) + '">Join</button>',
+            '<button type="button" class="btn btn-default guild-invite-decline" data-invite-id="' + escapeHtml(invite.id) + '">Decline</button>',
+            '</div>'
+        ].join('');
+    }
+
+    function renderGuildInvites() {
+        var panel = $('#guildInvitePanel');
+        if (!guildInvites.length) {
+            panel.hide().empty();
+            return;
+        }
+
+        panel.html(guildInvites.map(function(invite) {
+            return [
+                '<div class="guild-invite-item">',
+                '<div class="guild-invite-title">[' + escapeHtml(invite.guild_tag || '') + '] ' + escapeHtml(invite.guild_name || 'Guild') + '</div>',
+                '<div class="guild-invite-meta">Invited by ' + escapeHtml(invite.inviter_username || '-') + (invite.created_at ? ' - ' + escapeHtml(formatInviteTime(invite.created_at)) : '') + '</div>',
+                renderGuildInviteActions(invite),
+                '</div>'
+            ].join('');
+        }).join('')).show();
+    }
+
+    function renderNotifications(items) {
+        var view = $('#notificationView');
+        if (!items || !items.length) {
+            view.html('<div class="guild-empty">No notifications.</div>');
+            return;
+        }
+
+        view.html(items.map(function(item) {
+            var invite = item.invite || {};
+            return [
+                '<div class="notification-item">',
+                '<div class="notification-title">' + escapeHtml(item.message || 'Notification') + '</div>',
+                '<div class="notification-meta">' + escapeHtml(invite.created_at ? formatInviteTime(invite.created_at) : '') + '</div>',
+                '<div class="notification-actions">',
+                '<button type="button" class="btn btn-success guild-invite-accept" data-invite-id="' + escapeHtml(invite.id || item.inviteId || '') + '">Join</button>',
+                '<button type="button" class="btn btn-default guild-invite-decline" data-invite-id="' + escapeHtml(invite.id || item.inviteId || '') + '">Decline</button>',
+                '</div>',
+                '</div>'
+            ].join('');
+        }).join(''));
+    }
+
+    function refreshGuildInvites(callback) {
+        var token = getAuthToken();
+        if (!token) {
+            guildInvites = [];
+            renderGuildInvites();
+            if (callback) callback();
+            return;
+        }
+
+        $.getJSON('/api/guild/invites', { token: token }, function(response) {
+            guildInvites = response.items || [];
+            renderGuildInvites();
+            if (callback) callback();
+        }).fail(function() {
+            guildInvites = [];
+            renderGuildInvites();
+            if (callback) callback();
+        });
+    }
+
+    function refreshNotifications() {
+        var token = getAuthToken();
+        if (!token) {
+            renderNotifications([]);
+            return;
+        }
+
+        $.getJSON('/api/notifications', { token: token }, function(response) {
+            renderNotifications(response.items || []);
+        }).fail(function() {
+            renderNotifications([]);
+        });
+    }
+
+    function acceptGuildInvite(inviteId) {
+        if (!inviteId) return;
+        postAuth('/api/guild/invite/accept', {
+            token: getAuthToken(),
+            inviteId: inviteId
+        }, function(err, response) {
+            if (err) {
+                alert(err || 'Failed to accept invite.');
+                return;
+            }
+
+            if (response.user) storeAuthUser(response.user);
+            if (response.guild) {
+                upsertGuildListItem(response.guild);
+                openGuildDetailView(response.guild.name, response.guild.tag, response.guild.logo || '');
+            }
+            refreshGuildInvites();
+            refreshNotifications();
+            updateGuildUi();
+        });
+    }
+
+    function declineGuildInvite(inviteId) {
+        if (!inviteId) return;
+        postAuth('/api/guild/invite/decline', {
+            token: getAuthToken(),
+            inviteId: inviteId
+        }, function(err) {
+            if (err) {
+                alert(err || 'Failed to decline invite.');
+                return;
+            }
+
+            refreshGuildInvites();
+            refreshNotifications();
         });
     }
 
@@ -3576,6 +3762,7 @@ $(function () {
         showGuildListView();
         ensureCurrentGuildInList();
         renderGuildList();
+        refreshGuildInvites();
         loadGuildStats();
         updatePlayerExpVisibility();
         $('#guildSearch').focus();
@@ -3598,6 +3785,7 @@ $(function () {
         $('#guildDetailView').hide();
         $('#guildListView').css('display', 'flex');
         renderGuildList();
+        renderGuildInvites();
     }
 
     function getGuildActionHtml(member) {
@@ -3838,7 +4026,15 @@ $(function () {
 
     function updateGuildDetailActions() {
         var viewerRole = String(guildViewerRole || 'guest').toLowerCase();
-        $('#guildDetailActions').toggle(viewerRole === 'leader' || viewerRole === 'staff');
+        var isLeader = viewerRole === 'leader';
+        var isStaff = viewerRole === 'staff';
+        var isMember = viewerRole === 'member';
+
+        $('#guildDetailActions').toggle(isLeader || isStaff || isMember);
+        $('#guildInvitePlayerBtn').toggle(isLeader || isStaff);
+        $('#guildEditBtn').toggle(isLeader);
+        $('#guildDeleteBtn').toggle(isLeader);
+        $('#guildLeaveBtn').toggle(isStaff || isMember);
     }
 
     function openGuildDetailView(name, tag, logoSrc) {
@@ -3849,7 +4045,7 @@ $(function () {
         var viewerOwnsGuild = isCurrentViewerGuild(guildTag);
         var leaderName = viewerOwnsGuild ? getCurrentGuildViewerName() : (guildItem && guildItem.leader) || 'Leader';
 
-        guildViewerRole = resolveGuildViewerRole(guildTag);
+        guildViewerRole = resolveGuildViewerRole(guildTag, guildItem);
         activeGuildDetail = {
             name: guildName,
             tag: guildTag,
@@ -3893,6 +4089,7 @@ $(function () {
         $('#highScoreDialog').removeClass('is-open');
         $('#accountDetailDialog').removeClass('is-open');
         $('#notificationDialog').addClass('is-open');
+        refreshNotifications();
         updatePlayerExpVisibility();
     }
 
@@ -4769,6 +4966,16 @@ $(function () {
         renderGuildList();
     });
 
+    $('#guildInvitePanel, #notificationView').on('click', '.guild-invite-accept', function (event) {
+        event.preventDefault();
+        acceptGuildInvite($(this).data('invite-id'));
+    });
+
+    $('#guildInvitePanel, #notificationView').on('click', '.guild-invite-decline', function (event) {
+        event.preventDefault();
+        declineGuildInvite($(this).data('invite-id'));
+    });
+
     $('#guildInvitePlayerBtn').on('click', function (event) {
         event.preventDefault();
         if (String(guildViewerRole || 'guest').toLowerCase() !== 'leader' && String(guildViewerRole || 'guest').toLowerCase() !== 'staff') return;
@@ -4776,43 +4983,111 @@ $(function () {
         var playerName = window.prompt('Invite player username:');
         if (!playerName) return;
 
-        var exists = guildMembers.some(function(member) {
-            return String(member.name || '').toLowerCase() === String(playerName).trim().toLowerCase();
+        postAuth('/api/guild/invite', {
+            token: getAuthToken(),
+            target: playerName
+        }, function(err, response) {
+            if (err) {
+                alert(err || 'Target player not found.');
+                return;
+            }
+            refreshGuildInvites();
+            refreshNotifications();
+            alert(response.message || 'Guild invite sent.');
         });
-
-        if (!exists) {
-            guildMembers.push({
-                id: String(playerName).trim(),
-                name: String(playerName).trim(),
-                role: 'member',
-                level: 1,
-                online: false,
-                isSelf: false
-            });
-            persistActiveGuildMembers();
-            renderGuildMembers();
-        }
-
-        openAccountDetailDialog(playerName);
-        $('#accountDetailSearchStatus').text('Review this account before inviting to ' + ((activeGuildDetail && activeGuildDetail.tag) || 'guild') + '.');
     });
 
     $('#guildEditBtn').on('click', function (event) {
         event.preventDefault();
-        if (String(guildViewerRole || 'guest').toLowerCase() !== 'leader' && String(guildViewerRole || 'guest').toLowerCase() !== 'staff') return;
+        if (String(guildViewerRole || 'guest').toLowerCase() !== 'leader') return;
 
+        var currentName = (activeGuildDetail && activeGuildDetail.name) || '';
+        var currentTag = (activeGuildDetail && activeGuildDetail.tag) || '';
         var currentBio = getGuildBio(activeGuildDetail && activeGuildDetail.item);
+        var nextName = window.prompt('Guild name:', currentName);
+        if (nextName == null) return;
+        nextName = String(nextName || '').trim();
+        if (!nextName) {
+            alert('Guild name is not valid.');
+            return;
+        }
+        var nextTag = window.prompt('Guild prefix:', currentTag);
+        if (nextTag == null) return;
+        nextTag = String(nextTag || '').trim().toUpperCase();
+        if (!/^[A-Z0-9]{1,4}$/.test(nextTag)) {
+            alert('Guild prefix is not valid.');
+            return;
+        }
         var nextBio = window.prompt('Guild bio:', currentBio);
         if (nextBio == null) return;
 
-        persistActiveGuildBio(nextBio);
+        postAuth('/api/guild/edit', {
+            token: getAuthToken(),
+            name: nextName,
+            tag: nextTag,
+            description: nextBio,
+            logo: (activeGuildDetail && activeGuildDetail.logo) || ''
+        }, function(err, response) {
+            if (err) {
+                alert(err || 'Failed to edit guild.');
+                return;
+            }
+            if (response.user) storeAuthUser(response.user);
+            if (response.guild) {
+                upsertGuildListItem(response.guild);
+                openGuildDetailView(response.guild.name, response.guild.tag, response.guild.logo || '');
+            }
+            updateGuildUi();
+        });
     });
 
     $('#guildDeleteBtn').on('click', function (event) {
         event.preventDefault();
         if (String(guildViewerRole || 'guest').toLowerCase() !== 'leader') return;
-        if (!confirm('Delete guild ' + ((activeGuildDetail && activeGuildDetail.name) || 'this guild') + '?')) return;
-        window.open(getGuildAdminUrl(activeGuildDetail), '_blank');
+        if (!confirm('Are you sure you want to delete this guild?')) return;
+
+        var confirmText = window.prompt('Type guild prefix/name to confirm delete:');
+        if (confirmText == null) return;
+
+        postAuth('/api/guild/delete', {
+            token: getAuthToken(),
+            confirm: confirmText
+        }, function(err, response) {
+            if (err) {
+                alert(err || 'Failed to delete guild.');
+                return;
+            }
+            if (response.user) storeAuthUser(response.user);
+            guildList = guildList.filter(function(guild) {
+                return String(guild.tag || '').trim().toUpperCase() !== String(activeGuildDetail && activeGuildDetail.tag || '').trim().toUpperCase();
+            });
+            saveGuildList();
+            updateGuildUi();
+            refreshGuildInvites();
+            refreshNotifications();
+            showGuildListView();
+        });
+    });
+
+    $('#guildLeaveBtn').on('click', function (event) {
+        event.preventDefault();
+        var role = String(guildViewerRole || 'guest').toLowerCase();
+        if (role !== 'staff' && role !== 'member') return;
+        if (!confirm('Are you sure you want to leave this guild?')) return;
+
+        postAuth('/api/guild/leave', {
+            token: getAuthToken()
+        }, function(err, response) {
+            if (err) {
+                alert(err || 'Failed to leave guild.');
+                return;
+            }
+            if (response.user) storeAuthUser(response.user);
+            updateGuildUi();
+            refreshGuildInvites();
+            refreshNotifications();
+            showGuildListView();
+        });
     });
 
     $('#guildMemberList').on('click', '[data-guild-action]', function (event) {

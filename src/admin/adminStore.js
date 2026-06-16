@@ -9,6 +9,7 @@ var defaultStore = {
     points: [],
     skins: [],
     guilds: [],
+    guildInvites: [],
     notifications: [],
     highscores: [],
     battleMatches: []
