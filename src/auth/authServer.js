@@ -124,6 +124,25 @@ function publicAuthUser(user, lastLoginAt) {
     };
 }
 
+function publicPlayerProfile(user) {
+    return {
+        username: user.username || '',
+        lastLoginAt: user.lastLoginAt || user.updatedAt || user.createdAt || Date.now(),
+        cellColor: user.cellColor || '#000000',
+        accountType: user.accountType || 'Free',
+        premiumUntil: user.premiumUntil || '',
+        points: parseInt(user.points, 10) || 0,
+        xp: parseInt(user.xp, 10) || 0,
+        xpMax: parseInt(user.xpMax, 10) || 0,
+        level: parseInt(user.level, 10) || 1,
+        skin: user.skin || '',
+        skinUrl: user.skinUrl || '',
+        activeSkinType: user.activeSkinType || 'player',
+        guildTag: user.guildTag || '',
+        guildSkinUrl: user.guildSkinUrl || ''
+    };
+}
+
 function safeSkinSegment(value, fallback) {
     var text = String(value || fallback || '').trim().toLowerCase();
     text = text.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
@@ -370,6 +389,27 @@ function handleProfile(req, res) {
     });
 }
 
+function handleSearchPlayer(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var query = String(body.query || '').trim();
+        if (!query) {
+            return sendJson(res, 400, { ok: false, message: 'Nama player wajib diisi.' });
+        }
+
+        var user = users.findByUsernameOrEmail(query);
+        if (!user || String(user.username || '').toLowerCase() !== query.toLowerCase()) {
+            return sendJson(res, 404, { ok: false, message: 'Akun tidak ditemukan.' });
+        }
+
+        sendJson(res, 200, {
+            ok: true,
+            user: publicPlayerProfile(user)
+        });
+    });
+}
+
 function handleActiveSkin(req, res) {
     readBody(req, function(err, body) {
         if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
@@ -575,6 +615,11 @@ function handle(req, res) {
 
     if (req.method === 'POST' && pathname === '/api/auth/profile') {
         handleProfile(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/auth/search-player') {
+        handleSearchPlayer(req, res);
         return true;
     }
 

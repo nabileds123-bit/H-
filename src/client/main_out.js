@@ -2142,10 +2142,10 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     ctx.drawImage(e, this.x - this.size, this.y - this.size, 2 * this.size, 2 * this.size);
                     ctx.restore();
                 }
-                if (showColor || 15 < this.size) {
-                    ctx.lineWidth = hasNormalSkin ? Math.max(3, this.size * .035) : Math.max(2, this.size * .04);
-                    ctx.strokeStyle = hasNormalSkin ? this.color : '#000000';
-                    ctx.globalAlpha *= hasNormalSkin ? .95 : .22;
+                if ((showColor || 15 < this.size) && !b) {
+                    ctx.lineWidth = 10;
+                    ctx.strokeStyle = '#000000';
+                    ctx.globalAlpha *= .1;
                     ctx.stroke();
                 }
                 ctx.globalAlpha = 1;

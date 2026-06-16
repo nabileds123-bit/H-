@@ -655,6 +655,12 @@ $(document).on('keyup', function(input) {
         color: #777;
     }
 
+    #accountDetailSearchStatus {
+        min-height: 22px;
+        padding: 8px 4px 0;
+        text-align: left;
+    }
+
     .highscore-row.is-top {
         background: #fff39a;
     }
@@ -2556,27 +2562,27 @@ $(document).on('keyup', function(input) {
                     <div class="account-detail-table">
                         <div class="account-detail-row">
                             <span class="account-detail-label">Nama:</span>
-                            <span id="accountDetailName" class="account-detail-value">-</span>
+                            <span id="accountDetailName" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
                             <span class="account-detail-label">Tingkatan:</span>
-                            <span id="accountDetailLevel" class="account-detail-value">155</span>
+                            <span id="accountDetailLevel" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
                             <span class="account-detail-label">Poin:</span>
-                            <span id="accountDetailPoints" class="account-detail-value">26.3</span>
+                            <span id="accountDetailPoints" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
                             <span class="account-detail-label">Klan:</span>
-                            <span class="account-detail-value"><a id="accountDetailGuild" href="#guild-detail">-</a></span>
+                            <span class="account-detail-value"><a id="accountDetailGuild" href="#guild-detail"></a></span>
                         </div>
                         <div class="account-detail-row">
                             <span class="account-detail-label">Game:</span>
-                            <span id="accountDetailGame" class="account-detail-value">5 hours ago</span>
+                            <span id="accountDetailGame" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
                             <span class="account-detail-label">Status:</span>
-                            <span id="accountDetailStatus" class="account-detail-value account-detail-premium">Premium Account</span>
+                            <span id="accountDetailStatus" class="account-detail-value"></span>
                         </div>
                     </div>
                     <div class="account-detail-skins">
@@ -2587,6 +2593,7 @@ $(document).on('keyup', function(input) {
                         <input id="accountDetailSearchInput" class="form-control" type="text" placeholder="Cari">
                         <button class="btn btn-primary" type="submit"><span class="glyphicon glyphicon-search"></span></button>
                     </form>
+                    <div id="accountDetailSearchStatus" class="account-detail-empty"></div>
                 </div>
                 <div id="accountDetailTop1" class="account-detail-pane">
                     <div class="account-detail-empty">Belum ada data Top 1.</div>
@@ -3599,8 +3606,111 @@ $(function () {
         $('#highScoreMode').focus();
     }
 
+    function setAccountDetailMessage(message, isError) {
+        $('#accountDetailSearchStatus')
+            .removeClass('text-danger text-success text-muted')
+            .addClass(isError ? 'text-danger' : 'text-muted')
+            .text(message || '');
+    }
+
+    function resetAccountDetailProfile(message, isError) {
+        $('#accountDetailTitle').text('-');
+        $('#accountDetailName, #accountDetailLevel, #accountDetailPoints, #accountDetailGame, #accountDetailStatus').text('');
+        $('#accountDetailStatus').removeClass('account-detail-premium');
+        $('#accountDetailGuild').text('').attr('href', '#guild-detail').data('guild-tag', '').data('guild-name', '').data('guild-logo', '');
+        $('#accountDetailProfile .account-detail-table, #accountDetailProfile .account-detail-skins').hide();
+        setAccountDetailMessage(message || '', isError);
+    }
+
+    function formatAccountDetailLastGame(value) {
+        var timestamp = Date.parse(value);
+        if (isNaN(timestamp)) {
+            timestamp = parseInt(value, 10);
+        }
+
+        if (!timestamp || isNaN(timestamp)) return '-';
+
+        var seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+        if (seconds < 60) return 'baru saja';
+
+        var minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return minutes + ' menit lalu';
+
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + ' jam lalu';
+
+        var days = Math.floor(hours / 24);
+        return days + ' hari lalu';
+    }
+
+    function renderAccountDetailProfile(user) {
+        var guildTag = String(user.guildTag || '').trim();
+        var statusText = hasActivePremiumForUser(user) ? 'Premium Account' : (user.accountType || 'Free Account');
+
+        $('#accountDetailTitle, #accountDetailName').text(user.username || '-');
+        $('#accountDetailLevel').text(parseInt(user.level, 10) || 1);
+        $('#accountDetailPoints').text(parseInt(user.points, 10) || 0);
+        $('#accountDetailGame').text(formatAccountDetailLastGame(user.lastLoginAt));
+        $('#accountDetailStatus')
+            .toggleClass('account-detail-premium', hasActivePremiumForUser(user))
+            .text(statusText);
+
+        if (guildTag) {
+            $('#accountDetailGuild')
+                .text(guildTag)
+                .attr('href', '#guild/' + encodeURIComponent(guildTag))
+                .data('guild-tag', guildTag)
+                .data('guild-name', guildTag + ' Guild')
+                .data('guild-logo', user.guildSkinUrl || '');
+        } else {
+            $('#accountDetailGuild').text('-').attr('href', '#guild-detail').data('guild-tag', '').data('guild-name', '').data('guild-logo', '');
+        }
+
+        $('#accountDetailProfile .account-detail-table, #accountDetailProfile .account-detail-skins').show();
+        setAccountDetailMessage('', false);
+    }
+
+    function hasActivePremiumForUser(user) {
+        var accountType = String(user && user.accountType || '').toLowerCase();
+        var premiumUntil = String(user && user.premiumUntil || '').trim();
+
+        if (accountType !== 'premium') return false;
+        if (!premiumUntil) return true;
+
+        var expiresAt = Date.parse(premiumUntil);
+        if (isNaN(expiresAt)) {
+            expiresAt = parseInt(premiumUntil, 10);
+        }
+
+        return !expiresAt || expiresAt > Date.now();
+    }
+
+    function searchAccountDetailPlayer(name) {
+        var query = String(name || '').trim();
+        if (!query) {
+            resetAccountDetailProfile('', false);
+            return;
+        }
+
+        resetAccountDetailProfile('Mencari akun...', false);
+        $('#accountDetailSearchInput').val(query);
+
+        postAuth('/api/auth/search-player', {
+            query: query
+        }, function (err, response) {
+            if (err || !response || !response.user) {
+                resetAccountDetailProfile('Akun "' + query + '" tidak ditemukan.', true);
+                $('#accountDetailSearchInput').val(query);
+                return;
+            }
+
+            renderAccountDetailProfile(response.user);
+            $('#accountDetailSearchInput').val('');
+        });
+    }
+
     function openAccountDetailDialog(name) {
-        var playerName = String(name || '').trim() || '-';
+        var playerName = String(name || '').trim();
 
         closeCommunityDropup();
         closeFriendInviteModal();
@@ -3612,9 +3722,10 @@ $(function () {
         $('#guildCreateDialog').removeClass('is-open');
         $('#notificationDialog').removeClass('is-open');
         $('#highScoreDialog').removeClass('is-open');
-        $('#accountDetailTitle, #accountDetailName').text(playerName);
         $('#accountDetailSearchInput').val('');
         $('#accountDetailDialog').addClass('is-open');
+        resetAccountDetailProfile('', false);
+        searchAccountDetailPlayer(playerName);
         updatePlayerExpVisibility();
     }
 
@@ -3962,6 +4073,18 @@ $(function () {
     $('#accountGuildText').on('click', 'a', function (event) {
         event.preventDefault();
         openMyGuildDetail();
+    });
+
+    $('#accountDetailGuild').on('click', function (event) {
+        var guildTag = String($(this).data('guild-tag') || '').trim();
+        if (!guildTag) {
+            event.preventDefault();
+            return;
+        }
+
+        event.preventDefault();
+        openGuildDialog();
+        openGuildDetailView($(this).data('guild-name') || (guildTag + ' Guild'), guildTag, $(this).data('guild-logo') || '');
     });
 
     $('#communityDropup a[data-route="notification"]').on('click', function (event) {
