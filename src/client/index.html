@@ -799,7 +799,13 @@ $(document).on('keyup', function(input) {
         font-size: 14px;
         line-height: 1.3;
         text-align: left;
+        text-decoration: none;
         word-break: break-word;
+    }
+
+    .guild-name:hover {
+        color: #23527c;
+        text-decoration: underline;
     }
 
     .guild-tag {
@@ -3439,10 +3445,15 @@ $(function () {
         }
 
         $('#guildList').html(items.map(function(guild) {
+            var guildTag = String(guild.tag || '').trim();
+            var guildName = String(guild.name || guildTag || 'Guild').trim();
+            var guildLogo = guild.logo || '';
+            var guildHref = '#guild/' + encodeURIComponent(guildTag || guildName);
+
             return [
-                '<div class="guild-row" data-guild-name="' + escapeHtml(guild.name) + '" data-guild-tag="' + escapeHtml(guild.tag) + '" data-guild-logo="' + escapeHtml(guild.logo || '') + '">',
+                '<div class="guild-row" data-guild-name="' + escapeHtml(guildName) + '" data-guild-tag="' + escapeHtml(guildTag) + '" data-guild-logo="' + escapeHtml(guildLogo) + '">',
                 getGuildIconHtml(guild),
-                '<div class="guild-name">' + escapeHtml(guild.name) + '</div>',
+                '<a class="guild-name" href="' + escapeHtml(guildHref) + '">' + escapeHtml(guildName) + '</a>',
                 '<div class="guild-members">' + escapeHtml(guild.members || 1) + '</div>',
                 '<div class="guild-top1-time">' + escapeHtml(guild.top1 || '-') + '</div>',
                 '</div>'
