@@ -179,6 +179,7 @@ function createUser(data) {
         guildTag: '',
         guildSkinUrl: '',
         guildSkinPath: '',
+        country_code: String(data.country_code || data.countryCode || '').trim().toUpperCase(),
         verifyEmail: data.verifyEmail,
         resetPassword: null,
         createdAt: Date.now(),

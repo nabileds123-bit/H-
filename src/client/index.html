@@ -376,7 +376,6 @@ $(document).on('keyup', function(input) {
 
     #guildDialog,
     #notificationDialog,
-    #highScoreDialog,
     #accountDetailDialog {
         display: none;
         width: 380px;
@@ -392,6 +391,26 @@ $(document).on('keyup', function(input) {
         transform: translate(-50%, -50%);
         z-index: 270;
         box-sizing: border-box;
+    }
+
+    #highScoreDialog {
+        display: none;
+        width: 380px;
+        height: 615px;
+        background-color: #fff;
+        margin: 10px auto;
+        border: 1px solid #d8d8d8;
+        border-radius: 6px;
+        padding: 12px 15px 5px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin-right: -50%;
+        transform: translate(-50%, -50%);
+        z-index: 270;
+        box-sizing: border-box;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, .25);
     }
 
     #guildDialog.is-open {
@@ -474,19 +493,24 @@ $(document).on('keyup', function(input) {
     #highScoreView {
         display: flex;
         flex-direction: column;
-        height: 452px;
+        height: 520px;
         min-height: 0;
     }
 
     .highscore-filters {
         display: flex;
         gap: 6px;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e5e5;
     }
 
     .highscore-filters .form-control {
         height: 34px;
         font-size: 14px;
+        border-color: #ccc;
+        border-radius: 4px;
+        box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
     }
 
     .highscore-mode {
@@ -498,37 +522,40 @@ $(document).on('keyup', function(input) {
     }
 
     .highscore-date {
-        margin: 0 0 8px 0;
+        margin: 0 0 7px 0;
         text-align: center;
         color: #222;
-        font-size: 18px;
+        font-size: 17px;
         font-weight: 700;
     }
 
     .highscore-head,
     .highscore-row {
         display: grid;
-        grid-template-columns: 34px 1fr 58px 34px;
+        grid-template-columns: 38px minmax(0, 1fr) 62px 32px;
         align-items: center;
-        min-height: 36px;
-        border-bottom: 1px solid #eee;
+        min-height: 37px;
+        border-bottom: 1px solid #e8e8e8;
         color: #333;
         font-size: 13px;
+        column-gap: 4px;
     }
 
     .highscore-head {
-        min-height: 30px;
+        min-height: 29px;
         font-weight: 700;
+        color: #333;
     }
 
     .highscore-list {
         flex: 1;
         min-height: 0;
-        overflow-y: auto;
+        overflow: hidden;
     }
 
     .highscore-row {
         color: #333;
+        background: #fff;
     }
 
     #accountDetailView {
@@ -662,26 +689,72 @@ $(document).on('keyup', function(input) {
     }
 
     .highscore-row.is-top {
-        background: #fff39a;
+        background: #fff3a6;
     }
 
     .highscore-rank {
         text-align: center;
     }
 
-    .highscore-medal {
-        font-size: 16px;
+    .highscore-trophy {
+        display: inline-block;
+        width: 18px;
+        height: 16px;
+        position: relative;
+        vertical-align: middle;
     }
 
-    .highscore-medal.gold {
+    .highscore-trophy:before {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 2px;
+        width: 10px;
+        height: 8px;
+        border-radius: 1px 1px 5px 5px;
+        background: currentColor;
+    }
+
+    .highscore-trophy:after {
+        content: "";
+        position: absolute;
+        left: 6px;
+        top: 10px;
+        width: 6px;
+        height: 4px;
+        border-bottom: 3px solid currentColor;
+        border-left: 2px solid transparent;
+        border-right: 2px solid transparent;
+    }
+
+    .highscore-trophy .handle-left,
+    .highscore-trophy .handle-right {
+        position: absolute;
+        top: 4px;
+        width: 5px;
+        height: 5px;
+        border: 1px solid currentColor;
+        border-radius: 50%;
+        background: transparent;
+    }
+
+    .highscore-trophy .handle-left {
+        left: 0;
+    }
+
+    .highscore-trophy .handle-right {
+        right: 0;
+    }
+
+    .highscore-trophy.gold {
         color: #d9ad21;
     }
 
-    .highscore-medal.silver {
+    .highscore-trophy.silver {
         color: #b7b7b7;
     }
 
-    .highscore-medal.bronze {
+    .highscore-trophy.bronze {
         color: #c47b32;
     }
 
@@ -694,7 +767,8 @@ $(document).on('keyup', function(input) {
     }
 
     .highscore-time {
-        text-align: left;
+        text-align: center;
+        white-space: nowrap;
     }
 
     .highscore-flag {
@@ -702,25 +776,61 @@ $(document).on('keyup', function(input) {
         line-height: 1;
     }
 
-    .country-flag {
+    .flag {
         display: inline-block;
         width: 20px;
-        height: 13px;
-        border: 1px solid rgba(0, 0, 0, .18);
-        box-shadow: 0 1px 1px rgba(0, 0, 0, .12);
+        height: 14px;
+        border: 1px solid #bdbdbd;
+        background: #f2f2f2;
         vertical-align: middle;
     }
 
-    .flag-id {
+    .flag.flag-id {
         background: linear-gradient(to bottom, #ce1126 0 50%, #fff 50% 100%);
     }
 
-    .flag-pe {
+    .flag.flag-pe {
         background: linear-gradient(to right, #d91023 0 33%, #fff 33% 67%, #d91023 67% 100%);
     }
 
-    .flag-ec {
+    .flag.flag-ec {
         background: linear-gradient(to bottom, #fcd116 0 50%, #003893 50% 75%, #ce1126 75% 100%);
+    }
+
+    .flag.flag-us {
+        background:
+            linear-gradient(to bottom, #b22234 0 7.69%, #fff 7.69% 15.38%, #b22234 15.38% 23.07%, #fff 23.07% 30.76%, #b22234 30.76% 38.45%, #fff 38.45% 46.14%, #b22234 46.14% 53.83%, #fff 53.83% 61.52%, #b22234 61.52% 69.21%, #fff 69.21% 76.9%, #b22234 76.9% 84.59%, #fff 84.59% 92.28%, #b22234 92.28% 100%);
+        position: relative;
+    }
+
+    .flag.flag-us:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 8px;
+        height: 8px;
+        background: #3c3b6e;
+    }
+
+    .flag.flag-sg {
+        background: linear-gradient(to bottom, #ef3340 0 50%, #fff 50% 100%);
+    }
+
+    .flag.flag-my {
+        background:
+            linear-gradient(to bottom, #cc0001 0 7.14%, #fff 7.14% 14.28%, #cc0001 14.28% 21.42%, #fff 21.42% 28.56%, #cc0001 28.56% 35.7%, #fff 35.7% 42.84%, #cc0001 42.84% 49.98%, #fff 49.98% 57.12%, #cc0001 57.12% 64.26%, #fff 64.26% 71.4%, #cc0001 71.4% 78.54%, #fff 78.54% 85.68%, #cc0001 85.68% 92.82%, #fff 92.82% 100%);
+        position: relative;
+    }
+
+    .flag.flag-my:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 9px;
+        height: 8px;
+        background: #010066;
     }
 
     .guild-search {
@@ -3680,9 +3790,105 @@ $(function () {
         var text = String($('#highScoreMode').val() || 'FFA').toLowerCase();
         if (text.indexOf('1') !== -1) return '1vs1';
         if (text.indexOf('2') !== -1 || text.indexOf('3') !== -1) return '3vs3';
-        if (text.indexOf('team') !== -1) return 'teams';
-        if (text.indexOf('experimental') !== -1) return 'experimental';
+        if (text.indexOf('hardcore') !== -1) return 'hardcore';
+        if (text.indexOf('x5') !== -1) return 'x5';
         return 'ffa';
+    }
+
+    function formatHighScoreDate(period) {
+        var now = new Date();
+        var day = String(now.getDate());
+        var month = String(now.getMonth() + 1);
+        var year = now.getFullYear();
+
+        if (day.length < 2) day = '0' + day;
+        if (month.length < 2) month = '0' + month;
+        if (period === 'today') return day + '/' + month + '/' + year;
+        if (period === 'week') return 'This Week';
+        if (period === 'month') return 'This Month';
+        return 'Global';
+    }
+
+    function parseHighScoreDurationMinutes(value, rawItem) {
+        var seconds = parseInt(rawItem && (rawItem.total_top1_seconds || rawItem.top1Seconds || rawItem.top1_seconds), 10);
+        var minutes = parseInt(rawItem && (rawItem.total_top1_minutes || rawItem.top1Minutes || rawItem.top1_minutes), 10);
+        var ms = parseInt(rawItem && (rawItem.top1Ms || rawItem.top1_ms || rawItem.total_top1_ms), 10);
+        var text = String(value == null ? '' : value).trim();
+        var match;
+
+        if (!isNaN(minutes) && minutes >= 0) return minutes;
+        if (!isNaN(seconds) && seconds >= 0) return Math.floor(seconds / 60);
+        if (!isNaN(ms) && ms >= 0) return Math.floor(ms / 60000);
+        if (!text) return 0;
+
+        match = /^(\d+):(\d{1,2})(?::(\d{1,2}))?$/.exec(text);
+        if (match) {
+            if (match[3] != null) {
+                return (parseInt(match[1], 10) * 60) + parseInt(match[2], 10);
+            }
+            return (parseInt(match[1], 10) * 60) + parseInt(match[2], 10);
+        }
+
+        match = /^(\d+)\s*m\.?$/i.exec(text);
+        if (match) return parseInt(match[1], 10) || 0;
+
+        var numeric = parseInt(text, 10);
+        return isNaN(numeric) ? 0 : Math.floor(numeric / 60);
+    }
+
+    function formatHighScoreTop1(item) {
+        return parseHighScoreDurationMinutes(item && (item.top1Time || item.time || item.duration), item) + 'm.';
+    }
+
+    function highScoreRankHtml(rank) {
+        if (rank === 1) return '<span class="highscore-trophy gold"><span class="handle-left"></span><span class="handle-right"></span></span>';
+        if (rank === 2) return '<span class="highscore-trophy silver"><span class="handle-left"></span><span class="handle-right"></span></span>';
+        if (rank === 3) return '<span class="highscore-trophy bronze"><span class="handle-left"></span><span class="handle-right"></span></span>';
+        return rank + '.';
+    }
+
+    function normalizeCountryCode(value) {
+        var code = String(value || '').trim().toLowerCase();
+        return /^[a-z]{2}$/.test(code) ? code : '';
+    }
+
+    function highScoreFlagHtml(item) {
+        var code = normalizeCountryCode(item && (item.country_code || item.countryCode || item.country));
+        var known = { id: true, pe: true, ec: true, us: true, sg: true, my: true };
+        return '<span class="flag' + (known[code] ? ' flag-' + code : '') + '"></span>';
+    }
+
+    function renderHighScoreRows(items, isBattle) {
+        var rows = [];
+        var sorted = (items || []).slice(0, 10);
+
+        if (!isBattle) {
+            sorted.sort(function(a, b) {
+                return parseHighScoreDurationMinutes(b && (b.top1Time || b.time || b.duration), b) -
+                    parseHighScoreDurationMinutes(a && (a.top1Time || a.time || a.duration), a);
+            });
+        }
+
+        for (var i = 0; i < 10; i++) {
+            var rank = i + 1;
+            var item = sorted[i] || {};
+            var name = item.username || item.name || item.nick || '-';
+            var rowClass = rank === 1 ? 'highscore-row is-top' : 'highscore-row';
+            var value = isBattle
+                ? ((item.win || 0) + '/' + (item.lose || 0))
+                : formatHighScoreTop1(item);
+
+            rows.push(
+                '<div class="' + rowClass + '">' +
+                '<div class="highscore-rank">' + highScoreRankHtml(rank) + '</div>' +
+                '<div class="highscore-nick">' + escapeHtml(name) + '</div>' +
+                '<div class="highscore-time">' + escapeHtml(value) + '</div>' +
+                '<div class="highscore-flag">' + highScoreFlagHtml(item) + '</div>' +
+                '</div>'
+            );
+        }
+
+        $('.highscore-list').html(rows.join(''));
     }
 
     function loadHighScoreStats() {
@@ -3691,23 +3897,16 @@ $(function () {
         var isBattle = mode === '1vs1' || mode === '3vs3';
         var endpoint = isBattle ? '/api/highscore/battle' : '/api/highscore/top1';
 
-        $('.highscore-date').text($('#highScorePeriod').val() || '-');
+        $('.highscore-date').text(formatHighScoreDate(period));
         $('.highscore-head').html(isBattle
-            ? '<div class="highscore-rank">#</div><div>Nick</div><div>W/L</div><div>Rate</div>'
+            ? '<div class="highscore-rank">#</div><div>Nick</div><div>W/L</div><div></div>'
             : '<div class="highscore-rank">#</div><div>Nick</div><div>TOP 1</div><div></div>');
 
-        $.getJSON(endpoint, { period: period, mode: mode }, function(response) {
+        $.getJSON(endpoint, { period: period, mode: mode, limit: 10 }, function(response) {
             var items = response.items || [];
-            if (!items.length) {
-                $('.highscore-list').html('<div class="guild-empty">No data.</div>');
-                return;
-            }
-
-            $('.highscore-list').html(items.map(function(item) {
-                return isBattle
-                    ? '<div class="highscore-row"><div class="highscore-rank">' + item.rank + '</div><div>' + escapeHtml(item.username || '-') + '</div><div>' + (item.win || 0) + '/' + (item.lose || 0) + '</div><div>' + (item.winRate || 0) + '%</div></div>'
-                    : '<div class="highscore-row"><div class="highscore-rank">' + item.rank + '</div><div>' + escapeHtml(item.username || '-') + '</div><div>' + escapeHtml(item.top1Time || '00:00') + '</div><div></div></div>';
-            }).join(''));
+            renderHighScoreRows(items, isBattle);
+        }).fail(function() {
+            renderHighScoreRows([], isBattle);
         });
     }
 

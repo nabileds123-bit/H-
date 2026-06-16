@@ -936,6 +936,7 @@ GameServer.prototype.flushTop1Stats = function(player, world, force) {
         userId: userId,
         mode: mode,
         serverId: this.getStatsServerId(world || player.world),
+        country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode),
         addMs: player.top1UnsavedMs
     });
 
@@ -1004,7 +1005,8 @@ GameServer.prototype.recordBattleResult = function(player) {
         userId: userId,
         mode: mode,
         result: 'lose',
-        serverId: this.getStatsServerId(world)
+        serverId: this.getStatsServerId(world),
+        country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode)
     });
 
     var leaderboard = world && world.leaderboard ? world.leaderboard : [];
@@ -1016,7 +1018,8 @@ GameServer.prototype.recordBattleResult = function(player) {
             userId: this.getPlayerStatsUserId(winner),
             mode: mode,
             result: 'win',
-            serverId: this.getStatsServerId(world)
+            serverId: this.getStatsServerId(world),
+            country_code: winner.authUser && (winner.authUser.country_code || winner.authUser.countryCode)
         });
         break;
     }

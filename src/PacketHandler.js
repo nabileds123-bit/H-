@@ -39,7 +39,8 @@ function applyAuthUserToClient(client, user) {
         accountType: user.accountType || 'Free',
         premiumUntil: user.premiumUntil || '',
         guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
-        activeSkinType: user.activeSkinType || 'player'
+        activeSkinType: user.activeSkinType || 'player',
+        country_code: user.country_code || user.countryCode || ''
     };
     client.authUser.xp = parseInt(user.xp, 10) || 0;
     client.authUser.xpMax = parseInt(user.xpMax, 10) || 0;

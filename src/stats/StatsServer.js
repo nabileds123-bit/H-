@@ -68,6 +68,8 @@ function publicHandle(req, res) {
             period: statsStore.normalizePeriod(query.period),
             items: rows.map(function(row) {
                 row.top1Time = formatMs(row.top1Ms);
+                row.top1Seconds = Math.floor(Math.max(0, parseInt(row.top1Ms, 10) || 0) / 1000);
+                row.top1Minutes = Math.floor(Math.max(0, parseInt(row.top1Ms, 10) || 0) / 60000);
                 return row;
             })
         });
@@ -136,6 +138,8 @@ function adminHandle(req, res, requireAdmin, getAdminSession) {
             ok: true,
             items: statsStore.top1HighScore(query.mode, query.period, 200).map(function(row) {
                 row.top1Time = formatMs(row.top1Ms);
+                row.top1Seconds = Math.floor(Math.max(0, parseInt(row.top1Ms, 10) || 0) / 1000);
+                row.top1Minutes = Math.floor(Math.max(0, parseInt(row.top1Ms, 10) || 0) / 60000);
                 return row;
             })
         });
@@ -157,6 +161,8 @@ function adminHandle(req, res, requireAdmin, getAdminSession) {
             items: type === 'top1'
                 ? statsStore.top1HighScore(query.mode, query.period, 200).map(function(row) {
                     row.top1Time = formatMs(row.top1Ms);
+                    row.top1Seconds = Math.floor(Math.max(0, parseInt(row.top1Ms, 10) || 0) / 1000);
+                    row.top1Minutes = Math.floor(Math.max(0, parseInt(row.top1Ms, 10) || 0) / 60000);
                     return row;
                 })
                 : statsStore.battleHighScore(type, query.period, 200)

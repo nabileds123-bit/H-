@@ -88,6 +88,16 @@ function normalizeCellColor(value) {
     return CELL_COLORS.indexOf(color) !== -1 ? color : null;
 }
 
+function normalizeCountryCode(value) {
+    var code = String(value || '').trim().toUpperCase();
+    if (code === 'XX' || code === 'T1') return '';
+    return /^[A-Z]{2}$/.test(code) ? code : '';
+}
+
+function getRequestCountryCode(req) {
+    return normalizeCountryCode(req && req.headers && req.headers['cf-ipcountry']);
+}
+
 function isPremiumActive(user) {
     if (String(user.accountType || '').toLowerCase() !== 'premium') return false;
 
@@ -120,7 +130,8 @@ function publicAuthUser(user, lastLoginAt) {
         activeSkinType: user.activeSkinType || 'player',
         guildTag: user.guildTag || '',
         guildSkinUrl: user.guildSkinUrl || '',
-        guildSkinPath: user.guildSkinPath || ''
+        guildSkinPath: user.guildSkinPath || '',
+        country_code: normalizeCountryCode(user.country_code || user.countryCode)
     };
 }
 
@@ -139,7 +150,8 @@ function publicPlayerProfile(user) {
         skinUrl: user.skinUrl || '',
         activeSkinType: user.activeSkinType || 'player',
         guildTag: user.guildTag || '',
-        guildSkinUrl: user.guildSkinUrl || ''
+        guildSkinUrl: user.guildSkinUrl || '',
+        country_code: normalizeCountryCode(user.country_code || user.countryCode)
     };
 }
 
@@ -193,6 +205,7 @@ function handleRegister(req, res) {
             username: username,
             email: userEmail,
             passwordHash: passwords.hashPassword(password),
+            country_code: getRequestCountryCode(req),
             verifyEmail: {
                 token: token,
                 expiresAt: Date.now() + VERIFY_EXPIRES
@@ -248,11 +261,16 @@ function handleLogin(req, res) {
 
         var sessionToken = passwords.createToken();
         var lastLoginAt = Date.now();
-        users.updateUser(user.id, {
+        var changes = {
             sessionToken: sessionToken,
             sessionCreatedAt: lastLoginAt,
             lastLoginAt: lastLoginAt
-        });
+        };
+        var requestCountryCode = getRequestCountryCode(req);
+        if (requestCountryCode) {
+            changes.country_code = requestCountryCode;
+        }
+        user = users.updateUser(user.id, changes) || user;
 
         sendJson(res, 200, {
             ok: true,

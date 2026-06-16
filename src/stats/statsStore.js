@@ -175,6 +175,12 @@ function getUserGuildId(user) {
     return String(user && (user.guildId || user.guild_id || user.guildTag) || '').trim();
 }
 
+function normalizeCountryCode(value) {
+    var code = String(value || '').trim().toUpperCase();
+    if (code === 'XX' || code === 'T1') return '';
+    return /^[A-Z]{2}$/.test(code) ? code : '';
+}
+
 function getUserInfo(identifier) {
     var user = users.findByIdOrUsernameOrEmail(identifier);
     if (!user) return null;
@@ -184,7 +190,8 @@ function getUserInfo(identifier) {
         username: user.username || '',
         email: user.email || '',
         guildId: getUserGuildId(user),
-        guildTag: user.guildTag || ''
+        guildTag: user.guildTag || '',
+        country_code: normalizeCountryCode(user.country_code || user.countryCode)
     };
 }
 
@@ -213,6 +220,7 @@ function upsertTop1Time(data) {
     if (found) {
         found.username = user.username;
         found.guild_id = user.guildId;
+        found.country_code = normalizeCountryCode(data.country_code || data.countryCode || user.country_code || found.country_code);
         found.server_id = serverId;
         found.top1_ms = Math.max(0, (parseInt(found.top1_ms, 10) || 0) + amount);
         found.updated_at = Date.now();
@@ -222,6 +230,7 @@ function upsertTop1Time(data) {
             user_id: user.userId,
             username: user.username,
             guild_id: user.guildId,
+            country_code: normalizeCountryCode(data.country_code || data.countryCode || user.country_code),
             mode: mode,
             server_id: serverId,
             record_date: date,
@@ -251,6 +260,7 @@ function addBattleRecord(data) {
         user_id: user.userId,
         username: user.username,
         guild_id: user.guildId,
+        country_code: normalizeCountryCode(data.country_code || data.countryCode || user.country_code),
         mode: mode,
         server_id: String(data.serverId || 'default'),
         result: result,
@@ -304,14 +314,19 @@ function top1HighScore(mode, period, limit) {
 
     readStore().top1TimeRecords.forEach(function(record) {
         if (record.mode !== topMode || !inRange(record.record_date, range)) return;
+        var recordUser = getUserInfo(record.user_id || record.username) || {};
         if (!map[record.user_id]) {
             map[record.user_id] = {
                 userId: record.user_id,
                 username: record.username,
                 guildId: record.guild_id,
+                country_code: normalizeCountryCode(record.country_code || recordUser.country_code),
                 mode: topMode,
                 top1Ms: 0
             };
+        }
+        if (!map[record.user_id].country_code) {
+            map[record.user_id].country_code = normalizeCountryCode(record.country_code || recordUser.country_code);
         }
         map[record.user_id].top1Ms += parseInt(record.top1_ms, 10) || 0;
     });
@@ -332,15 +347,20 @@ function battleHighScore(mode, period, limit) {
 
     readStore().battleMatchRecords.forEach(function(record) {
         if (record.mode !== battleMode || !inRange(record.match_date, range)) return;
+        var recordUser = getUserInfo(record.user_id || record.username) || {};
         if (!map[record.user_id]) {
             map[record.user_id] = {
                 userId: record.user_id,
                 username: record.username,
                 guildId: record.guild_id,
+                country_code: normalizeCountryCode(record.country_code || recordUser.country_code),
                 mode: battleMode,
                 win: 0,
                 lose: 0
             };
+        }
+        if (!map[record.user_id].country_code) {
+            map[record.user_id].country_code = normalizeCountryCode(record.country_code || recordUser.country_code);
         }
         if (record.result === 'win') map[record.user_id].win++;
         if (record.result === 'lose') map[record.user_id].lose++;
