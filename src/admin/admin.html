@@ -80,7 +80,7 @@
       premium:{title:'Premium',endpoint:'premium',columns:['username','type','startsAt','endsAt','active'],fields:[['username','Username'],['type','Type','select',['Premium','VIP','Moderator']],['startsAt','Starts At'],['endsAt','Ends At'],['active','Active','checkbox'],['notes','Notes','textarea']]},
       points:{title:'Points',endpoint:'points',columns:['username','amount','balanceBefore','balanceAfter','reason','createdAt'],fields:[['username','Username / Email / ID'],['amount','Amount','number'],['reason','Reason'],['createdAt','Created At'],['notes','Notes','textarea']]},
       skins:{title:'Skins',endpoint:'skins',columns:['username','name','file','status'],fields:[['username','Username'],['name','Skin Name'],['file','File'],['status','Status','select',['pending','approved','rejected']],['notes','Notes','textarea']]},
-      guilds:{title:'Guild',endpoint:'guilds',columns:['name','tag','type','leader','members'],fields:[['name','Guild Name'],['tag','Tag'],['type','Type','select',['private','public']],['leader','Leader'],['members','Members','number'],['logo','Logo'],['description','Description','textarea']]},
+      guilds:{title:'Guild',endpoint:'guilds',columns:['name','tag','type','leader','members','logo','membersList'],fields:[['name','Guild Name'],['tag','Tag'],['type','Type','select',['private','public']],['leader','Leader Username'],['leaderLevel','Leader Level','number'],['members','Members Count','number'],['logo','Logo URL'],['guildSkinUrl','Guild Skin URL'],['membersList','Members JSON or lines: name|role|level','textarea'],['description','Description','textarea'],['logs','Logs','textarea']]},
       notifications:{title:'Notification',endpoint:'notifications',columns:['title','target','active','createdAt'],fields:[['title','Title'],['message','Message','textarea'],['target','Target','select',['all','user','guild']],['targetId','Target ID'],['active','Active','checkbox'],['createdAt','Created At']]},
       highscores:{title:'Highscore',endpoint:'highscores',columns:['username','mode','period','score'],fields:[['username','Username'],['mode','Mode','select',['FFA - X5','FFA - Hardcore','1vs1','2vs2']],['period','Period','select',['today','week','month','global']],['score','Score','number'],['time','Time'],['country','Country']]},
       battleMatches:{title:'Battle Match',endpoint:'battleMatches',columns:['mode','status','teamA','teamB','score'],fields:[['mode','Mode','select',['1vs1','2vs2']],['status','Status','select',['waiting','live','finished','cancelled']],['teamA','Team A'],['teamB','Team B'],['score','Score'],['reward','Reward','number'],['startedAt','Started At'],['endedAt','Ended At']]},
@@ -101,7 +101,13 @@
     function text(value) { return value == null ? '' : String(value); }
     function esc(value) { return text(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
     function setStatus(message, error) { var el=document.getElementById('status'); el.style.color=error?'#b42318':'#52606d'; el.textContent=message||''; }
-    function showApp() { document.getElementById('login').style.display='none'; document.getElementById('app').style.display='block'; load(current); }
+    function applyUrlState() {
+      var params = new URLSearchParams(window.location.search || '');
+      var moduleName = params.get('module');
+      if (moduleName && modules[moduleName]) current = moduleName;
+      if (params.get('search')) document.getElementById('search').value = params.get('search');
+    }
+    function showApp() { document.getElementById('login').style.display='none'; document.getElementById('app').style.display='block'; applyUrlState(); load(current); }
     function showLogin() { document.getElementById('login').style.display='block'; document.getElementById('app').style.display='none'; }
     function renderNav() {
       var nav = document.getElementById('nav');

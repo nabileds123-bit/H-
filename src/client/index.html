@@ -1102,6 +1102,17 @@ $(document).on('keyup', function(input) {
         font-weight: bold;
     }
 
+    .guild-member-name-link {
+        color: inherit;
+        font-weight: bold;
+        text-decoration: none;
+    }
+
+    .guild-member-name-link:hover {
+        color: #337ab7;
+        text-decoration: underline;
+    }
+
     .guild-member-level,
     .guild-member-status {
         text-align: left;
@@ -2609,9 +2620,9 @@ $(document).on('keyup', function(input) {
                     <div id="guildMemberList">
                     </div>
                     <div id="guildDetailActions" class="guild-detail-actions">
-                        <button type="button" class="btn btn-success">Invite player</button>
-                        <button type="button" class="btn btn-success">Edit</button>
-                        <button type="button" class="btn btn-danger">Delete</button>
+                        <button id="guildInvitePlayerBtn" type="button" class="btn btn-success">Invite player</button>
+                        <button id="guildEditBtn" type="button" class="btn btn-success">Edit</button>
+                        <button id="guildDeleteBtn" type="button" class="btn btn-danger">Delete</button>
                     </div>
                 </div>
                 <div id="guildDetailInfo" class="guild-detail-pane">
@@ -2959,6 +2970,7 @@ $(function () {
     var battleStartLoading = false;
     var battleStartTimer = null;
     var guildViewerRole = 'guest';
+    var activeGuildDetail = null;
     var guildList = [];
     var guildMembers = [];
     var premiumChatWarning = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
@@ -2993,6 +3005,88 @@ $(function () {
 
     function resolveGuildViewerRole(tag) {
         return isCurrentViewerGuild(tag) ? 'leader' : 'guest';
+    }
+
+    function getGuildAdminUrl(guild) {
+        var query = encodeURIComponent((guild && (guild.tag || guild.name)) || '');
+        return '/admin?module=guilds&search=' + query;
+    }
+
+    function parseGuildMemberList(guildItem, leaderName, viewerOwnsGuild) {
+        var source = guildItem && (guildItem.membersList || guildItem.membersJson || guildItem.memberList);
+        var parsed = [];
+
+        if (Array.isArray(source)) {
+            parsed = source;
+        } else if (typeof source === 'string' && source.trim()) {
+            try {
+                parsed = JSON.parse(source);
+            } catch (e) {
+                parsed = source.split(/\r?\n/).map(function(line) {
+                    var parts = line.split('|');
+                    return {
+                        name: String(parts[0] || '').trim(),
+                        role: String(parts[1] || 'member').trim(),
+                        level: parseInt(parts[2], 10) || 1
+                    };
+                });
+            }
+        }
+
+        parsed = parsed.filter(function(member) {
+            return member && String(member.name || member.username || '').trim();
+        }).map(function(member, index) {
+            var name = String(member.name || member.username || '').trim();
+            return {
+                id: String(member.id || member.userId || name || index),
+                name: name,
+                role: String(member.role || 'member').toLowerCase(),
+                level: parseInt(member.level, 10) || 1,
+                online: !!member.online || (viewerOwnsGuild && name.toLowerCase() === getCurrentGuildViewerName().toLowerCase()),
+                isSelf: name.toLowerCase() === getCurrentGuildViewerName().toLowerCase()
+            };
+        });
+
+        var hasLeader = parsed.some(function(member) {
+            return String(member.role || '').toLowerCase() === 'leader';
+        });
+
+        if (!hasLeader) {
+            parsed.unshift({
+                id: 'leader',
+                name: leaderName,
+                role: 'leader',
+                level: parseInt((guildItem && guildItem.leaderLevel) || localStorage.getItem('authLevel'), 10) || 1,
+                online: viewerOwnsGuild,
+                isSelf: guildViewerRole === 'leader'
+            });
+        }
+
+        return parsed;
+    }
+
+    function persistActiveGuildMembers() {
+        if (!activeGuildDetail || !activeGuildDetail.tag) return;
+
+        var tag = String(activeGuildDetail.tag || '').trim().toUpperCase();
+        var serialized = JSON.stringify(guildMembers.map(function(member) {
+            return {
+                id: member.id,
+                name: member.name,
+                role: member.role,
+                level: member.level || 1
+            };
+        }));
+
+        guildList = guildList.map(function(guild) {
+            if (String(guild.tag || '').trim().toUpperCase() !== tag) return guild;
+            return $.extend({}, guild, {
+                members: guildMembers.length,
+                membersList: serialized
+            });
+        });
+
+        saveGuildList();
     }
 
     function resolveGameModeRoom(mode) {
@@ -3685,6 +3779,7 @@ $(function () {
         var rows = sortedMembers.map(function(member) {
             var role = String(member.role || 'member').toLowerCase();
             var roleText = '';
+            var memberName = String(member.name || '').trim() || '-';
 
             if (role === 'leader') {
                 roleText = 'Leader';
@@ -3696,7 +3791,7 @@ $(function () {
             return [
                 '<div class="guild-member-row" data-member-id="' + member.id + '" data-member-role="' + role + '">',
                 '<span class="guild-member-role">' + roleText + getGuildActionHtml(member) + '</span>',
-                '<span class="guild-member-name">' + escapeHtml(member.name) + '</span>',
+                '<span class="guild-member-name"><a class="guild-member-name-link" href="#account-detail" data-account-name="' + escapeHtml(memberName) + '">' + escapeHtml(memberName) + '</a></span>',
                 '<span class="guild-member-level">' + (member.level || 1) + '</span>',
                 '<span class="guild-member-status"><span class="guild-member-online ' + (member.online ? 'is-online' : '') + '"></span></span>',
                 '</div>'
@@ -3720,6 +3815,12 @@ $(function () {
         var leaderName = viewerOwnsGuild ? getCurrentGuildViewerName() : (guildItem && guildItem.leader) || 'Leader';
 
         guildViewerRole = resolveGuildViewerRole(guildTag);
+        activeGuildDetail = {
+            name: guildName,
+            tag: guildTag,
+            logo: logo,
+            item: guildItem || {}
+        };
 
         $('#guildBreadcrumbList').hide();
         $('#guildDetailTitle').text(guildName);
@@ -3738,9 +3839,7 @@ $(function () {
                 text: '[' + guildTag + ']'
             }));
         }
-        guildMembers = [
-            { id: 'leader', name: leaderName, role: 'leader', level: parseInt(localStorage.getItem('authLevel'), 10) || 1, online: viewerOwnsGuild, isSelf: guildViewerRole === 'leader' }
-        ];
+        guildMembers = parseGuildMemberList(guildItem, leaderName, viewerOwnsGuild);
         renderGuildMembers();
         updateGuildDetailActions();
         $('#guildDetailView').css('display', 'flex');
@@ -4626,8 +4725,54 @@ $(function () {
         openGuildDetailView($(this).data('guild-name'), $(this).data('guild-tag'), $(this).data('guild-logo'));
     });
 
+    $('#guildMemberList').on('click', '.guild-member-name-link', function (event) {
+        event.preventDefault();
+        openAccountDetailDialog($(this).data('account-name') || $(this).text());
+    });
+
     $('#guildSearch').on('input', function () {
         renderGuildList();
+    });
+
+    $('#guildInvitePlayerBtn').on('click', function (event) {
+        event.preventDefault();
+        if (String(guildViewerRole || 'guest').toLowerCase() !== 'leader' && String(guildViewerRole || 'guest').toLowerCase() !== 'staff') return;
+
+        var playerName = window.prompt('Invite player username:');
+        if (!playerName) return;
+
+        var exists = guildMembers.some(function(member) {
+            return String(member.name || '').toLowerCase() === String(playerName).trim().toLowerCase();
+        });
+
+        if (!exists) {
+            guildMembers.push({
+                id: String(playerName).trim(),
+                name: String(playerName).trim(),
+                role: 'member',
+                level: 1,
+                online: false,
+                isSelf: false
+            });
+            persistActiveGuildMembers();
+            renderGuildMembers();
+        }
+
+        openAccountDetailDialog(playerName);
+        $('#accountDetailSearchStatus').text('Review this account before inviting to ' + ((activeGuildDetail && activeGuildDetail.tag) || 'guild') + '.');
+    });
+
+    $('#guildEditBtn').on('click', function (event) {
+        event.preventDefault();
+        if (String(guildViewerRole || 'guest').toLowerCase() !== 'leader' && String(guildViewerRole || 'guest').toLowerCase() !== 'staff') return;
+        window.open(getGuildAdminUrl(activeGuildDetail), '_blank');
+    });
+
+    $('#guildDeleteBtn').on('click', function (event) {
+        event.preventDefault();
+        if (String(guildViewerRole || 'guest').toLowerCase() !== 'leader') return;
+        if (!confirm('Delete guild ' + ((activeGuildDetail && activeGuildDetail.name) || 'this guild') + '?')) return;
+        window.open(getGuildAdminUrl(activeGuildDetail), '_blank');
     });
 
     $('#guildMemberList').on('click', '[data-guild-action]', function (event) {
@@ -4648,6 +4793,7 @@ $(function () {
 
         if (action === 'promote' && guildViewerRole === 'leader' && member.role === 'member') {
             member.role = 'staff';
+            persistActiveGuildMembers();
             renderGuildMembers();
             return;
         }
@@ -4655,6 +4801,7 @@ $(function () {
         if (action === 'demote' && guildViewerRole === 'leader' && member.role === 'staff') {
             if (!confirm('Demote ' + member.name + ' menjadi Member?')) return;
             member.role = 'member';
+            persistActiveGuildMembers();
             renderGuildMembers();
             return;
         }
@@ -4665,6 +4812,7 @@ $(function () {
                 guildMembers = guildMembers.filter(function(item) {
                     return item.id !== member.id;
                 });
+                persistActiveGuildMembers();
                 renderGuildMembers();
                 return;
             }
@@ -4674,6 +4822,7 @@ $(function () {
                 guildMembers = guildMembers.filter(function(item) {
                     return item.id !== member.id;
                 });
+                persistActiveGuildMembers();
                 renderGuildMembers();
             }
         }
