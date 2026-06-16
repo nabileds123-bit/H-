@@ -102,6 +102,19 @@ function findByUsernameOrEmail(identifier) {
     }) || null;
 }
 
+function findByIdOrUsernameOrEmail(identifier) {
+    var value = String(identifier || '').trim();
+    if (!value) return null;
+
+    var found = findByUsernameOrEmail(value);
+    if (found) return found;
+
+    var store = readStore();
+    return store.users.find(function(user) {
+        return matchesUserId(user, value);
+    }) || null;
+}
+
 function findByEmail(email) {
     var normalized = normalizeEmail(email);
     var gmailValue = normalizeGmailEmail(normalized);
@@ -221,6 +234,7 @@ module.exports = {
     createUser: createUser,
     deleteUser: deleteUser,
     findByEmail: findByEmail,
+    findByIdOrUsernameOrEmail: findByIdOrUsernameOrEmail,
     findBySessionToken: findBySessionToken,
     findByToken: findByToken,
     findByUsernameOrEmail: findByUsernameOrEmail,

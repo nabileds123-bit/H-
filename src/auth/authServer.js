@@ -350,6 +350,24 @@ function handleCellColor(req, res) {
     });
 }
 
+function handleProfile(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var token = String(body.token || '');
+        var user = users.findBySessionToken(token);
+
+        if (!user) {
+            return sendJson(res, 401, { ok: false, message: 'Please login again.' });
+        }
+
+        sendJson(res, 200, {
+            ok: true,
+            user: publicAuthUser(user)
+        });
+    });
+}
+
 function handleActiveSkin(req, res) {
     readBody(req, function(err, body) {
         if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
@@ -547,6 +565,11 @@ function handle(req, res) {
 
     if (req.method === 'POST' && pathname === '/api/auth/cell-color') {
         handleCellColor(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/auth/profile') {
+        handleProfile(req, res);
         return true;
     }
 

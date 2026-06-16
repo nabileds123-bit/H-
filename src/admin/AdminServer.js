@@ -331,10 +331,10 @@ function handleUsers(req, res, parts) {
 function applyPointTransaction(body) {
     var username = String(body.username || '').trim();
     var amount = parseInt(body.amount, 10);
-    var user = username ? users.findByUsernameOrEmail(username) : null;
+    var user = username ? users.findByIdOrUsernameOrEmail(username) : null;
 
     if (!user) {
-        return { error: 'User not found.' };
+        return { error: 'User not found. Use the account username, email, or id.' };
     }
 
     if (isNaN(amount) || amount === 0) {

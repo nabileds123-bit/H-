@@ -2947,6 +2947,7 @@ $(function () {
     function storeAuthUser(user) {
         if (!user) return;
 
+        authUser = user.username || localStorage.getItem('authUser') || '';
         localStorage.setItem('authUser', user.username || localStorage.getItem('authUser') || '');
         localStorage.setItem('authLastLogin', user.lastLoginAt || localStorage.getItem('authLastLogin') || Date.now());
         localStorage.setItem('cellColor', user.cellColor || '#000000');
@@ -2962,6 +2963,24 @@ $(function () {
         localStorage.setItem('authGuildTag', user.guildTag || '');
         localStorage.setItem('authGuildSkinUrl', user.guildSkinUrl || '');
         updateChatAccess();
+    }
+
+    function refreshAuthUser(callback) {
+        var token = localStorage.getItem('authToken');
+        if (!token) {
+            if (callback) callback();
+            return;
+        }
+
+        postAuth('/api/auth/profile', {
+            token: token
+        }, function (err, response) {
+            if (!err && response && response.user) {
+                storeAuthUser(response.user);
+            }
+
+            if (callback) callback();
+        });
     }
 
     function hasActivePremium() {
@@ -3064,7 +3083,14 @@ $(function () {
         return date.toLocaleString();
     }
 
-    function showAccountView() {
+    function showAccountView(skipRefresh) {
+        if (!skipRefresh && localStorage.getItem('authToken')) {
+            refreshAuthUser(function () {
+                showAccountView(true);
+            });
+            return;
+        }
+
         $('#homeView, #instructions, #loginView, #registerView, #forgotPasswordView, #resetPasswordView, #changePasswordView, #uploadSkinView').hide();
         var premiumActive = hasActivePremium();
         $('#accountNick').text(authUser || '-');
