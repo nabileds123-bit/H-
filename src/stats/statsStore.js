@@ -405,19 +405,7 @@ function guildStats(period) {
 
     readStore().top1TimeRecords.forEach(function(record) {
         if (!record.guild_id || !inRange(record.record_date, range)) return;
-        if (!guilds[record.guild_id]) {
-            guilds[record.guild_id] = {
-                guildId: record.guild_id,
-                name: record.guild_id,
-                tag: record.guild_id,
-                members: 0,
-                top1Ms: 0,
-                battle: {
-                    '1vs1': { win: 0, lose: 0, totalMatch: 0, winRate: 0 },
-                    '3vs3': { win: 0, lose: 0, totalMatch: 0, winRate: 0 }
-                }
-            };
-        }
+        if (!guilds[record.guild_id]) return;
         guilds[record.guild_id].top1Ms += parseInt(record.top1_ms, 10) || 0;
     });
 

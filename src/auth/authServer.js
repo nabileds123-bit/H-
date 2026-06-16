@@ -847,6 +847,55 @@ function handleGuildInvite(req, res) {
     });
 }
 
+function handleGuildCreate(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var tag = normalizeGuildTag(body.tag);
+        var name = String(body.name || '').trim();
+        if (!isValidGuildName(name)) return sendJson(res, 400, { ok: false, message: 'Guild name is not valid.' });
+        if (!isValidGuildTag(tag)) return sendJson(res, 400, { ok: false, message: 'Guild prefix is not valid.' });
+        if (normalizeGuildTag(user.guildTag) && normalizeGuildTag(user.guildTag) !== tag) {
+            return sendJson(res, 400, { ok: false, message: 'You are already in a guild.' });
+        }
+        if (findGuildByTag(tag)) return sendJson(res, 409, { ok: false, message: 'Guild prefix already exists.' });
+
+        var guild = adminStore.create('guilds', {
+            id: tag,
+            name: name,
+            tag: tag,
+            type: String(body.type || 'private').trim() || 'private',
+            leader: user.username,
+            leaderLevel: parseInt(user.level, 10) || 1,
+            members: 1,
+            membersList: serializeGuildMembers([{
+                id: user.id,
+                name: user.username,
+                role: 'leader',
+                level: parseInt(user.level, 10) || 1
+            }]),
+            description: String(body.description || '').trim(),
+            bio: String(body.description || '').trim(),
+            logo: String(body.logo || '').trim()
+        });
+
+        var updatedUser = users.updateUser(user.id, {
+            guildTag: tag,
+            guildSkinUrl: guild.logo || user.guildSkinUrl || ''
+        });
+
+        sendJson(res, 200, {
+            ok: true,
+            message: 'Guild created.',
+            guild: publicGuild(guild),
+            user: publicAuthUser(updatedUser)
+        });
+    });
+}
+
 function handleGuildInviteAccept(req, res) {
     readBody(req, function(err, body) {
         if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
@@ -1066,6 +1115,11 @@ function handle(req, res) {
 
     if (req.method === 'POST' && pathname === '/api/guild/invite') {
         handleGuildInvite(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/create') {
+        handleGuildCreate(req, res);
         return true;
     }
 

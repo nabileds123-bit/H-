@@ -3854,7 +3854,9 @@ $(function () {
             tag: tag,
             type: guild.type || 'private',
             leader: guild.leader || getCurrentGuildViewerName(),
+            leaderLevel: parseInt(guild.leaderLevel, 10) || 1,
             members: parseInt(guild.members, 10) || 1,
+            membersList: guild.membersList || guild.membersJson || guild.memberList || '',
             logo: guild.logo || '',
             description: guild.description || guild.bio || guild.about || '',
             bio: guild.bio || guild.description || guild.about || '',
@@ -3951,33 +3953,24 @@ $(function () {
 
     function loadGuildStats() {
         $.getJSON('/api/guilds', { period: getGuildPeriodValue() }, function(response) {
-            var items = response.items || [];
-            items.forEach(function(item) {
+            guildList = (response.items || []).map(function(item) {
                 var tag = String(item.tag || item.guildId || '').trim().toUpperCase();
-                if (!tag) return;
-
-                var found = false;
-                guildList = guildList.map(function(guild) {
-                    if (String(guild.tag || '').trim().toUpperCase() !== tag) return guild;
-                    found = true;
-                    return $.extend({}, guild, {
-                        name: item.name || guild.name,
-                        tag: tag,
-                        members: item.members || guild.members || 1,
-                        top1: item.top1Time || '00:00'
-                    });
+                return normalizeGuildItem({
+                    id: item.guildId || item.id || tag,
+                    name: item.name || tag,
+                    tag: tag,
+                    members: item.members || 1,
+                    top1: item.top1Time || '00:00',
+                    leader: item.leader || '',
+                    leaderLevel: item.leaderLevel || 1,
+                    membersList: item.membersList || '',
+                    description: item.description || item.bio || '',
+                    logo: item.logo || ''
                 });
-
-                if (!found) {
-                    guildList.push({
-                        id: item.guildId || tag,
-                        name: item.name || tag,
-                        tag: tag,
-                        members: item.members || 1,
-                        top1: item.top1Time || '00:00'
-                    });
-                }
+            }).filter(function(guild) {
+                return !!guild.tag;
             });
+            saveGuildList();
             renderGuildList();
         });
     }
@@ -5210,22 +5203,35 @@ $(function () {
             return;
         }
 
-        if (!logoFile) {
-            status.removeClass('text-danger').addClass('text-success').text('Opening guild detail preview.').show();
-            upsertGuildListItem({
-                name: name,
-                tag: tag,
-                type: type,
-                logo: '',
-                leader: getCurrentGuildViewerName()
-            });
-            closeGuildCreateDialog();
-            openGuildDetailView(name, tag, '');
+        if (!localStorage.getItem('authToken')) {
+            status.removeClass('text-success').addClass('text-danger').text('Login dulu untuk membuat guild.').show();
             return;
         }
 
-        if (!localStorage.getItem('authToken')) {
-            status.removeClass('text-success').addClass('text-danger').text('Login dulu untuk upload guild skin.').show();
+        function createGuildWithLogo(logoUrl) {
+            postAuth('/api/guild/create', {
+                token: localStorage.getItem('authToken'),
+                name: name,
+                tag: tag,
+                type: type,
+                logo: logoUrl || ''
+            }, function(err, response) {
+                if (err) {
+                    status.removeClass('text-success').addClass('text-danger').text(err).show();
+                    return;
+                }
+
+                if (response.user) storeAuthUser(response.user);
+                if (response.guild) upsertGuildListItem(response.guild);
+                status.removeClass('text-danger').addClass('text-success').text(response.message || 'Guild created.').show();
+                closeGuildCreateDialog();
+                openGuildDetailView(response.guild.name, response.guild.tag, response.guild.logo || '');
+            });
+        }
+
+        if (!logoFile) {
+            status.removeClass('text-danger').addClass('text-success').text('Creating guild...').show();
+            createGuildWithLogo('');
             return;
         }
 
@@ -5244,17 +5250,7 @@ $(function () {
                     return;
                 }
 
-                storeAuthUser(response.user);
-                upsertGuildListItem({
-                    name: name,
-                    tag: tag,
-                    type: type,
-                    logo: response.url || '',
-                    leader: getCurrentGuildViewerName()
-                });
-                status.removeClass('text-danger').addClass('text-success').text(response.message || 'Guild skin uploaded.').show();
-                closeGuildCreateDialog();
-                openGuildDetailView(name, tag, response.url || '');
+                createGuildWithLogo(response.url || '');
             });
         };
         reader.onerror = function () {
