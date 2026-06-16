@@ -1,7 +1,19 @@
 var https = require('https');
 
+function cleanEnv(value) {
+    var text = String(value || '').trim();
+    var first = text.charAt(0);
+    var last = text.charAt(text.length - 1);
+
+    if ((first === '"' && last === '"') || (first === '\'' && last === '\'')) {
+        text = text.slice(1, -1).trim();
+    }
+
+    return text;
+}
+
 function trimTrailingSlash(value) {
-    return String(value || '').replace(/\/+$/, '');
+    return cleanEnv(value).replace(/\/+$/, '');
 }
 
 function encodeObjectPath(objectPath) {
@@ -16,8 +28,8 @@ function encodeObjectPath(objectPath) {
 function getConfig() {
     return {
         url: trimTrailingSlash(process.env.SUPABASE_URL),
-        key: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-        bucket: process.env.SUPABASE_BUCKET || 'skins'
+        key: cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY),
+        bucket: cleanEnv(process.env.SUPABASE_BUCKET) || 'skins'
     };
 }
 

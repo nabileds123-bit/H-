@@ -2349,7 +2349,7 @@ $(document).on('keyup', function(input) {
             <div class="form-group">
                 <input id="skinFileInput" type="file" accept=".png,image/png"/>
             </div>
-            <p class="skin-upload-hint">We recommend to upload 500x500 PNG images.</p>
+            <p class="skin-upload-hint">We recommend 500x500 PNG images, max 500KB.</p>
             <div class="skin-upload-actions">
                 <button type="button" id="skinUploadSubmit" class="btn btn-primary">Submit</button>
                 <button type="button" id="skinUploadBack" class="btn btn-info">Back</button>
@@ -2828,7 +2828,8 @@ $(function () {
     var guildList = [];
     var guildMembers = [];
     var premiumChatWarning = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
-    var MAX_SKIN_UPLOAD_BYTES = 2 * 1024 * 1024;
+    var MAX_PLAYER_SKIN_UPLOAD_BYTES = 500 * 1024;
+    var MAX_GUILD_SKIN_UPLOAD_BYTES = 200 * 1024;
 
     function getCurrentGuildViewerName() {
         return authUser || $('#accountNick').text() || 'amen';
@@ -2936,7 +2937,7 @@ $(function () {
             error: function (xhr) {
                 var response = xhr.responseJSON || {};
                 if (xhr.status === 413) {
-                    callback('Upload file terlalu besar. Maksimal 2MB PNG.');
+                    callback('Upload file terlalu besar. Player skin maksimal 500KB, guild skin maksimal 200KB.');
                     return;
                 }
                 callback(response.message || 'Request failed.');
@@ -3590,8 +3591,8 @@ $(function () {
         if (!/\.png$/i.test(file.name) || file.type !== 'image/png') {
             return 'Guild skin must be a PNG file.';
         }
-        if (file.size > MAX_SKIN_UPLOAD_BYTES) {
-            return 'Guild skin maksimal 2MB.';
+        if (file.size > MAX_GUILD_SKIN_UPLOAD_BYTES) {
+            return 'Guild skin maksimal 200KB.';
         }
         return '';
     }
@@ -4537,8 +4538,8 @@ $(function () {
             return;
         }
 
-        if (file.size > MAX_SKIN_UPLOAD_BYTES) {
-            showAuthStatus('#skinUploadStatus', 'Skin maksimal 2MB PNG.', true);
+        if (file.size > MAX_PLAYER_SKIN_UPLOAD_BYTES) {
+            showAuthStatus('#skinUploadStatus', 'Skin maksimal 500KB PNG.', true);
             return;
         }
 

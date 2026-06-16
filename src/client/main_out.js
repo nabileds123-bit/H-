@@ -2115,7 +2115,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                         if (!skins.hasOwnProperty(skinName)) {
                             skins[skinName] = new Image;
                             var skinFile = skinFileMap[skinName] || skinName;
-                            skins[skinName].src = /^https?:\/\//i.test(skinFile) ? skinFile : SKIN_URL + skinFile + '.png';
+                            skins[skinName].src = /^https?:\/\//i.test(skinFile) || /^\//.test(skinFile) ? skinFile : SKIN_URL + skinFile + '.png';
                         }
                         if (0 != skins[skinName].width && skins[skinName].complete) {
                             c = skins[skinName];

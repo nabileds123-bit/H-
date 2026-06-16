@@ -8,9 +8,11 @@ var VERIFY_EXPIRES = 24 * 60 * 60 * 1000;
 var RESET_EXPIRES = 60 * 60 * 1000;
 var PLAYER_SKIN_COST = 150;
 var GUILD_SKIN_COST = 50;
-var PREMIUM_COST = 500;
+var PREMIUM_COST = 2;
 var PREMIUM_DAYS = 7;
-var MAX_SKIN_BYTES = 2 * 1024 * 1024;
+var MAX_PLAYER_SKIN_BYTES = 500 * 1024;
+var MAX_GUILD_SKIN_BYTES = 200 * 1024;
+var MAX_SKIN_BODY_BYTES = 1024 * 1024;
 var CELL_COLORS = [
     '#000000',
     '#6FCA36',
@@ -128,12 +130,12 @@ function safeSkinSegment(value, fallback) {
     return text || String(fallback || 'skin').toLowerCase();
 }
 
-function decodePngDataUrl(dataUrl) {
+function decodePngDataUrl(dataUrl, maxBytes) {
     var match = /^data:image\/png;base64,([a-z0-9+/=\r\n]+)$/i.exec(String(dataUrl || ''));
     if (!match) return null;
 
     var buffer = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
-    if (!buffer.length || buffer.length > MAX_SKIN_BYTES) return null;
+    if (!buffer.length || buffer.length > maxBytes) return null;
     if (buffer.length < 8 ||
         buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4e || buffer[3] !== 0x47 ||
         buffer[4] !== 0x0d || buffer[5] !== 0x0a || buffer[6] !== 0x1a || buffer[7] !== 0x0a) {
@@ -411,7 +413,9 @@ function handleUploadSkin(req, res) {
         var token = String(body.token || '');
         var type = String(body.type || 'player').toLowerCase();
         var user = users.findBySessionToken(token);
-        var buffer = decodePngDataUrl(body.dataUrl);
+        var maxSkinBytes = type === 'guild' ? MAX_GUILD_SKIN_BYTES : MAX_PLAYER_SKIN_BYTES;
+        var maxSkinKb = type === 'guild' ? 200 : 500;
+        var buffer = decodePngDataUrl(body.dataUrl, maxSkinBytes);
 
         if (!user) {
             return sendJson(res, 401, { ok: false, message: 'Please login again.' });
@@ -422,11 +426,7 @@ function handleUploadSkin(req, res) {
         }
 
         if (!buffer) {
-            return sendJson(res, 400, { ok: false, message: 'Skin must be a PNG file and max 2MB.' });
-        }
-
-        if (!skinStorage.isConfigured()) {
-            return sendJson(res, 503, { ok: false, message: 'Supabase storage is not configured.' });
+            return sendJson(res, 400, { ok: false, message: 'Skin must be a PNG file and max ' + maxSkinKb + 'KB.' });
         }
 
         var cost = type === 'guild' ? GUILD_SKIN_COST : PLAYER_SKIN_COST;
@@ -442,6 +442,10 @@ function handleUploadSkin(req, res) {
             ? safeSkinSegment(body.guildTag || user.guildTag, user.username)
             : safeSkinSegment(user.username, user.id);
         var objectPath = type + '/' + name + '-' + Date.now() + '.png';
+
+        if (!skinStorage.isConfigured()) {
+            return sendJson(res, 503, { ok: false, message: 'Supabase storage is not configured.' });
+        }
 
         skinStorage.uploadPng(objectPath, buffer, function(uploadErr, result) {
             if (uploadErr) {
@@ -478,7 +482,7 @@ function handleUploadSkin(req, res) {
                 user: publicAuthUser(updatedUser)
             });
         });
-    }, 1024 * 1024 * 4);
+    }, MAX_SKIN_BODY_BYTES);
 }
 
 function handleBuyPremium(req, res) {
