@@ -454,6 +454,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         leaderBoard = [];
         mainCanvas = teamScores = null;
         userScore = 0;
+        resetMatchStats();
         console.log("Connecting to " + wsUrl);
         ws = new WebSocket(wsUrl);
         ws.binaryType = "arraybuffer";
@@ -648,6 +649,13 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 } catch (e) {}
 
                 break;
+            case 123:
+                var topTimeJson = getString();
+                try {
+                    var topTimeData = JSON.parse(topTimeJson);
+                    showTopTimePopup(topTimeData.ms || 0);
+                } catch (e) {}
+                break;
 
         }
     }
@@ -659,7 +667,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             "name": "System",
             "color": "#ff6666",
             "message": message,
-            "time": Date.now()
+            "time": Date.now(),
+            "isSystem": true
         });
         drawChatBoard();
     }
@@ -699,16 +708,17 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
         color = '#' + color;
         var isGuildChat = !!(flags & 32);
+        var isDeadChat = !!(flags & 16);
         var chatName = getString();
         var chatMessage = getString();
 
         chatBoard.push({
             "name": chatName,
             "color": color,
-            "textColor": isGuildChat ? "#ff9800" : "#777777",
             "message": chatMessage,
             "time": Date.now(),
-            "isGuild": isGuildChat
+            "isGuild": isGuildChat,
+            "isDead": isDeadChat
         });
         //console.log(chatBoard);
         drawChatBoard();
@@ -764,6 +774,19 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         var chatWidth = chatCanvas.width / scaleFactor;
         var maxY = chatCanvas.height / scaleFactor - 8;
 
+        function getChatTextColor(msg) {
+            if (msg && msg.isSystem) return showDarkTheme ? "#ffb3b3" : "#aa2222";
+            if (msg && msg.isDead) return "#9a9a9a";
+            if (msg && msg.isGuild) return "#ff9800";
+            return showDarkTheme ? "#ffffff" : "#222222";
+        }
+
+        function getChatNameColor(msg) {
+            if (msg && msg.isSystem) return "#ff6666";
+            if (msg && msg.isDead) return "#9a9a9a";
+            return msg && msg.color ? msg.color : "#ff3333";
+        }
+
         function wrapText(ctx, text, maxWidth) {
             var lines = [];
             var line = "";
@@ -816,11 +839,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             if (y + lineHeight > maxY) break;
 
             // nama player
-            ctx.fillStyle = msg.color || "#ff3333";
+            ctx.fillStyle = getChatNameColor(msg);
             ctx.fillText(nameText, nameX, y);
 
             // pesan baris pertama
-            ctx.fillStyle = msg.textColor || "#777777";
+            ctx.fillStyle = getChatTextColor(msg);
             ctx.fillText(lines[0], msgX, y);
 
             y += lineHeight;
@@ -829,7 +852,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             for (var j = 1; j < lines.length; j++) {
                 if (y + lineHeight > maxY) break;
 
-                ctx.fillStyle = msg.textColor || "#777777";
+                ctx.fillStyle = getChatTextColor(msg);
                 ctx.fillText(lines[j], paddingX, y);
 
                 y += lineHeight;
@@ -1064,15 +1087,98 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             endTime: 0,
             highestMass: 0,
             leaderboardTimeMs: 0,
+            topOneTimeMs: 0,
             topPosition: 0,
             foodEaten: 0,
             cellsEaten: 0,
             massHistory: [],
             lastMassSample: 0,
-            lastLeaderboardCheck: Date.now()
+            lastLeaderboardCheck: Date.now(),
+            lastTopOnePopupMinute: 0
         };
 
+        hideTopTimePopup();
         hideMatchResult();
+    }
+
+    function formatTopTime(ms) {
+        var totalMinutes = Math.max(0, Math.floor(ms / 60000));
+        var hours = Math.floor(totalMinutes / 60);
+        var minutes = totalMinutes % 60;
+
+        return (hours < 10 ? "0" : "") + hours + ":" + (minutes < 10 ? "0" : "") + minutes;
+    }
+
+    function ensureTopTimePopup() {
+        var popup = document.getElementById("topTimePopup");
+        if (popup) return popup;
+
+        popup = document.createElement("div");
+        popup.id = "topTimePopup";
+        popup.style.position = "fixed";
+        popup.style.top = "90px";
+        popup.style.left = "50%";
+        popup.style.transform = "translateX(-50%)";
+        popup.style.color = "#2f8f3a";
+        popup.style.fontSize = "30px";
+        popup.style.fontWeight = "800";
+        popup.style.fontFamily = "Arial, sans-serif";
+        popup.style.textShadow = "2px 2px 0 #102d14, 0 0 8px rgba(0, 255, 60, 0.35)";
+        popup.style.zIndex = "9999";
+        popup.style.opacity = "0";
+        popup.style.pointerEvents = "none";
+        popup.style.userSelect = "none";
+        popup.style.background = "none";
+        popup.style.border = "none";
+        popup.style.boxShadow = "none";
+        popup.style.transition = "opacity 0.25s ease";
+        document.body.appendChild(popup);
+        return popup;
+    }
+
+    function showTopTimePopup(ms) {
+        var popup = ensureTopTimePopup();
+        popup.textContent = "Top Time++ " + formatTopTime(ms);
+        popup.style.opacity = "1";
+
+        if (showTopTimePopup.timer) {
+            clearTimeout(showTopTimePopup.timer);
+        }
+
+        showTopTimePopup.timer = setTimeout(function () {
+            popup.style.opacity = "0";
+        }, 2000);
+    }
+
+    function hideTopTimePopup() {
+        var popup = document.getElementById("topTimePopup");
+        if (showTopTimePopup.timer) {
+            clearTimeout(showTopTimePopup.timer);
+            showTopTimePopup.timer = null;
+        }
+        if (popup) {
+            popup.style.opacity = "0";
+        }
+    }
+
+    function isPlayerTopOne() {
+        if (!leaderBoard || !leaderBoard.length || !playerCells || !playerCells.length) {
+            return false;
+        }
+
+        var leader = leaderBoard[0];
+        var leaderId = leader && leader.id;
+
+        if (leaderId) {
+            for (var i = 0; i < playerCells.length; i++) {
+                if (playerCells[i] && playerCells[i].id === leaderId) {
+                    return true;
+                }
+            }
+        }
+
+        var myName = playerCells[0] && playerCells[0].name ? playerCells[0].name : "";
+        return !!myName && (leader.name || "") === myName;
     }
 
     function updateMatchStats() {
@@ -1134,6 +1240,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
         if (wasAliveLastFrame && !isAlive && hasSpawnedOnce && !matchResultVisible) {
             matchStats.endTime = now;
+            hideTopTimePopup();
             showMatchResult();
         }
 
@@ -1665,12 +1772,14 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             endTime: 0,
             highestMass: 0,
             leaderboardTimeMs: 0,
+            topOneTimeMs: 0,
             topPosition: 0,
             foodEaten: 0,
             cellsEaten: 0,
             massHistory: [],
             lastMassSample: 0,
-            lastLeaderboardCheck: 0
+            lastLeaderboardCheck: 0,
+            lastTopOnePopupMinute: 0
         },
         rawMouseX = 0,
         rawMouseY = 0,

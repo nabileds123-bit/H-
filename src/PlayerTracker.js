@@ -24,6 +24,13 @@ function PlayerTracker(gameServer, socket) {
     this.matchLeaderboardTimeMs = 0;
     this.matchTopPosition = 0;
     this.matchLastLeaderboardCheck = 0;
+    this.top1TotalMs = 0;
+    this.top1StartMs = 0;
+    this.top1Counting = false;
+    this.top1LastPopupMinute = 0;
+    this.top1UnsavedMs = 0;
+    this.top1CurrentMode = '';
+    this.top1CurrentDate = '';
     
     this.team = 0;
     this.spectate = false;

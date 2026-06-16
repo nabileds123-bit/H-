@@ -611,13 +611,13 @@ $(document).on('keyup', function(input) {
 
     .account-detail-skins {
         display: flex;
-        gap: 16px;
-        padding: 24px 0 4px 0;
+        gap: 18px;
+        padding: 24px 0 12px 0;
     }
 
     .account-detail-skin {
-        width: 72px;
-        height: 72px;
+        width: 92px;
+        height: 92px;
         border-radius: 50%;
         border: 1px solid #aaa;
         background:
@@ -635,7 +635,7 @@ $(document).on('keyup', function(input) {
     .account-detail-search {
         display: grid;
         grid-template-columns: 1fr 38px;
-        margin-top: 2px;
+        margin-top: 10px;
     }
 
     .account-detail-search .form-control {
@@ -2600,7 +2600,7 @@ $(document).on('keyup', function(input) {
                         <div id="accountDetailGuildSkin" class="account-detail-skin alt"></div>
                     </div>
                     <form id="accountDetailSearchForm" class="account-detail-search">
-                        <input id="accountDetailSearchInput" class="form-control" type="text" placeholder="Cari">
+                        <input id="accountDetailSearchInput" class="form-control" type="text" placeholder="Search">
                         <button class="btn btn-primary" type="submit"><span class="glyphicon glyphicon-search"></span></button>
                     </form>
                     <div id="accountDetailSearchStatus" class="account-detail-empty"></div>
@@ -2618,9 +2618,9 @@ $(document).on('keyup', function(input) {
         </div>
         <div class="dialog-footer">
             <center>
-                <a href="#home" class="mode-footer-link account-detail-home-link" style="color:#337ab7; font-weight:500;">Utama</a>
+                <a href="#home" class="mode-footer-link account-detail-home-link" style="color:#337ab7; font-weight:500;">Home</a>
                 |
-                <a href="#account" class="mode-footer-link" id="accountDetailLoginLink" style="color:#337ab7; font-weight:500;">Masuk</a>
+                <a href="#account" class="mode-footer-link" id="accountDetailLoginLink" style="color:#337ab7; font-weight:500;">Login</a>
                 |
                 <a href="#community" class="mode-footer-link" id="accountDetailCommunityLink" style="color:#337ab7; font-weight:500;">Community</a>
                 |
@@ -3339,6 +3339,7 @@ $(function () {
         showGuildListView();
         ensureCurrentGuildInList();
         renderGuildList();
+        loadGuildStats();
         updatePlayerExpVisibility();
         $('#guildSearch').focus();
     }
@@ -3509,10 +3510,49 @@ $(function () {
                 getGuildIconHtml(guild),
                 '<a class="guild-name" href="' + escapeHtml(guildHref) + '">' + escapeHtml(guildName) + '</a>',
                 '<div class="guild-members">' + escapeHtml(guild.members || 1) + '</div>',
-                '<div class="guild-top1-time">' + escapeHtml(guild.top1 || '-') + '</div>',
+                '<div class="guild-top1-time">? ' + escapeHtml(guild.top1 || '00:00') + '</div>',
                 '</div>'
             ].join('');
         }).join(''));
+    }
+
+    function getGuildPeriodValue() {
+        var active = $('.guild-period-tab.active').data('guild-period') || 'week';
+        if (active === 'month' || active === 'global') return active;
+        return 'week';
+    }
+
+    function loadGuildStats() {
+        $.getJSON('/api/guilds', { period: getGuildPeriodValue() }, function(response) {
+            var items = response.items || [];
+            items.forEach(function(item) {
+                var tag = String(item.tag || item.guildId || '').trim().toUpperCase();
+                if (!tag) return;
+
+                var found = false;
+                guildList = guildList.map(function(guild) {
+                    if (String(guild.tag || '').trim().toUpperCase() !== tag) return guild;
+                    found = true;
+                    return $.extend({}, guild, {
+                        name: item.name || guild.name,
+                        tag: tag,
+                        members: item.members || guild.members || 1,
+                        top1: item.top1Time || '00:00'
+                    });
+                });
+
+                if (!found) {
+                    guildList.push({
+                        id: item.guildId || tag,
+                        name: item.name || tag,
+                        tag: tag,
+                        members: item.members || 1,
+                        top1: item.top1Time || '00:00'
+                    });
+                }
+            });
+            renderGuildList();
+        });
     }
 
     function renderGuildMembers() {
@@ -3623,8 +3663,52 @@ $(function () {
         $('#notificationDialog').removeClass('is-open');
         $('#accountDetailDialog').removeClass('is-open');
         $('#highScoreDialog').addClass('is-open');
+        loadHighScoreStats();
         updatePlayerExpVisibility();
         $('#highScoreMode').focus();
+    }
+
+    function getHighScorePeriodValue() {
+        var text = String($('#highScorePeriod').val() || 'Today').toLowerCase();
+        if (text.indexOf('week') !== -1) return 'week';
+        if (text.indexOf('month') !== -1) return 'month';
+        if (text.indexOf('global') !== -1) return 'global';
+        return 'today';
+    }
+
+    function getHighScoreModeValue() {
+        var text = String($('#highScoreMode').val() || 'FFA').toLowerCase();
+        if (text.indexOf('1') !== -1) return '1vs1';
+        if (text.indexOf('2') !== -1 || text.indexOf('3') !== -1) return '3vs3';
+        if (text.indexOf('team') !== -1) return 'teams';
+        if (text.indexOf('experimental') !== -1) return 'experimental';
+        return 'ffa';
+    }
+
+    function loadHighScoreStats() {
+        var period = getHighScorePeriodValue();
+        var mode = getHighScoreModeValue();
+        var isBattle = mode === '1vs1' || mode === '3vs3';
+        var endpoint = isBattle ? '/api/highscore/battle' : '/api/highscore/top1';
+
+        $('.highscore-date').text($('#highScorePeriod').val() || '-');
+        $('.highscore-head').html(isBattle
+            ? '<div class="highscore-rank">#</div><div>Nick</div><div>W/L</div><div>Rate</div>'
+            : '<div class="highscore-rank">#</div><div>Nick</div><div>TOP 1</div><div></div>');
+
+        $.getJSON(endpoint, { period: period, mode: mode }, function(response) {
+            var items = response.items || [];
+            if (!items.length) {
+                $('.highscore-list').html('<div class="guild-empty">No data.</div>');
+                return;
+            }
+
+            $('.highscore-list').html(items.map(function(item) {
+                return isBattle
+                    ? '<div class="highscore-row"><div class="highscore-rank">' + item.rank + '</div><div>' + escapeHtml(item.username || '-') + '</div><div>' + (item.win || 0) + '/' + (item.lose || 0) + '</div><div>' + (item.winRate || 0) + '%</div></div>'
+                    : '<div class="highscore-row"><div class="highscore-rank">' + item.rank + '</div><div>' + escapeHtml(item.username || '-') + '</div><div>' + escapeHtml(item.top1Time || '00:00') + '</div><div></div></div>';
+            }).join(''));
+        });
     }
 
     function setAccountDetailMessage(message, isError) {
@@ -3710,6 +3794,36 @@ $(function () {
         $('#accountDetailProfile .account-detail-table').show();
         $('#accountDetailProfile .account-detail-skins').toggle(hasPlayerSkin || hasGuildSkin);
         setAccountDetailMessage('', false);
+        loadAccountDetailStats(user.username || '');
+    }
+
+    function renderStatRows(target, rows) {
+        $(target).html('<div class="account-detail-table">' + rows.map(function(row) {
+            return '<div class="account-detail-row"><span class="account-detail-label">' + escapeHtml(row.label) + ':</span><span class="account-detail-value">' + escapeHtml(row.value) + '</span></div>';
+        }).join('') + '</div>');
+    }
+
+    function loadAccountDetailStats(username) {
+        if (!username) return;
+
+        $.getJSON('/api/account/top1', { username: username, period: 'today' }, function(response) {
+            var rows = (response.items || []).map(function(item) {
+                return { label: item.label, value: item.top1Time || '00:00' };
+            });
+            renderStatRows('#accountDetailTop1', rows.length ? rows : [{ label: 'Top 1 Time', value: '00:00' }]);
+        });
+
+        ['1vs1', '3vs3'].forEach(function(mode) {
+            $.getJSON('/api/account/battle', { username: username, mode: mode, period: 'today' }, function(response) {
+                var stats = response.stats || {};
+                renderStatRows(mode === '1vs1' ? '#accountDetail1vs1' : '#accountDetail3vs3', [
+                    { label: 'Win', value: stats.win || 0 },
+                    { label: 'Lose', value: stats.lose || 0 },
+                    { label: 'Win Rate', value: (stats.winRate || 0) + '%' },
+                    { label: 'Total Match', value: stats.totalMatch || 0 }
+                ]);
+            });
+        });
     }
 
     function hasActivePremiumForUser(user) {
@@ -4070,6 +4184,8 @@ $(function () {
                 showAccountView();
                 return false;
             });
+
+        $('#accountDetailLoginLink').text('Account');
     }
 
     $('#communityFooterLink').on('click', function (event) {
@@ -4257,6 +4373,10 @@ $(function () {
         }
     });
 
+    $('#highScoreMode, #highScorePeriod').on('change', function () {
+        loadHighScoreStats();
+    });
+
     $('#notificationAccountLink').on('click', function (event) {
         event.preventDefault();
         $('#notificationDialog').removeClass('is-open');
@@ -4284,6 +4404,7 @@ $(function () {
     $('.guild-period-tab').on('click', function () {
         $('.guild-period-tab').removeClass('active');
         $(this).addClass('active');
+        loadGuildStats();
     });
 
     $('#guildBackToList').on('click', function (event) {

@@ -30,8 +30,12 @@ Chat.prototype.build = function () {
     if (!this.color && this.sender.cells.length > 0) {
         color = this.sender.cells[0].getColor();
     }
+    var flags = this.flags;
+    if (this.sender.cells.length <= 0) {
+        flags |= 16;
+    }
     view.setUint8(0, 99);
-    view.setUint8(1, this.flags); // flags for client; for future use
+    view.setUint8(1, flags); // flags for client; for future use
     // Send color
     view.setUint8(2, color.r);
     view.setUint8(3, color.g);

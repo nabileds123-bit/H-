@@ -12,6 +12,8 @@ var Entity = require('./entity');
 var Gamemode = require('./gamemodes');
 var AuthServer = require('./auth/authServer');
 var AdminServer = require('./admin/AdminServer');
+var StatsServer = require('./stats/StatsServer');
+var statsStore = require('./stats/statsStore');
 var userStore = require('./auth/userStore');
 var configPath = path.join(__dirname, '..', 'gameserver.ini');
 var adminConfigPath = path.join(__dirname, '..', 'data', 'adminConfig.json');
@@ -156,6 +158,10 @@ GameServer.prototype.start = function() {
       var pathname = req.url.split('?')[0];
 
       if (AuthServer.handle(req, res)) {
+        return;
+      }
+
+      if (StatsServer.handle(req, res)) {
         return;
       }
 
@@ -314,6 +320,7 @@ GameServer.prototype.start = function() {
     	
         function close(error) {
             console.log("[Game] Disconnect: %s:%d", this.socket.remoteAddress, this.socket.remotePort);
+            this.server.pauseTop1Stats(this.socket.playerTracker, this.socket.world, true);
             this.server.removeClientCells(this.socket.playerTracker);
 
             var index = this.server.allClients.indexOf(this.socket);
@@ -681,6 +688,7 @@ GameServer.prototype.removeNode = function(node) {
 
     if (removedPlayer && removedPlayer.cells.length <= 0 && !removedPlayer.matchResultSent) {
         removedPlayer.matchResultSent = true;
+        this.pauseTop1Stats(removedPlayer, removedPlayer.world, true);
         this.sendMatchResult(removedPlayer);
     }
     
@@ -899,15 +907,135 @@ GameServer.prototype.applyMatchXp = function(player) {
     };
 }
 
+GameServer.prototype.getStatsServerId = function(world) {
+    return String(this.config.serverId || this.config.serverRegion || (world && world.id) || 'default');
+}
+
+GameServer.prototype.getTop1StatsMode = function(world) {
+    var worldId = world && world.id ? world.id : '';
+    return statsStore.normalizeTop1Mode(worldId);
+}
+
+GameServer.prototype.isTop1StatsWorld = function(world) {
+    return !!this.getTop1StatsMode(world);
+}
+
+GameServer.prototype.getPlayerStatsUserId = function(player) {
+    return player && player.authUser && player.authUser.id ? player.authUser.id : '';
+}
+
+GameServer.prototype.flushTop1Stats = function(player, world, force) {
+    if (!player || !player.top1UnsavedMs || player.top1UnsavedMs <= 0) return;
+    if (!force && player.top1UnsavedMs < 60000) return;
+
+    var userId = this.getPlayerStatsUserId(player);
+    var mode = player.top1CurrentMode || this.getTop1StatsMode(world || player.world);
+    if (!userId || !mode) return;
+
+    statsStore.upsertTop1Time({
+        userId: userId,
+        mode: mode,
+        serverId: this.getStatsServerId(world || player.world),
+        addMs: player.top1UnsavedMs
+    });
+
+    player.top1UnsavedMs = 0;
+}
+
+GameServer.prototype.pauseTop1Stats = function(player, world, forceSave) {
+    if (!player || !player.top1Counting) return;
+
+    var now = Date.now();
+    var delta = Math.max(0, now - (player.top1StartMs || now));
+    player.top1TotalMs = (player.top1TotalMs || 0) + delta;
+    player.top1UnsavedMs = (player.top1UnsavedMs || 0) + delta;
+    player.top1Counting = false;
+    player.top1StartMs = 0;
+
+    this.flushTop1Stats(player, world || player.world, !!forceSave || player.top1UnsavedMs >= 60000);
+}
+
+GameServer.prototype.resetTop1Session = function(player) {
+    if (!player) return;
+    player.top1TotalMs = 0;
+    player.top1StartMs = 0;
+    player.top1Counting = false;
+    player.top1LastPopupMinute = 0;
+    player.top1UnsavedMs = 0;
+    player.top1CurrentMode = '';
+    player.top1CurrentDate = statsStore.getJakartaDate();
+}
+
+GameServer.prototype.sendTopTimePopup = function(player, totalMs) {
+    if (!player || !player.socket) return;
+
+    var payload = JSON.stringify({
+        text: 'Top Time++',
+        ms: totalMs
+    });
+    var buf = new ArrayBuffer(1 + payload.length * 2 + 2);
+    var view = new DataView(buf);
+    var offset = 0;
+
+    view.setUint8(offset++, 123);
+    for (var i = 0; i < payload.length; i++) {
+        view.setUint16(offset, payload.charCodeAt(i), true);
+        offset += 2;
+    }
+    view.setUint16(offset, 0, true);
+
+    player.socket.sendPacket({
+        build: function() {
+            return buf;
+        }
+    });
+}
+
+GameServer.prototype.recordBattleResult = function(player) {
+    if (!player || player.battleStatsRecorded) return;
+
+    var world = player.world || this.activeWorld;
+    var mode = statsStore.normalizeBattleMode(world && world.id);
+    var userId = this.getPlayerStatsUserId(player);
+    if (!mode || !userId) return;
+
+    player.battleStatsRecorded = true;
+    statsStore.addBattleRecord({
+        userId: userId,
+        mode: mode,
+        result: 'lose',
+        serverId: this.getStatsServerId(world)
+    });
+
+    var leaderboard = world && world.leaderboard ? world.leaderboard : [];
+    for (var i = 0; i < leaderboard.length; i++) {
+        var winner = leaderboard[i];
+        if (!winner || winner === player || winner.battleStatsRecorded || !this.getPlayerStatsUserId(winner) || winner.cells.length <= 0) continue;
+        winner.battleStatsRecorded = true;
+        statsStore.addBattleRecord({
+            userId: this.getPlayerStatsUserId(winner),
+            mode: mode,
+            result: 'win',
+            serverId: this.getStatsServerId(world)
+        });
+        break;
+    }
+}
+
 GameServer.prototype.updateMatchLeaderboardStats = function(world) {
     var now = Date.now();
     var leaderboard = world && world.leaderboard ? world.leaderboard : this.leaderboard;
     var clients = world && world.clients ? world.clients : this.clients;
+    var top1Mode = this.getTop1StatsMode(world);
+    var topPlayer = leaderboard && leaderboard.length ? leaderboard[0] : null;
 
     for (var i = 0; i < clients.length; i++) {
         var socket = clients[i];
         var player = socket && socket.playerTracker;
-        if (!player || player.cells.length <= 0 || !player.matchStartTime) continue;
+        if (!player || player.cells.length <= 0 || !player.matchStartTime) {
+            this.pauseTop1Stats(player, world, true);
+            continue;
+        }
 
         var lastCheck = player.matchLastLeaderboardCheck || now;
         var delta = now - lastCheck;
@@ -924,6 +1052,29 @@ GameServer.prototype.updateMatchLeaderboardStats = function(world) {
             player.matchLeaderboardTimeMs = (player.matchLeaderboardTimeMs || 0) + delta;
         }
 
+        if (top1Mode && this.getPlayerStatsUserId(player) && topPlayer === player && !player.spectate) {
+            if (!player.top1Counting || player.top1CurrentMode !== top1Mode) {
+                player.top1Counting = true;
+                player.top1StartMs = now;
+                player.top1CurrentMode = top1Mode;
+                player.top1CurrentDate = statsStore.getJakartaDate();
+            } else {
+                var elapsedTop1 = Math.max(0, now - (player.top1StartMs || now));
+                var currentTotal = (player.top1TotalMs || 0) + elapsedTop1;
+                var minute = Math.floor(currentTotal / 60000);
+                if (minute > 0 && minute > (player.top1LastPopupMinute || 0)) {
+                    player.top1TotalMs = currentTotal;
+                    player.top1UnsavedMs = (player.top1UnsavedMs || 0) + elapsedTop1;
+                    player.top1StartMs = now;
+                    player.top1LastPopupMinute = minute;
+                    this.flushTop1Stats(player, world, player.top1UnsavedMs >= 60000);
+                    this.sendTopTimePopup(player, player.top1TotalMs);
+                }
+            }
+        } else {
+            this.pauseTop1Stats(player, world, false);
+        }
+
         if (rank > 0 && (player.matchTopPosition === 0 || rank < player.matchTopPosition)) {
             player.matchTopPosition = rank;
         }
@@ -934,6 +1085,7 @@ GameServer.prototype.updateMatchLeaderboardStats = function(world) {
 
 GameServer.prototype.sendMatchResult = function(player) {
     if (!player || !player.socket) return;
+    this.recordBattleResult(player);
     var xpResult = this.applyMatchXp(player);
 
     var payload = JSON.stringify({
@@ -1004,6 +1156,8 @@ GameServer.prototype.spawnPlayer = function(client) {
    client.matchLeaderboardTimeMs = 0;
    client.matchTopPosition = 0;
    client.matchLastLeaderboardCheck = Date.now();
+   client.battleStatsRecorded = false;
+   this.resetTop1Session(client);
    if(config.serverGamemode == 2) {
    var pos = this.getCertainPosition(0,0);
    } else {

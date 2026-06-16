@@ -83,7 +83,11 @@
       guilds:{title:'Guild',endpoint:'guilds',columns:['name','tag','type','leader','members'],fields:[['name','Guild Name'],['tag','Tag'],['type','Type','select',['private','public']],['leader','Leader'],['members','Members','number'],['logo','Logo'],['description','Description','textarea']]},
       notifications:{title:'Notification',endpoint:'notifications',columns:['title','target','active','createdAt'],fields:[['title','Title'],['message','Message','textarea'],['target','Target','select',['all','user','guild']],['targetId','Target ID'],['active','Active','checkbox'],['createdAt','Created At']]},
       highscores:{title:'Highscore',endpoint:'highscores',columns:['username','mode','period','score'],fields:[['username','Username'],['mode','Mode','select',['FFA - X5','FFA - Hardcore','1vs1','2vs2']],['period','Period','select',['today','week','month','global']],['score','Score','number'],['time','Time'],['country','Country']]},
-      battleMatches:{title:'Battle Match',endpoint:'battleMatches',columns:['mode','status','teamA','teamB','score'],fields:[['mode','Mode','select',['1vs1','2vs2']],['status','Status','select',['waiting','live','finished','cancelled']],['teamA','Team A'],['teamB','Team B'],['score','Score'],['reward','Reward','number'],['startedAt','Started At'],['endedAt','Ended At']]}
+      battleMatches:{title:'Battle Match',endpoint:'battleMatches',columns:['mode','status','teamA','teamB','score'],fields:[['mode','Mode','select',['1vs1','2vs2']],['status','Status','select',['waiting','live','finished','cancelled']],['teamA','Team A'],['teamB','Team B'],['score','Score'],['reward','Reward','number'],['startedAt','Started At'],['endedAt','Ended At']]},
+      top1Stats:{title:'Top1 Time Stats',endpoint:'top1',readonly:true,columns:['rank','username','guildId','mode','top1Time','top1Ms'],fields:[]},
+      battleStats:{title:'Battle Win/Lose Stats',endpoint:'battle',readonly:true,columns:['rank','username','guildId','mode','win','lose','winRate','totalMatch'],fields:[]},
+      guildStats:{title:'Guild Stats',endpoint:'guild-stats',readonly:true,columns:['guildId','name','tag','members','top1Time','top1Ms'],fields:[]},
+      auditLogs:{title:'Stats Audit Log',endpoint:'audit-logs',readonly:true,columns:['created_at','admin_user_id','action','target_type','target_id','reason'],fields:[]}
     };
     var current = 'users';
     var items = [];
@@ -107,6 +111,7 @@
       current = key || current;
       renderNav();
       document.getElementById('title').textContent = modules[current].title;
+      document.getElementById('addBtn').style.display = modules[current].readonly ? 'none' : '';
       setStatus('Loading...');
       api('/api/admin/' + modules[current].endpoint).then(function(data){ items = data.items || []; renderTable(); setStatus(items.length + ' item loaded.'); }).catch(function(err){ setStatus(err.message || 'Load failed.', true); });
     }
@@ -114,9 +119,9 @@
       var mod = modules[current];
       var q = document.getElementById('search').value.toLowerCase();
       var filtered = items.filter(function(item){ return JSON.stringify(item).toLowerCase().indexOf(q) !== -1; });
-      document.getElementById('thead').innerHTML = '<tr>' + mod.columns.map(function(c){return '<th>'+esc(c)+'</th>';}).join('') + '<th>Actions</th></tr>';
+      document.getElementById('thead').innerHTML = '<tr>' + mod.columns.map(function(c){return '<th>'+esc(c)+'</th>';}).join('') + (mod.readonly ? '' : '<th>Actions</th>') + '</tr>';
       document.getElementById('tbody').innerHTML = filtered.map(function(item){
-        return '<tr>' + mod.columns.map(function(c){return '<td>'+esc(item[c])+'</td>';}).join('') + '<td class="actions"><button class="btn secondary" data-edit="'+esc(item.id)+'">Edit</button></td></tr>';
+        return '<tr>' + mod.columns.map(function(c){return '<td>'+esc(item[c])+'</td>';}).join('') + (mod.readonly ? '' : '<td class="actions"><button class="btn secondary" data-edit="'+esc(item.id)+'">Edit</button></td>') + '</tr>';
       }).join('');
     }
     function openModal(item) {

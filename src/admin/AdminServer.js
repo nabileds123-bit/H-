@@ -4,6 +4,7 @@ var url = require('url');
 var passwords = require('../auth/password');
 var users = require('../auth/userStore');
 var adminStore = require('./adminStore');
+var StatsServer = require('../stats/StatsServer');
 var ini = require('../modules/ini');
 
 var sessions = {};
@@ -494,6 +495,10 @@ function handle(req, res, gameServer) {
 
     var parts = pathname.replace('/api/admin/', '').split('/').filter(Boolean);
     var collection = parts.shift();
+
+    if (StatsServer.adminHandle(req, res, requireAdmin, getAdminSession)) {
+        return true;
+    }
 
     if (collection === 'users') {
         handleUsers(req, res, parts);
