@@ -389,7 +389,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     function hideOverlays() {
         hasOverlay = false;
         wjQuery("#adsBottom").hide();
-        wjQuery("#overlays").hide();
+        wjQuery("#overlays").removeClass("is-menu-only").hide();
         sendUint8(91);
         Ha()
     }
@@ -411,6 +411,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         hasOverlay = true;
         userNickName = null;
         sendUint8(90);
+        wjQuery("#overlays").toggleClass("is-menu-only", !!arg);
         wjQuery("#overlays").fadeIn(arg ? 200 : 3E3);
         arg || wjQuery("#adsBottom").fadeIn(3E3)
     }
@@ -1716,6 +1717,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     ejectIcon.src = "feed.png";
     var wCanvas = document.createElement("canvas");
     var playerStat = null;
+    wHandle.currentGameMode = gameMode;
     wHandle.isSpectating = false;
     wHandle.hasActivePlayerCells = function () {
         return playerCells && playerCells.length > 0;
@@ -1785,6 +1787,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     wHandle.setGameMode = function (arg, forceReset) {
         if (forceReset || arg != gameMode) {
             gameMode = arg;
+            wHandle.currentGameMode = gameMode;
             pendingModeSwitch = true;
             sendGameMode();
             showConnecting();

@@ -2143,6 +2143,16 @@ $(document).on('keyup', function(input) {
             transform: none;
         }
     }</style>
+<style>
+    #overlays.is-menu-only {
+        background: transparent !important;
+        pointer-events: none;
+    }
+
+    #overlays.is-menu-only #helloDialog {
+        pointer-events: auto;
+    }
+</style>
 </head>
 <body>
 <div id="fb-root"></div>
@@ -2831,6 +2841,7 @@ $(function () {
     var inviteSubMode = localStorage.getItem('inviteSubMode') || 'X5';
     var inviteSubModeTouched = false;
     var hardcoreRooms = [':hardcore:1', ':hardcore:2'];
+    var selectedHardcoreRoom = localStorage.getItem('selectedHardcoreRoom') || '';
     var battleLobbyModeValue = ':battle:1v1';
     var battleLobbyInviteMode = '1vs1';
     var battlePlayLoading = false;
@@ -2877,7 +2888,12 @@ $(function () {
     function resolveGameModeRoom(mode) {
         if (mode !== ':hardcore') return mode;
 
-        return hardcoreRooms[Math.floor(Math.random() * hardcoreRooms.length)];
+        if (hardcoreRooms.indexOf(selectedHardcoreRoom) === -1) {
+            selectedHardcoreRoom = hardcoreRooms[Math.floor(Math.random() * hardcoreRooms.length)];
+            localStorage.setItem('selectedHardcoreRoom', selectedHardcoreRoom);
+        }
+
+        return selectedHardcoreRoom;
     }
 
     function getClientTimeZone() {
@@ -3262,11 +3278,16 @@ $(function () {
     }
 
     window.playSelectedMode = function () {
-        var targetMode = typeof window.getSelectedGameModeForConnection === 'function' ? window.getSelectedGameModeForConnection() : null;
+        var selectedModeValue = getSelectedModeValue();
+        var activeModeMatchesSelection = selectedModeValue === ':hardcore'
+            ? hardcoreRooms.indexOf(window.currentGameMode || '') !== -1
+            : window.currentGameMode === selectedModeValue;
 
-        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame(targetMode)) {
+        if (activeModeMatchesSelection && typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
             return;
         }
+
+        var targetMode = resolveGameModeRoom(selectedModeValue);
 
         var selectedGroup = getSelectedGameModeGroup();
 
@@ -4443,14 +4464,21 @@ $(function () {
     });
 
     $('#spectateBtn').on('click', function () {
-        var targetMode = typeof window.getSelectedGameModeForConnection === 'function' ? window.getSelectedGameModeForConnection() : null;
-
-        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame(targetMode)) {
+        if (typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
             return false;
         }
 
-        if (typeof window.setGameMode === 'function' && typeof window.getSelectedGameModeForConnection === 'function') {
-            window.setGameMode(targetMode, true);
+        var selectedModeValue = getSelectedModeValue();
+        var activeModeMatchesSelection = selectedModeValue === ':hardcore'
+            ? hardcoreRooms.indexOf(window.currentGameMode || '') !== -1
+            : window.currentGameMode === selectedModeValue;
+
+        if (activeModeMatchesSelection && typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
+            return false;
+        }
+
+        if (typeof window.setGameMode === 'function') {
+            window.setGameMode(resolveGameModeRoom(selectedModeValue), true);
         }
 
         if (typeof window.spectate === 'function') {
