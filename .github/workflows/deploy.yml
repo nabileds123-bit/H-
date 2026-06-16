@@ -14,8 +14,17 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY_B64 }}" | base64 -d > ~/.ssh/deploy_key
+
+          printf '%s' "${{ secrets.VPS_SSH_KEY_B64 }}" | tr -d '\r\n ' | base64 -d > ~/.ssh/deploy_key
+
           chmod 600 ~/.ssh/deploy_key
+
+          echo "=== Key file check ==="
+          wc -c ~/.ssh/deploy_key
+          head -n 1 ~/.ssh/deploy_key
+          tail -n 1 ~/.ssh/deploy_key
+
+          echo "=== Key fingerprint ==="
           ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
           ssh-keygen -l -f ~/.ssh/deploy_key
 
