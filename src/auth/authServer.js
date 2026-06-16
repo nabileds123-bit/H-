@@ -443,8 +443,9 @@ function handleUploadSkin(req, res) {
             : safeSkinSegment(user.username, user.id);
         var objectPath = type + '/' + name + '-' + Date.now() + '.png';
 
-        if (!skinStorage.isConfigured()) {
-            return sendJson(res, 503, { ok: false, message: 'Supabase storage is not configured.' });
+        var storageConfigError = skinStorage.getConfigError ? skinStorage.getConfigError() : '';
+        if (storageConfigError || !skinStorage.isConfigured()) {
+            return sendJson(res, 503, { ok: false, message: storageConfigError || 'Supabase storage is not configured.' });
         }
 
         skinStorage.uploadPng(objectPath, buffer, function(uploadErr, result) {

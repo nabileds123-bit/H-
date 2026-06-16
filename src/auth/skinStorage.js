@@ -33,6 +33,20 @@ function getConfig() {
     };
 }
 
+function getConfigError() {
+    var config = getConfig();
+
+    if (!config.url) return 'SUPABASE_URL is missing.';
+    if (!/^https:\/\/[^/]+\.supabase\.co$/i.test(config.url)) return 'SUPABASE_URL is not a valid Supabase project URL.';
+    if (!config.key) return 'SUPABASE_SERVICE_ROLE_KEY is missing.';
+    if (config.key.indexOf('>') !== -1 || config.key.split('.').length !== 3) {
+        return 'SUPABASE_SERVICE_ROLE_KEY looks invalid or truncated.';
+    }
+    if (!config.bucket) return 'SUPABASE_BUCKET is missing.';
+
+    return '';
+}
+
 function getPublicUrl(objectPath) {
     var config = getConfig();
     if (!config.url || !config.bucket || !objectPath) return '';
@@ -42,8 +56,7 @@ function getPublicUrl(objectPath) {
 }
 
 function isConfigured() {
-    var config = getConfig();
-    return !!(config.url && config.key && config.bucket);
+    return !getConfigError();
 }
 
 function uploadPng(objectPath, buffer, callback) {
@@ -93,6 +106,7 @@ function uploadPng(objectPath, buffer, callback) {
 }
 
 module.exports = {
+    getConfigError: getConfigError,
     getPublicUrl: getPublicUrl,
     isConfigured: isConfigured,
     uploadPng: uploadPng
