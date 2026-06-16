@@ -2482,7 +2482,7 @@ $(document).on('keyup', function(input) {
                     </div>
                     <div id="guildMemberList">
                     </div>
-                    <div class="guild-detail-actions">
+                    <div id="guildDetailActions" class="guild-detail-actions">
                         <button type="button" class="btn btn-success">Invite player</button>
                         <button type="button" class="btn btn-success">Edit</button>
                         <button type="button" class="btn btn-danger">Delete</button>
@@ -2830,7 +2830,7 @@ $(function () {
     var battlePlayTimer = null;
     var battleStartLoading = false;
     var battleStartTimer = null;
-    var guildViewerRole = 'leader';
+    var guildViewerRole = 'guest';
     var guildList = [];
     var guildMembers = [];
     var premiumChatWarning = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
@@ -2839,6 +2839,32 @@ $(function () {
 
     function getCurrentGuildViewerName() {
         return authUser || $('#accountNick').text() || 'amen';
+    }
+
+    function getCurrentGuildTag() {
+        return String(localStorage.getItem('authGuildTag') || '').trim().toUpperCase();
+    }
+
+    function isCurrentViewerGuild(tag) {
+        var currentTag = getCurrentGuildTag();
+        return !!currentTag && String(tag || '').trim().toUpperCase() === currentTag;
+    }
+
+    function getGuildListItemByTag(tag) {
+        var normalizedTag = String(tag || '').trim().toUpperCase();
+        if (!normalizedTag) return null;
+
+        for (var i = 0; i < guildList.length; i++) {
+            if (String(guildList[i].tag || '').trim().toUpperCase() === normalizedTag) {
+                return guildList[i];
+            }
+        }
+
+        return null;
+    }
+
+    function resolveGuildViewerRole(tag) {
+        return isCurrentViewerGuild(tag) ? 'leader' : 'guest';
     }
 
     function resolveGameModeRoom(mode) {
@@ -3502,11 +3528,20 @@ $(function () {
         $('#guildMemberList').html(rows.join(''));
     }
 
+    function updateGuildDetailActions() {
+        var viewerRole = String(guildViewerRole || 'guest').toLowerCase();
+        $('#guildDetailActions').toggle(viewerRole === 'leader' || viewerRole === 'staff');
+    }
+
     function openGuildDetailView(name, tag, logoSrc) {
         var guildName = String(name || 'Guild').trim() || 'Guild';
         var guildTag = String(tag || '').trim();
         var logo = String(logoSrc || '').trim();
-        var leaderName = getCurrentGuildViewerName();
+        var guildItem = getGuildListItemByTag(guildTag);
+        var viewerOwnsGuild = isCurrentViewerGuild(guildTag);
+        var leaderName = viewerOwnsGuild ? getCurrentGuildViewerName() : (guildItem && guildItem.leader) || 'Leader';
+
+        guildViewerRole = resolveGuildViewerRole(guildTag);
 
         $('#guildBreadcrumbList').hide();
         $('#guildDetailTitle').text(guildName);
@@ -3526,9 +3561,10 @@ $(function () {
             }));
         }
         guildMembers = [
-            { id: 'leader', name: leaderName, role: 'leader', level: parseInt(localStorage.getItem('authLevel'), 10) || 1, online: true, isSelf: guildViewerRole === 'leader' }
+            { id: 'leader', name: leaderName, role: 'leader', level: parseInt(localStorage.getItem('authLevel'), 10) || 1, online: viewerOwnsGuild, isSelf: guildViewerRole === 'leader' }
         ];
         renderGuildMembers();
+        updateGuildDetailActions();
         $('#guildDetailView').css('display', 'flex');
     }
 
