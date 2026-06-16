@@ -1,4 +1,4 @@
-name: Deploy to VPS
+name: Deploy BubbleV2 to VPS
 
 on:
   push:
@@ -17,12 +17,8 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
 
       - name: Deploy to VPS
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" <<'EOSSH'
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 22 root@15.235.193.115 <<'EOSSH'
             set -e
 
             APP_DIR="/var/www/bubblev2"
@@ -40,13 +36,15 @@ jobs:
             npm install --omit=dev
 
             echo "=== Apply Nginx config ==="
-            sudo cp deploy/nginx-bubblev2.site.conf "$NGINX_CONF"
-            sudo ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
-            sudo nginx -t
-            sudo systemctl reload nginx
+            cp deploy/nginx-bubblev2.site.conf "$NGINX_CONF"
+            ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
+            nginx -t
+            systemctl reload nginx
 
             echo "=== Restart PM2 ==="
-            pm2 restart "$APP_NAME" --update-env || pm2 start src/index.js --name "$APP_NAME" -- --game
+            pm2 restart "$APP_NAME" --update-env
+
+            echo "=== Save PM2 ==="
             pm2 save
 
             echo "=== Deploy success ==="
