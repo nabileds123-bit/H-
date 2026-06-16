@@ -36,7 +36,6 @@ var MacroInterval;
 var SplitDebounce = false;
 var MacroDebounce = false;
 $(document).on('keydown', function(input) {
-    console.log("got keydown")
     if ($("#overlays").is(":visible")) {
         clearInterval(SplitInterval);
         clearInterval(MacroInterval);
