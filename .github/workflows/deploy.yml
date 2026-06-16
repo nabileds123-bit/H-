@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -25,9 +26,6 @@ jobs:
 
             APP_DIR="/var/www/bubblev2"
             APP_NAME="bubblev2"
-            NGINX_CONF="/etc/nginx/sites-available/bubblev2.site.conf"
-            NGINX_ENABLED="/etc/nginx/sites-enabled/bubblev2.site.conf"
-            NGINX_UPLOAD_LIMIT="/etc/nginx/conf.d/bubblev2-upload-limit.conf"
 
             cd "$APP_DIR"
 
@@ -37,13 +35,6 @@ jobs:
 
             echo "=== Install dependencies ==="
             npm install --omit=dev
-
-            echo "=== Apply Nginx config ==="
-            cp deploy/nginx-bubblev2.site.conf "$NGINX_CONF"
-            ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
-            printf 'client_max_body_size 6m;\n' > "$NGINX_UPLOAD_LIMIT"
-            nginx -t
-            systemctl reload nginx
 
             echo "=== Restart PM2 ==="
             pm2 restart "$APP_NAME" --update-env
