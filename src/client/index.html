@@ -2860,11 +2860,11 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Queue</div>
-                    <div class="battle-settings-value">no data</div>
+                    <div id="battleLobbyQueue" class="battle-settings-value">no data</div>
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Status</div>
-                    <div class="battle-settings-value">Waiting for start</div>
+                    <div id="battleLobbyStatus" class="battle-settings-value">Waiting for start</div>
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Reward</div>
@@ -2877,10 +2877,12 @@ $(document).on('keyup', function(input) {
             </div>
             <div class="battle-lobby-panel is-players">
                 <div class="battle-lobby-panel-title"><span class="glyphicon glyphicon-user"></span>Players <span id="battleLobbyPlayerCount">1/2</span></div>
+                <div id="battleLobbyPlayerRows">
                 <div class="battle-player-row">
                     <span class="battle-avatar">O</span>
                     <span id="battleLobbyPlayerName">-</span>
                     <span class="battle-percent">59%</span>
+                </div>
                 </div>
                 <button id="battleLobbyStart" type="button">Start</button>
             </div>
@@ -3000,6 +3002,9 @@ $(function () {
     var battlePlayTimer = null;
     var battleStartLoading = false;
     var battleStartTimer = null;
+    var battleLobbyQueued = false;
+    var battleLobbyPollTimer = null;
+    var battleLobbyClientId = localStorage.getItem('battleLobbyClientId');
     var guildViewerRole = 'guest';
     var activeGuildDetail = null;
     var guildList = [];
@@ -3008,6 +3013,11 @@ $(function () {
     var premiumChatWarning = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
     var MAX_PLAYER_SKIN_UPLOAD_BYTES = 500 * 1024;
     var MAX_GUILD_SKIN_UPLOAD_BYTES = 200 * 1024;
+
+    if (!battleLobbyClientId) {
+        battleLobbyClientId = 'battle-' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+        localStorage.setItem('battleLobbyClientId', battleLobbyClientId);
+    }
 
     function getCurrentGuildViewerName() {
         return authUser || $('#accountNick').text() || 'amen';
@@ -3623,7 +3633,144 @@ $(function () {
         $('#battleLiveDialog').removeClass('is-open');
     }
 
-    function closeBattleLobbyDialog() {
+    function getBattleLobbyRequiredPlayers() {
+        return battleLobbyInviteMode === '2vs2' ? 4 : 2;
+    }
+
+    function getBattleLobbyPlayerName() {
+        return authUser || $('#nick').val() || 'Player';
+    }
+
+    function renderBattleLobbyPlayers(players, count, required) {
+        var rows = [];
+        players = players || [];
+        count = count || players.length || 1;
+        required = required || getBattleLobbyRequiredPlayers();
+
+        if (!players.length) {
+            players.push({ name: getBattleLobbyPlayerName() });
+        }
+
+        for (var i = 0; i < players.length; i++) {
+            rows.push(
+                '<div class="battle-player-row">' +
+                '<span class="battle-avatar">' + escapeHtml(String(players[i].name || 'P').charAt(0).toUpperCase() || 'P') + '</span>' +
+                '<span>' + escapeHtml(players[i].name || 'Player') + '</span>' +
+                '<span class="battle-percent">' + escapeHtml(String(Math.min(required, i + 1)) + '/' + required) + '</span>' +
+                '</div>'
+            );
+        }
+
+        $('#battleLobbyPlayerRows').html(rows.join(''));
+        $('#battleLobbyPlayerCount').text(count + '/' + required);
+        $('#battleLobbyQueue').text(count + '/' + required);
+    }
+
+    function renderBattleLobbyStatus(response) {
+        var required = response && response.required || getBattleLobbyRequiredPlayers();
+        var count = response && typeof response.count === 'number' ? response.count : 1;
+
+        renderBattleLobbyPlayers(response && response.players, count, required);
+        $('#battleLobbyStatus').text(response && response.status || 'Waiting for players');
+    }
+
+    function stopBattleLobbyPolling() {
+        if (battleLobbyPollTimer) {
+            clearInterval(battleLobbyPollTimer);
+            battleLobbyPollTimer = null;
+        }
+    }
+
+    function battleLobbyRequest(path, callback) {
+        $.ajax({
+            url: path,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                clientId: battleLobbyClientId,
+                mode: battleLobbyModeValue,
+                name: getBattleLobbyPlayerName()
+            }),
+            success: function(response) {
+                callback(null, response || {});
+            },
+            error: function(xhr) {
+                var response = xhr.responseJSON || {};
+                callback(response.message || 'Battle lobby request failed.');
+            }
+        });
+    }
+
+    function startBattleFromLobby() {
+        stopBattleLobbyPolling();
+        battleLobbyQueued = false;
+        setBattleStartLoading(false);
+        setInviteSubMode(battleLobbyInviteMode);
+        closeBattleLobbyDialog(true);
+
+        if (typeof window.setGameMode === 'function') {
+            window.setGameMode(resolveGameModeRoom(battleLobbyModeValue), true);
+        }
+
+        setNick(document.getElementById('nick').value);
+    }
+
+    function handleBattleLobbyResponse(err, response) {
+        if (err) {
+            $('#battleLobbyStatus').text(err);
+            setBattleStartLoading(false);
+            battleLobbyQueued = false;
+            stopBattleLobbyPolling();
+            return;
+        }
+
+        if (!response.ok) {
+            $('#battleLobbyStatus').text(response.message || 'Battle lobby unavailable.');
+            setBattleStartLoading(false);
+            battleLobbyQueued = false;
+            stopBattleLobbyPolling();
+            return;
+        }
+
+        renderBattleLobbyStatus(response);
+
+        if (response.ready) {
+            startBattleFromLobby();
+        }
+    }
+
+    function pollBattleLobby() {
+        battleLobbyRequest('/api/battle/lobby/status', handleBattleLobbyResponse);
+    }
+
+    function joinBattleLobbyQueue() {
+        if (battleLobbyQueued) return;
+
+        battleLobbyQueued = true;
+        setBattleStartLoading(true);
+        $('#battleLobbyStatus').text('Finding players...');
+        $('#battleLobbyStart').html('<span class="battle-play-spinner"></span><span>Waiting</span>');
+
+        battleLobbyRequest('/api/battle/lobby', function(err, response) {
+            handleBattleLobbyResponse(err, response);
+            if (!err && response && response.ok && !response.ready && !battleLobbyPollTimer) {
+                battleLobbyPollTimer = setInterval(pollBattleLobby, 1500);
+            }
+        });
+    }
+
+    function leaveBattleLobbyQueue() {
+        if (!battleLobbyQueued) return;
+
+        battleLobbyQueued = false;
+        stopBattleLobbyPolling();
+        battleLobbyRequest('/api/battle/lobby/leave', function() {});
+    }
+
+    function closeBattleLobbyDialog(skipLeave) {
+        if (!skipLeave) {
+            leaveBattleLobbyQueue();
+        }
         $('#battleLobbyDialog').removeClass('is-open');
         cancelBattleStartLoading();
     }
@@ -3652,8 +3799,8 @@ $(function () {
         $('#accountDetailDialog').removeClass('is-open');
         $('#battleLobbyMode').text(battleLobbyInviteMode.replace('vs', ' vs '));
         updateBattleRegionLabel();
-        $('#battleLobbyPlayerCount').text(battleLobbyInviteMode === '2vs2' ? '1/4' : '1/2');
-        $('#battleLobbyPlayerName').text(authUser || $('#nick').val() || '-');
+        $('#battleLobbyStatus').text('Waiting for start');
+        renderBattleLobbyPlayers([{ name: getBattleLobbyPlayerName() }], 1, getBattleLobbyRequiredPlayers());
         $('#battleLobbyDialog').addClass('is-open');
     }
 
@@ -5309,19 +5456,7 @@ $(function () {
 
     $('#battleLobbyStart').on('click', function () {
         if (battleStartLoading) return;
-
-        setBattleStartLoading(true);
-        battleStartTimer = setTimeout(function () {
-            battleStartTimer = null;
-            setInviteSubMode(battleLobbyInviteMode);
-            closeBattleLobbyDialog();
-
-            if (typeof window.setGameMode === 'function') {
-                window.setGameMode(resolveGameModeRoom(battleLobbyModeValue), true);
-            }
-
-            setNick(document.getElementById('nick').value);
-        }, 700);
+        joinBattleLobbyQueue();
     });
 
     $('#battleLobbyDialog').on('click', function (event) {

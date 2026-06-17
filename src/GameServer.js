@@ -27,6 +27,7 @@ function GameServer(mult, prt) {
     this.lastNodeId = 1;
     this.allClients = [];
     this.worlds = {};
+    this.battleLobbies = {};
     this.activeWorld = null;
     this.clients = [];
     this.nodes = [];
@@ -132,6 +133,32 @@ GameServer.prototype.start = function() {
     
     
     var serve = serveStatic(__dirname);
+    function sendJson(res, status, payload) {
+      res.writeHead(status, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(JSON.stringify(payload));
+    }
+
+    function readJson(req, callback) {
+      var body = '';
+      req.on('data', function(chunk) {
+        body += chunk;
+        if (body.length > 8192) {
+          req.destroy();
+        }
+      });
+      req.on('end', function() {
+        try {
+          callback(null, body ? JSON.parse(body) : {});
+        } catch (err) {
+          callback(err);
+        }
+      });
+    }
+
     function hasMaintenanceAccess(req) {
       return AdminServer.hasSession(req);
     }
@@ -174,6 +201,30 @@ GameServer.prototype.start = function() {
       }
 
       if (AdminServer.handle(req, res, self)) {
+        return;
+      }
+
+      if (pathname == '/api/battle/lobby' && req.method == 'POST') {
+        readJson(req, function(err, body) {
+          if (err) return sendJson(res, 400, { ok: false, message: 'Invalid JSON.' });
+          sendJson(res, 200, self.joinBattleLobby(body));
+        });
+        return;
+      }
+
+      if (pathname == '/api/battle/lobby/status' && req.method == 'POST') {
+        readJson(req, function(err, body) {
+          if (err) return sendJson(res, 400, { ok: false, message: 'Invalid JSON.' });
+          sendJson(res, 200, self.getBattleLobbyStatus(body));
+        });
+        return;
+      }
+
+      if (pathname == '/api/battle/lobby/leave' && req.method == 'POST') {
+        readJson(req, function(err, body) {
+          if (err) return sendJson(res, 400, { ok: false, message: 'Invalid JSON.' });
+          sendJson(res, 200, self.leaveBattleLobby(body));
+        });
         return;
       }
 
@@ -374,6 +425,167 @@ GameServer.prototype.start = function() {
 
 GameServer.prototype.getMode = function() {
     return this.gameMode;
+}
+
+GameServer.prototype.normalizeBattleLobbyMode = function(mode) {
+    mode = String(mode || '').toLowerCase();
+    if (mode === '1v1' || mode === '1vs1' || mode === ':battle:1v1') return ':battle:1v1';
+    if (mode === '2v2' || mode === '2vs2' || mode === ':battle:2v2') return ':battle:2v2';
+    return '';
+}
+
+GameServer.prototype.getBattleLobbySize = function(mode) {
+    return mode === ':battle:2v2' ? 4 : 2;
+}
+
+GameServer.prototype.getBattleLobby = function(mode) {
+    if (!this.battleLobbies[mode]) {
+        this.battleLobbies[mode] = {
+            members: [],
+            activeMatch: null
+        };
+    }
+    return this.battleLobbies[mode];
+}
+
+GameServer.prototype.isBattleWorldAvailable = function(mode) {
+    var world = this.worlds[mode];
+    if (!world || !world.gameMode) return false;
+    return world.gameMode.gamePhase === 0;
+}
+
+GameServer.prototype.pruneBattleLobby = function(mode) {
+    var lobby = this.getBattleLobby(mode);
+    var now = Date.now();
+
+    lobby.members = lobby.members.filter(function(member) {
+        return member && member.clientId && (!member.expiresAt || member.expiresAt > now);
+    });
+
+    if (lobby.activeMatch && lobby.activeMatch.expiresAt <= now) {
+        lobby.activeMatch = null;
+    }
+}
+
+GameServer.prototype.releaseBattleLobbyIfReady = function(mode) {
+    var lobby = this.getBattleLobby(mode);
+    var size = this.getBattleLobbySize(mode);
+    var now = Date.now();
+
+    if (lobby.activeMatch || lobby.members.length < size || !this.isBattleWorldAvailable(mode)) {
+        return;
+    }
+
+    lobby.activeMatch = {
+        id: now.toString(36) + Math.random().toString(36).slice(2),
+        mode: mode,
+        members: lobby.members.slice(0, size),
+        expiresAt: now + 30000
+    };
+    lobby.members = lobby.members.slice(size);
+}
+
+GameServer.prototype.getBattleLobbyPayload = function(mode, clientId) {
+    this.pruneBattleLobby(mode);
+    this.releaseBattleLobbyIfReady(mode);
+
+    var lobby = this.getBattleLobby(mode);
+    var size = this.getBattleLobbySize(mode);
+    var activeMatch = lobby.activeMatch;
+    var ready = false;
+    var players = lobby.members;
+
+    if (activeMatch) {
+        for (var i = 0; i < activeMatch.members.length; i++) {
+            if (activeMatch.members[i].clientId === clientId) {
+                ready = true;
+                players = activeMatch.members;
+                break;
+            }
+        }
+    }
+
+    return {
+        ok: true,
+        mode: mode,
+        ready: ready,
+        players: players.map(function(member) {
+            return {
+                name: member.name || 'Player',
+                clientId: member.clientId
+            };
+        }),
+        count: players.length,
+        required: size,
+        status: ready ? 'Match ready' : (this.isBattleWorldAvailable(mode) ? 'Waiting for players' : 'Battle in progress')
+    };
+}
+
+GameServer.prototype.joinBattleLobby = function(data) {
+    var mode = this.normalizeBattleLobbyMode(data && data.mode);
+    var clientId = String(data && data.clientId || '').trim();
+    var name = String(data && data.name || 'Player').trim().slice(0, 32) || 'Player';
+    var lobby;
+    var now = Date.now();
+    var found = false;
+
+    if (!mode || !this.worlds[mode]) {
+        return { ok: false, message: 'Battle mode is inactive.' };
+    }
+    if (!clientId) {
+        return { ok: false, message: 'Missing lobby client.' };
+    }
+
+    this.pruneBattleLobby(mode);
+    lobby = this.getBattleLobby(mode);
+
+    for (var i = 0; i < lobby.members.length; i++) {
+        if (lobby.members[i].clientId === clientId) {
+            lobby.members[i].name = name;
+            lobby.members[i].expiresAt = now + 45000;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        lobby.members.push({
+            clientId: clientId,
+            name: name,
+            joinedAt: now,
+            expiresAt: now + 45000
+        });
+    }
+
+    return this.getBattleLobbyPayload(mode, clientId);
+}
+
+GameServer.prototype.getBattleLobbyStatus = function(data) {
+    var mode = this.normalizeBattleLobbyMode(data && data.mode);
+    var clientId = String(data && data.clientId || '').trim();
+
+    if (!mode || !this.worlds[mode]) {
+        return { ok: false, message: 'Battle mode is inactive.' };
+    }
+
+    return this.getBattleLobbyPayload(mode, clientId);
+}
+
+GameServer.prototype.leaveBattleLobby = function(data) {
+    var mode = this.normalizeBattleLobbyMode(data && data.mode);
+    var clientId = String(data && data.clientId || '').trim();
+    var lobby;
+
+    if (!mode || !this.worlds[mode]) {
+        return { ok: true };
+    }
+
+    lobby = this.getBattleLobby(mode);
+    lobby.members = lobby.members.filter(function(member) {
+        return member.clientId !== clientId;
+    });
+
+    return this.getBattleLobbyPayload(mode, clientId);
 }
 
 GameServer.prototype.createWorld = function(id, gameMode, config) {
