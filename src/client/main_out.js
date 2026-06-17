@@ -1804,7 +1804,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         posX = nodeX = ~~((leftPos + rightPos) / 2),
         posY = nodeY = ~~((topPos + bottomPos) / 2),
         posSize = 1,
-        gameMode = ":x5",
+        gameMode = ":hardcore",
         pendingModeSwitch = false,
         teamScores = null,
         ma = false,
