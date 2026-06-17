@@ -560,6 +560,42 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         return /^(user|guild):/i.test(String(skinName || ""));
     }
 
+    function getPlainPlayerName(name) {
+        name = String(name || "").toLowerCase();
+        if (name.charAt(0) === "[") {
+            var guildEnd = name.indexOf("]");
+            if (guildEnd >= 0) {
+                name = name.slice(guildEnd + 1).trim();
+            }
+        }
+
+        return name;
+    }
+
+    function hasGuildTagName(name) {
+        name = String(name || "");
+        return name.charAt(0) === "[" && name.indexOf("]") > 0;
+    }
+
+    function isNoDisplayName(name) {
+        name = String(name || "").toLowerCase();
+        for (var i = 0; i < knownNameDict_noDisp.length; i++) {
+            if (String(knownNameDict_noDisp[i] || "").toLowerCase() === name) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function shouldHideCellName(name, skinName) {
+        if (hasGuildTagName(name)) {
+            return false;
+        }
+
+        return isNoDisplayName(skinName) || isNoDisplayName(getPlainPlayerName(name));
+    }
+
     function handleWsMessage(msg) {
         function getString() {
             var text = '',
@@ -2677,7 +2713,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 //draw name
                 if (0 != this.id) {
                     var b = ~~this.y;
-                    if ((showName || c) && this.name && this.nameCache && -1 == knownNameDict_noDisp.indexOf(skinName)) {
+                    if ((showName || c) && this.name && this.nameCache && !shouldHideCellName(this.name, skinName)) {
                         ncache = this.nameCache;
                         ncache.setValue(this.name);
                         ncache.setSize(this.getNameSize());
