@@ -53,6 +53,8 @@ Tournament.prototype.endGameTimeout = function(gameServer) {
 };
 
 Tournament.prototype.fillBots = function(gameServer) {
+    if (!gameServer.bots) return;
+
     var fill = this.maxContenders - this.contenders.length;
     for (var i = 0; i < fill; i++) {
         gameServer.bots.addBot();
@@ -72,7 +74,9 @@ Tournament.prototype.prepare = function(gameServer) {
         gameServer.removeNode(node);
     }
 
-    gameServer.bots.loadNames();
+    if (gameServer.bots) {
+        gameServer.bots.loadNames();
+    }
     gameServer.run = false;
     this.gamePhase = 0;
 

@@ -90,7 +90,14 @@ function GameServer(mult, prt) {
         maintenanceImage: '/img/bg.png',
         disabledWorlds: '',
         defaultWorld: '',
-        hardcoreRoomMaxPlayers: 32
+        hardcoreRoomMaxPlayers: 32,
+        tourneyAutoFill: 0,
+        tourneyAutoFillPlayers: 1,
+        tourneyPrepTime: 5,
+        tourneyEndTime: 15,
+        tourneyMaxPlayers: 12,
+        tourneyTimeLimit: 60,
+        playerDisconnectTime: 0
     };
     // Parse config
     this.loadConfig();
@@ -379,6 +386,9 @@ GameServer.prototype.createWorld = function(id, gameMode, config) {
 }
 
 GameServer.prototype.initWorlds = function() {
+    if (!this.isWorldDisabled(':tournament')) {
+        this.worlds[':tournament'] = this.createWorld(':tournament', new Gamemode.Tournament(), this.getModeConfig('tournament'));
+    }
     if (!this.isWorldDisabled(':x5')) {
         this.worlds[':x5'] = this.createWorld(':x5', new Gamemode.X5(), this.getModeConfig('x5'));
     }
@@ -449,6 +459,7 @@ GameServer.prototype.getDefaultWorldId = function() {
         ':battle:1v1',
         ':battle:2v2',
         ':hardcore:2',
+        ':tournament',
         ':teams',
         ':experimental'
     ];
@@ -557,6 +568,11 @@ GameServer.prototype.resolveHardcoreWorldId = function() {
     return null;
 }
 
+GameServer.prototype.isBattleModeRequest = function(mode) {
+    mode = String(mode || '').toLowerCase();
+    return mode === ':battle' || mode.indexOf(':battle') === 0;
+}
+
 GameServer.prototype.resolveWorldId = function(mode, allowFallback) {
     if (mode == ':hardcore') {
         return this.resolveHardcoreWorldId();
@@ -564,6 +580,10 @@ GameServer.prototype.resolveWorldId = function(mode, allowFallback) {
 
     if (this.worlds[mode]) {
         return mode;
+    }
+
+    if (!this.isBattleModeRequest(mode) && this.worlds[':tournament']) {
+        return ':tournament';
     }
 
     return allowFallback ? this.getDefaultWorldId() : null;
@@ -575,7 +595,7 @@ GameServer.prototype.setClientWorld = function(socket, mode, allowFallback) {
     if (!world) {
         console.log("[Game] Client requested inactive world " + mode + "; closing connection");
         if (socket && typeof socket.close === 'function') {
-            socket.close();
+            socket.close(4001, 'inactive_world');
         }
         return false;
     }

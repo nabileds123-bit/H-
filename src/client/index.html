@@ -27,7 +27,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="Vector2.js"></script>
-    <script src="main_out.js?551"></script>
+    <script src="main_out.js?552"></script>
 	<script>/ jshint -W097 /
 'use strict';
 
@@ -2311,6 +2311,7 @@ $(document).on('keyup', function(input) {
     }
 
     #overlays.is-menu-only #helloDialog,
+    #overlays.is-menu-only .is-open,
     #communityDropup.is-open {
         pointer-events: auto;
     }
@@ -3005,7 +3006,7 @@ $(function () {
     var resetToken = null;
     var authToken = localStorage.getItem('authToken');
     var authUser = localStorage.getItem('authUser');
-    if (localStorage.getItem('preferredModeMigratedToHardcore') !== 'true' && localStorage.getItem('inviteSubMode') === 'X5') {
+    if (localStorage.getItem('inviteSubMode') === 'X5') {
         localStorage.setItem('inviteSubMode', 'Hardcore');
         localStorage.setItem('preferredModeMigratedToHardcore', 'true');
     }

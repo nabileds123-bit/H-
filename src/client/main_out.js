@@ -494,8 +494,13 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
     }
 
-    function onWsClose() {
+    function onWsClose(event) {
         console.log("socket close");
+        if (event && event.code === 4001) {
+            console.log("selected game mode is inactive; reconnect stopped");
+            wjQuery("#connecting").show();
+            return;
+        }
         setTimeout(showConnecting, delay);
         delay *= 1.5
     }

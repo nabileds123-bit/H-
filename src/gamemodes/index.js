@@ -4,6 +4,7 @@ module.exports = {
     Teams: require('./Teams'),
     Custom: require('./Custom'),
     Experimental: require('./Experimental'),
+    Tournament: require('./Tournament'),
     X5: require('./X5'),
 };
 
