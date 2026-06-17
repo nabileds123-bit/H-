@@ -684,6 +684,207 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     }
     wHandle.addSystemChat = addSystemChat;
 
+    function getChatContainer() {
+        return document.getElementById("chat_textbox") || document.body;
+    }
+
+    function ensureChatEffectsLayer() {
+        var container = getChatContainer();
+        if (!container) return null;
+
+        var layer = document.getElementById("chatEffectsLayer");
+        if (!layer) {
+            layer = document.createElement("div");
+            layer.id = "chatEffectsLayer";
+            layer.className = "chat-effects-layer";
+            document.body.appendChild(layer);
+        }
+
+        var rect = container.getBoundingClientRect ? container.getBoundingClientRect() : null;
+        if (rect && rect.width) {
+            layer.style.left = Math.max(0, Math.round(rect.left)) + "px";
+            layer.style.bottom = Math.max(0, Math.round(window.innerHeight - rect.top + 4)) + "px";
+            layer.style.width = Math.max(320, Math.round(rect.width + 40)) + "px";
+        }
+
+        return layer;
+    }
+
+    function cleanupEffect(node, delay) {
+        setTimeout(function() {
+            if (node && node.parentNode) {
+                node.parentNode.removeChild(node);
+            }
+        }, delay || 1200);
+    }
+
+    var chatEffectCooldowns = {};
+    var chatEffectDurations = {
+        bull: 1150,
+        love: 1750,
+        lightning: 850,
+        fire: 1450,
+        star: 1350,
+        crown: 1400,
+        confetti: 2200
+    };
+
+    function makeEffectNode(className, text) {
+        var node = document.createElement("div");
+        node.className = "chat-effect " + className;
+        node.textContent = text || "";
+        return node;
+    }
+
+    function rand(min, max) {
+        return min + Math.random() * (max - min);
+    }
+
+    wHandle.playChatEffect = function(type, options) {
+        type = String(type || "").toLowerCase();
+        if (type === "redbull") type = "bull";
+        options = options || {};
+
+        if (!chatEffectDurations[type]) return false;
+
+        var now = Date.now();
+        var cooldown = options.cooldown || 350;
+        if (chatEffectCooldowns[type] && now - chatEffectCooldowns[type] < cooldown) {
+            return false;
+        }
+        chatEffectCooldowns[type] = now;
+
+        var layer = ensureChatEffectsLayer();
+        if (!layer) return false;
+
+        var duration = chatEffectDurations[type];
+        var node;
+        var i;
+
+        if (type === "bull") {
+            layer.classList.add("chat-effect-shake");
+            setTimeout(function() { layer.classList.remove("chat-effect-shake"); }, 450);
+
+            node = makeEffectNode("chat-effect-bull", "🐂");
+            layer.appendChild(node);
+            cleanupEffect(node, duration);
+
+            for (i = 0; i < 5; i++) {
+                var dust = makeEffectNode("chat-effect-bull-dust");
+                dust.style.left = Math.round(rand(14, 90)) + "px";
+                dust.style.bottom = Math.round(rand(54, 75)) + "px";
+                dust.style.animationDelay = Math.round(i * 80) + "ms";
+                layer.appendChild(dust);
+                cleanupEffect(dust, 1100);
+            }
+
+            var impact = makeEffectNode("chat-effect-bull-impact", "✦");
+            impact.style.animationDelay = "760ms";
+            layer.appendChild(impact);
+            cleanupEffect(impact, duration);
+        } else if (type === "love") {
+            var hearts = ["❤", "♥", "💕"];
+            for (i = 0; i < 14; i++) {
+                node = makeEffectNode("chat-effect-love", hearts[i % hearts.length]);
+                node.style.left = Math.round(rand(18, 305)) + "px";
+                node.style.setProperty("--drift", Math.round(rand(-36, 36)) + "px");
+                node.style.animationDelay = Math.round(rand(0, 420)) + "ms";
+                node.style.fontSize = Math.round(rand(14, 24)) + "px";
+                layer.appendChild(node);
+                cleanupEffect(node, duration + 450);
+            }
+        } else if (type === "lightning") {
+            layer.classList.add("chat-effect-shake");
+            setTimeout(function() { layer.classList.remove("chat-effect-shake"); }, 320);
+            node = makeEffectNode("chat-effect-lightning", "⚡");
+            layer.appendChild(node);
+            cleanupEffect(node, duration);
+            var flash = makeEffectNode("chat-effect-flash");
+            layer.appendChild(flash);
+            cleanupEffect(flash, duration);
+        } else if (type === "fire") {
+            var flames = ["🔥", "✦"];
+            for (i = 0; i < 16; i++) {
+                node = makeEffectNode("chat-effect-fire", flames[i % flames.length]);
+                node.style.left = Math.round(rand(10, 315)) + "px";
+                node.style.animationDelay = Math.round(rand(0, 360)) + "ms";
+                node.style.fontSize = Math.round(rand(13, 24)) + "px";
+                layer.appendChild(node);
+                cleanupEffect(node, duration + 380);
+            }
+        } else if (type === "star") {
+            for (i = 0; i < 18; i++) {
+                node = makeEffectNode("chat-effect-star", "⭐");
+                node.style.left = Math.round(rand(10, 318)) + "px";
+                node.style.top = Math.round(rand(10, 175)) + "px";
+                node.style.animationDelay = Math.round(rand(0, 420)) + "ms";
+                layer.appendChild(node);
+                cleanupEffect(node, duration + 420);
+            }
+        } else if (type === "crown") {
+            node = makeEffectNode("chat-effect-crown", "👑");
+            layer.appendChild(node);
+            cleanupEffect(node, duration);
+            for (i = 0; i < 8; i++) {
+                var sparkle = makeEffectNode("chat-effect-star", "✦");
+                sparkle.style.left = Math.round(rand(95, 245)) + "px";
+                sparkle.style.top = Math.round(rand(45, 145)) + "px";
+                sparkle.style.animationDelay = Math.round(rand(160, 720)) + "ms";
+                layer.appendChild(sparkle);
+                cleanupEffect(sparkle, duration + 300);
+            }
+        } else if (type === "confetti") {
+            var colors = ["#ff4fa3", "#ffce3a", "#28d7ff", "#7cff65", "#ff7043", "#b75cff"];
+            for (i = 0; i < 32; i++) {
+                node = makeEffectNode("chat-effect-confetti");
+                node.style.left = Math.round(rand(0, 330)) + "px";
+                node.style.background = colors[i % colors.length];
+                node.style.animationDelay = Math.round(rand(0, 520)) + "ms";
+                layer.appendChild(node);
+                cleanupEffect(node, duration + 650);
+            }
+        }
+
+        return true;
+    };
+
+    wHandle.playBullEffect = function(options) { return wHandle.playChatEffect("bull", options); };
+    wHandle.playLoveEffect = function(options) { return wHandle.playChatEffect("love", options); };
+    wHandle.playLightningEffect = function(options) { return wHandle.playChatEffect("lightning", options); };
+    wHandle.playFireEffect = function(options) { return wHandle.playChatEffect("fire", options); };
+    wHandle.playStarEffect = function(options) { return wHandle.playChatEffect("star", options); };
+    wHandle.playCrownEffect = function(options) { return wHandle.playChatEffect("crown", options); };
+    wHandle.playConfettiEffect = function(options) { return wHandle.playChatEffect("confetti", options); };
+    wHandle.triggerChatEffect = wHandle.playChatEffect;
+
+    function getChatEffectFromText(text) {
+        text = String(text || "").toLowerCase();
+        if (/collprem|banteng|nyeruduk/.test(text)) return "bull";
+        if (/love|❤|♥|💕|sayang/.test(text)) return "love";
+        if (/petir|lightning|⚡/.test(text)) return "lightning";
+        if (/fire|api|🔥/.test(text)) return "fire";
+        if (/star|bintang|⭐/.test(text)) return "star";
+        if (/crown|king|👑/.test(text)) return "crown";
+        if (/party|win|gg|🎉/.test(text)) return "confetti";
+        return "";
+    }
+
+    function parseChatEffectMessage(text) {
+        text = String(text || "");
+        var match = /^\uE100([a-z]+)\uE101([\s\S]*)$/.exec(text);
+        if (!match) {
+            return {
+                effect: getChatEffectFromText(text),
+                message: text
+            };
+        }
+
+        return {
+            effect: match[1],
+            message: match[2]
+        };
+    }
+
 
     function addChat(view, offset) {
         function getString() {
@@ -719,9 +920,15 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         color = '#' + color;
         var isGuildChat = !!(flags & 32);
         var isDeadChat = !!(flags & 16);
-        var isRedBullChat = !!(flags & 64);
+        var premiumEffect = (flags & 128) ? "love" : (flags & 64) ? "bull" : "";
         var chatName = getString();
         var chatMessage = getString();
+        var parsedEffect = parseChatEffectMessage(chatMessage);
+        chatMessage = parsedEffect.message;
+        premiumEffect = parsedEffect.effect || premiumEffect;
+        if (premiumEffect) {
+            wHandle.playChatEffect(premiumEffect);
+        }
 
         chatBoard.push({
             "name": chatName,
@@ -730,7 +937,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             "time": Date.now(),
             "isGuild": isGuildChat,
             "isDead": isDeadChat,
-            "isRedBull": isRedBullChat
+            "premiumEffect": premiumEffect
         });
         //console.log(chatBoard);
         drawChatBoard();
@@ -824,7 +1031,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
 
         function drawRedBullCharge(ctx, msg, x, y) {
-            if (!msg || !msg.isRedBull) return;
+            if (!msg || msg.premiumEffect !== "bull") return;
 
             var age = Math.max(0, Date.now() - (msg.time || Date.now()));
             var cycle = age % 900;
@@ -874,11 +1081,43 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             ctx.restore();
         }
 
+        function drawLoveBurst(ctx, msg, x, y) {
+            if (!msg || msg.premiumEffect !== "love") return;
+
+            var age = Math.max(0, Date.now() - (msg.time || Date.now()));
+            var pulse = (Math.sin(age / 180) + 1) / 2;
+            var by = y + 9;
+            var hearts = [
+                { dx: -4, dy: -2, s: 1 },
+                { dx: 8, dy: -7, s: 0.75 },
+                { dx: 17, dy: 1, s: 0.65 }
+            ];
+
+            ctx.save();
+            ctx.fillStyle = "#ff4fa3";
+            ctx.shadowColor = "#ff4fa3";
+            ctx.shadowBlur = 6 + pulse * 5;
+            hearts.forEach(function(heart, index) {
+                var floatY = Math.sin(age / 240 + index) * 3;
+                var hx = x + heart.dx;
+                var hy = by + heart.dy + floatY;
+                var size = (5 + pulse * 2) * heart.s;
+
+                ctx.beginPath();
+                ctx.moveTo(hx, hy + size * 0.5);
+                ctx.bezierCurveTo(hx - size, hy - size * 0.25, hx - size, hy - size, hx, hy - size * 0.45);
+                ctx.bezierCurveTo(hx + size, hy - size, hx + size, hy - size * 0.25, hx, hy + size * 0.5);
+                ctx.fill();
+            });
+            ctx.restore();
+        }
+
         for (var i = 0; i < visibleCount; i++) {
             var msg = chatBoard[chatBoard.length - visibleCount + i];
 
             var nameText = msg.name + ": ";
-            var nameX = paddingX + (msg.isRedBull ? 28 : 0);
+            var effectSpace = msg.premiumEffect === "bull" ? 28 : msg.premiumEffect === "love" ? 34 : 0;
+            var nameX = paddingX + effectSpace;
             var nameWidth = ctx.measureText(nameText).width;
             var msgX = nameX + nameWidth;
 
@@ -903,26 +1142,27 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
             // nama player
             drawRedBullCharge(ctx, msg, paddingX + 8, y);
+            drawLoveBurst(ctx, msg, paddingX + 7, y);
             ctx.fillStyle = getChatNameColor(msg);
-            if (msg.isRedBull) {
+            if (msg.premiumEffect) {
                 ctx.save();
-                ctx.shadowColor = "#ff1f1f";
+                ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : "#ff1f1f";
                 ctx.shadowBlur = 8;
             }
             ctx.fillText(nameText, nameX, y);
-            if (msg.isRedBull) {
+            if (msg.premiumEffect) {
                 ctx.restore();
             }
 
             // pesan baris pertama
             ctx.fillStyle = getChatTextColor(msg);
-            if (msg.isRedBull) {
+            if (msg.premiumEffect) {
                 ctx.save();
-                ctx.shadowColor = "#ff1f1f";
+                ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : "#ff1f1f";
                 ctx.shadowBlur = 6;
             }
             ctx.fillText(lines[0], msgX, y);
-            if (msg.isRedBull) {
+            if (msg.premiumEffect) {
                 ctx.restore();
             }
 
@@ -933,13 +1173,13 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 if (y + lineHeight > maxY) break;
 
                 ctx.fillStyle = getChatTextColor(msg);
-                if (msg.isRedBull) {
+                if (msg.premiumEffect) {
                     ctx.save();
-                    ctx.shadowColor = "#ff1f1f";
+                    ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : "#ff1f1f";
                     ctx.shadowBlur = 6;
                 }
                 ctx.fillText(lines[j], paddingX, y);
-                if (msg.isRedBull) {
+                if (msg.premiumEffect) {
                     ctx.restore();
                 }
 

@@ -14,6 +14,8 @@ function hexToColor(hex) {
 }
 
 var PREMIUM_CHAT_WARNING = 'Chat hanya tersedia untuk akun Premium. Silakan upgrade ke Premium untuk menggunakan chat.';
+var CHAT_EFFECT_START = '\uE100';
+var CHAT_EFFECT_END = '\uE101';
 
 function isPremiumUser(user) {
     var accountType = String(user && user.accountType || '').toLowerCase();
@@ -28,6 +30,21 @@ function isPremiumUser(user) {
     }
 
     return !expiresAt || expiresAt > Date.now();
+}
+
+function normalizePremiumChatEffect(value) {
+    value = String(value || '').trim().toLowerCase();
+    if (value === 'redbull') value = 'bull';
+
+    return {
+        bull: true,
+        love: true,
+        lightning: true,
+        fire: true,
+        star: true,
+        crown: true,
+        confetti: true
+    }[value] ? value : '';
 }
 
 function applyAuthUserToClient(client, user) {
@@ -276,7 +293,11 @@ this.merg = true;
             }
 
             var premiumChatColor = hexToColor(user.premiumChatColor);
-            var premiumChatFlags = String(user.premiumChatEffect || '').toLowerCase() === 'redbull' ? 64 : 0;
+            var premiumChatEffect = normalizePremiumChatEffect(user.premiumChatEffect);
+            var premiumChatFlags = premiumChatEffect === 'bull' ? 64 : premiumChatEffect === 'love' ? 128 : 0;
+            if (premiumChatEffect) {
+                message = CHAT_EFFECT_START + premiumChatEffect + CHAT_EFFECT_END + message;
+            }
             var packet = new Packet.Chat(this.socket.playerTracker, message, premiumChatFlags, premiumChatColor);
             this.gameServer.withWorld(this.socket.world, function() {
                 // Send to clients in the same world
