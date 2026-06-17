@@ -27,7 +27,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="Vector2.js"></script>
-    <script src="main_out.js?552"></script>
+    <script src="main_out.js?554"></script>
 	<script>/ jshint -W097 /
 'use strict';
 
@@ -871,12 +871,8 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-icon-fallback {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 12px;
-        font-weight: bold;
+        border-color: transparent;
+        background: transparent;
     }
 
     .guild-name {
@@ -994,12 +990,8 @@ $(document).on('keyup', function(input) {
         width: 80px;
         height: 80px;
         border-radius: 50%;
-        border: 1px solid #999;
-        background:
-            linear-gradient(rgba(255,255,255,.22) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,.22) 1px, transparent 1px),
-            #087a2d;
-        background-size: 18px 18px;
+        border: 0;
+        background: transparent;
         color: #fff;
         display: flex;
         align-items: center;
@@ -1014,19 +1006,7 @@ $(document).on('keyup', function(input) {
         height: 100%;
         border-radius: 50%;
         object-fit: cover;
-    }
-
-    .guild-detail-logo-prefix {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        color: #fff;
-        font-size: 14px;
-        font-weight: bold;
-        line-height: 1;
-        text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
-        pointer-events: none;
+        border: 1px solid #999;
     }
 
     .guild-detail-bio {
@@ -3182,6 +3162,18 @@ $(function () {
     }
 
     function resolveGameModeRoom(mode) {
+        if (mode === ':hardcore' || mode === ':hardcore:1' || mode === ':hardcore:2') {
+            return mode;
+        }
+
+        if (String(mode || '').indexOf(':battle') === 0) {
+            return mode;
+        }
+
+        if (mode === ':x5' || mode === ':teams' || mode === ':experimental') {
+            return ':tournament';
+        }
+
         return mode;
     }
 
@@ -3297,6 +3289,9 @@ $(function () {
         localStorage.setItem('authLastLogin', user.lastLoginAt || localStorage.getItem('authLastLogin') || Date.now());
         localStorage.setItem('cellColor', user.cellColor || '#000000');
         localStorage.setItem('authAccountType', user.accountType || 'Free');
+        localStorage.setItem('authPremiumChatColor', user.premiumChatColor || '');
+        localStorage.setItem('authPremiumChatBadge', user.premiumChatBadge || '');
+        localStorage.setItem('authPremiumChatEffect', user.premiumChatEffect || '');
         localStorage.setItem('authPremiumUntil', user.premiumUntil || '');
         localStorage.setItem('authPoints', user.points || 0);
         localStorage.setItem('authXp', user.xp || localStorage.getItem('authXp') || 0);
@@ -3435,7 +3430,7 @@ $(function () {
             if (response.user) storeAuthUser(response.user);
             if (response.guild) {
                 upsertGuildListItem(response.guild);
-                openGuildDetailView(response.guild.name, response.guild.tag, response.guild.logo || '');
+                openGuildDetailView(response.guild.name, response.guild.tag, getGuildLogoUrl(response.guild));
             }
             refreshGuildInvites();
             refreshNotifications();
@@ -3841,9 +3836,14 @@ $(function () {
         localStorage.setItem('guildList', JSON.stringify(guildList));
     }
 
+    function getGuildLogoUrl(guild) {
+        return String(guild && (guild.logo || guild.guildSkinUrl || guild.skinUrl) || '').trim();
+    }
+
     function normalizeGuildItem(guild) {
         var tag = String(guild.tag || '').trim().toUpperCase();
         var name = String(guild.name || '').trim() || (tag ? tag + ' Guild' : 'Guild');
+        var logo = getGuildLogoUrl(guild);
 
         return {
             id: guild.id || tag.toLowerCase() || ('guild-' + Date.now()),
@@ -3854,7 +3854,8 @@ $(function () {
             leaderLevel: parseInt(guild.leaderLevel, 10) || 1,
             members: parseInt(guild.members, 10) || 1,
             membersList: guild.membersList || guild.membersJson || guild.memberList || '',
-            logo: guild.logo || '',
+            logo: logo,
+            guildSkinUrl: logo,
             description: guild.description || guild.bio || guild.about || '',
             bio: guild.bio || guild.description || guild.about || '',
             top1: guild.top1 || '-',
@@ -3905,11 +3906,12 @@ $(function () {
     }
 
     function getGuildIconHtml(guild) {
-        if (guild.logo) {
-            return '<img class="guild-icon" src="' + escapeHtml(guild.logo) + '" alt="' + escapeHtml(guild.tag) + '">';
+        var logo = getGuildLogoUrl(guild);
+        if (logo) {
+            return '<img class="guild-icon" src="' + escapeHtml(logo) + '" alt="' + escapeHtml(guild.tag) + '">';
         }
 
-        return '<span class="guild-icon guild-icon-fallback">' + escapeHtml(String(guild.tag || '?').slice(0, 2)) + '</span>';
+        return '<span class="guild-icon guild-icon-fallback"></span>';
     }
 
     function renderGuildList() {
@@ -3928,7 +3930,7 @@ $(function () {
         $('#guildList').html(items.map(function(guild) {
             var guildTag = String(guild.tag || '').trim();
             var guildName = String(guild.name || guildTag || 'Guild').trim();
-            var guildLogo = guild.logo || '';
+            var guildLogo = getGuildLogoUrl(guild);
             var guildHref = '#guild/' + encodeURIComponent(guildTag || guildName);
 
             return [
@@ -3950,19 +3952,27 @@ $(function () {
 
     function loadGuildStats() {
         $.getJSON('/api/guilds', { period: getGuildPeriodValue() }, function(response) {
+            var existingByTag = {};
+            guildList.forEach(function(guild) {
+                existingByTag[String(guild.tag || '').trim().toUpperCase()] = guild;
+            });
+
             guildList = (response.items || []).map(function(item) {
                 var tag = String(item.tag || item.guildId || '').trim().toUpperCase();
+                var existing = existingByTag[tag] || {};
                 return normalizeGuildItem({
                     id: item.guildId || item.id || tag,
                     name: item.name || tag,
                     tag: tag,
                     members: item.members || 1,
                     top1: item.top1Time || '00:00',
-                    leader: item.leader || '',
-                    leaderLevel: item.leaderLevel || 1,
-                    membersList: item.membersList || '',
-                    description: item.description || item.bio || '',
-                    logo: item.logo || ''
+                    leader: item.leader || existing.leader || '',
+                    leaderLevel: item.leaderLevel || existing.leaderLevel || 1,
+                    membersList: item.membersList || existing.membersList || '',
+                    description: item.description || item.bio || existing.description || existing.bio || '',
+                    bio: item.bio || item.description || existing.bio || existing.description || '',
+                    logo: item.logo || item.guildSkinUrl || existing.logo || existing.guildSkinUrl || '',
+                    guildSkinUrl: item.guildSkinUrl || item.logo || existing.guildSkinUrl || existing.logo || ''
                 });
             }).filter(function(guild) {
                 return !!guild.tag;
@@ -4030,8 +4040,8 @@ $(function () {
     function openGuildDetailView(name, tag, logoSrc) {
         var guildName = String(name || 'Guild').trim() || 'Guild';
         var guildTag = String(tag || '').trim();
-        var logo = String(logoSrc || '').trim();
         var guildItem = getGuildListItemByTag(guildTag);
+        var logo = String(logoSrc || getGuildLogoUrl(guildItem)).trim();
         var viewerOwnsGuild = isCurrentViewerGuild(guildTag);
         var leaderName = viewerOwnsGuild ? getCurrentGuildViewerName() : (guildItem && guildItem.leader) || 'Leader';
 
@@ -4047,17 +4057,11 @@ $(function () {
         $('#guildDetailTitle').text(guildName);
         $('#guildBreadcrumbDetail').show();
         $('#guildListView').hide();
-        $('#guildDetailLogo').empty();
+        $('#guildDetailLogo').empty().toggle(!!logo);
         if (logo) {
             $('#guildDetailLogo').append($('<img>', {
                 src: logo,
                 alt: guildName
-            }));
-        }
-        if (guildTag) {
-            $('#guildDetailLogo').append($('<span>', {
-                class: 'guild-detail-logo-prefix',
-                text: '[' + guildTag + ']'
             }));
         }
         renderGuildBio(guildItem);
@@ -5021,7 +5025,7 @@ $(function () {
             name: nextName,
             tag: nextTag,
             description: nextBio,
-            logo: (activeGuildDetail && activeGuildDetail.logo) || ''
+            logo: getGuildLogoUrl(activeGuildDetail)
         }, function(err, response) {
             if (err) {
                 alert(err || 'Failed to edit guild.');
@@ -5030,7 +5034,7 @@ $(function () {
             if (response.user) storeAuthUser(response.user);
             if (response.guild) {
                 upsertGuildListItem(response.guild);
-                openGuildDetailView(response.guild.name, response.guild.tag, response.guild.logo || '');
+                openGuildDetailView(response.guild.name, response.guild.tag, getGuildLogoUrl(response.guild));
             }
             updateGuildUi();
         });
@@ -5227,7 +5231,7 @@ $(function () {
                 if (response.guild) upsertGuildListItem(response.guild);
                 status.removeClass('text-danger').addClass('text-success').text(response.message || 'Guild created.').show();
                 closeGuildCreateDialog();
-                openGuildDetailView(response.guild.name, response.guild.tag, response.guild.logo || '');
+                openGuildDetailView(response.guild.name, response.guild.tag, getGuildLogoUrl(response.guild));
             });
         }
 
@@ -5638,6 +5642,9 @@ $(function () {
         localStorage.removeItem('authUser');
         localStorage.removeItem('authLastLogin');
         localStorage.removeItem('authAccountType');
+        localStorage.removeItem('authPremiumChatColor');
+        localStorage.removeItem('authPremiumChatBadge');
+        localStorage.removeItem('authPremiumChatEffect');
         localStorage.removeItem('authPremiumUntil');
         updateChatAccess();
         $('#helloXpPanel').removeClass('is-visible');

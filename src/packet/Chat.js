@@ -16,6 +16,9 @@ Chat.prototype.build = function () {
     var nick = this.sender.getName();
     if (this.sender.authUser && this.sender.authUser.username) {
         nick = this.sender.authUser.guildTag ? '[' + this.sender.authUser.guildTag + '] ' + this.sender.authUser.username : this.sender.authUser.username;
+        if (this.sender.authUser.premiumChatBadge) {
+            nick = '[' + this.sender.authUser.premiumChatBadge + '] ' + nick;
+        }
     }
     if (!nick) {
         if (this.sender.cells.length > 0) {

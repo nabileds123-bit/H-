@@ -395,6 +395,13 @@ function guildStats(period) {
             name: guild.name || id,
             tag: guild.tag || id,
             members: parseInt(guild.members, 10) || 0,
+            membersList: guild.membersList || '',
+            description: guild.description || guild.bio || '',
+            bio: guild.bio || guild.description || '',
+            leader: guild.leader || '',
+            leaderLevel: parseInt(guild.leaderLevel, 10) || 1,
+            logo: guild.logo || guild.guildSkinUrl || '',
+            guildSkinUrl: guild.guildSkinUrl || guild.logo || '',
             top1Ms: 0,
             battle: {
                 '1vs1': { win: 0, lose: 0, totalMatch: 0, winRate: 0 },

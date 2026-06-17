@@ -501,6 +501,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             wjQuery("#connecting").show();
             return;
         }
+        if (gameMode === ':tournament') {
+            console.log("tournament connection closed; reconnect stopped");
+            wjQuery("#connecting").show();
+            return;
+        }
         setTimeout(showConnecting, delay);
         delay *= 1.5
     }
@@ -714,6 +719,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         color = '#' + color;
         var isGuildChat = !!(flags & 32);
         var isDeadChat = !!(flags & 16);
+        var isRedBullChat = !!(flags & 64);
         var chatName = getString();
         var chatMessage = getString();
 
@@ -723,7 +729,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             "message": chatMessage,
             "time": Date.now(),
             "isGuild": isGuildChat,
-            "isDead": isDeadChat
+            "isDead": isDeadChat,
+            "isRedBull": isRedBullChat
         });
         //console.log(chatBoard);
         drawChatBoard();
@@ -845,11 +852,27 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
             // nama player
             ctx.fillStyle = getChatNameColor(msg);
+            if (msg.isRedBull) {
+                ctx.save();
+                ctx.shadowColor = "#ff1f1f";
+                ctx.shadowBlur = 8;
+            }
             ctx.fillText(nameText, nameX, y);
+            if (msg.isRedBull) {
+                ctx.restore();
+            }
 
             // pesan baris pertama
             ctx.fillStyle = getChatTextColor(msg);
+            if (msg.isRedBull) {
+                ctx.save();
+                ctx.shadowColor = "#ff1f1f";
+                ctx.shadowBlur = 6;
+            }
             ctx.fillText(lines[0], msgX, y);
+            if (msg.isRedBull) {
+                ctx.restore();
+            }
 
             y += lineHeight;
 
@@ -858,7 +881,15 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 if (y + lineHeight > maxY) break;
 
                 ctx.fillStyle = getChatTextColor(msg);
+                if (msg.isRedBull) {
+                    ctx.save();
+                    ctx.shadowColor = "#ff1f1f";
+                    ctx.shadowBlur = 6;
+                }
                 ctx.fillText(lines[j], paddingX, y);
+                if (msg.isRedBull) {
+                    ctx.restore();
+                }
 
                 y += lineHeight;
             }

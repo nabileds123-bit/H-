@@ -38,6 +38,9 @@ function applyAuthUserToClient(client, user) {
         cellColor: user.cellColor || '#000000',
         accountType: user.accountType || 'Free',
         premiumUntil: user.premiumUntil || '',
+        premiumChatColor: user.premiumChatColor || '',
+        premiumChatBadge: user.premiumChatBadge || '',
+        premiumChatEffect: user.premiumChatEffect || '',
         guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
         activeSkinType: user.activeSkinType || 'player',
         country_code: user.country_code || user.countryCode || ''
@@ -272,7 +275,9 @@ this.merg = true;
                 break;
             }
 
-            var packet = new Packet.Chat(this.socket.playerTracker, message);
+            var premiumChatColor = hexToColor(user.premiumChatColor);
+            var premiumChatFlags = String(user.premiumChatEffect || '').toLowerCase() === 'redbull' ? 64 : 0;
+            var packet = new Packet.Chat(this.socket.playerTracker, message, premiumChatFlags, premiumChatColor);
             this.gameServer.withWorld(this.socket.world, function() {
                 // Send to clients in the same world
                 for (var i = 0; i < this.clients.length; i++) {

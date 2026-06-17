@@ -120,6 +120,9 @@ function publicAuthUser(user, lastLoginAt) {
         lastLoginAt: lastLoginAt || user.lastLoginAt || Date.now(),
         cellColor: user.cellColor || '#000000',
         accountType: user.accountType || 'Free',
+        premiumChatColor: user.premiumChatColor || '',
+        premiumChatBadge: user.premiumChatBadge || '',
+        premiumChatEffect: user.premiumChatEffect || '',
         premiumUntil: user.premiumUntil || '',
         points: parseInt(user.points, 10) || 0,
         xp: parseInt(user.xp, 10) || 0,
@@ -142,6 +145,9 @@ function publicPlayerProfile(user) {
         lastLoginAt: user.lastLoginAt || user.updatedAt || user.createdAt || Date.now(),
         cellColor: user.cellColor || '#000000',
         accountType: user.accountType || 'Free',
+        premiumChatColor: user.premiumChatColor || '',
+        premiumChatBadge: user.premiumChatBadge || '',
+        premiumChatEffect: user.premiumChatEffect || '',
         premiumUntil: user.premiumUntil || '',
         points: parseInt(user.points, 10) || 0,
         xp: parseInt(user.xp, 10) || 0,
@@ -718,6 +724,7 @@ function ensureGuildForUser(user) {
 }
 
 function publicGuild(guild) {
+    var logo = guild && (guild.logo || guild.guildSkinUrl || '');
     return guild ? {
         id: guild.id || guild.tag,
         name: guild.name || guild.tag || 'Guild',
@@ -729,7 +736,8 @@ function publicGuild(guild) {
         membersList: guild.membersList || serializeGuildMembers(parseGuildMembers(guild)),
         description: guild.description || guild.bio || '',
         bio: guild.bio || guild.description || '',
-        logo: guild.logo || guild.guildSkinUrl || ''
+        logo: logo,
+        guildSkinUrl: logo
     } : null;
 }
 
@@ -879,7 +887,8 @@ function handleGuildCreate(req, res) {
             }]),
             description: String(body.description || '').trim(),
             bio: String(body.description || '').trim(),
-            logo: String(body.logo || '').trim()
+            logo: String(body.logo || '').trim(),
+            guildSkinUrl: String(body.logo || '').trim()
         });
 
         var updatedUser = users.updateUser(user.id, {
@@ -986,7 +995,8 @@ function handleGuildEdit(req, res) {
             tag: nextTag,
             description: String(body.description || '').trim(),
             bio: String(body.description || '').trim(),
-            logo: String(body.logo || guild.logo || '').trim()
+            logo: String(body.logo || guild.logo || guild.guildSkinUrl || '').trim(),
+            guildSkinUrl: String(body.logo || guild.guildSkinUrl || guild.logo || '').trim()
         }) || guild;
 
         if (oldTag !== nextTag) {
