@@ -35,6 +35,7 @@ function isPremiumUser(user) {
 function normalizePremiumChatEffect(value) {
     value = String(value || '').trim().toLowerCase();
     if (value === 'redbull') value = 'bull';
+    if (value === 'airterjun' || value === 'air-terjun' || value === 'water fall') value = 'waterfall';
 
     return {
         bull: true,
@@ -43,7 +44,8 @@ function normalizePremiumChatEffect(value) {
         fire: true,
         star: true,
         crown: true,
-        confetti: true
+        confetti: true,
+        waterfall: true
     }[value] ? value : '';
 }
 
@@ -72,21 +74,35 @@ function normalizeCommandName(command) {
 function canUseCommand(user, command) {
     command = normalizeCommandName(command);
     var role = normalizeCommandRole(user && user.commandRole);
-    if (role === 'admin') return true;
+    if (role === 'admin' || role === 'moderator') return true;
 
     var permissions = normalizeCommandPermissions(user && user.commandPermissions);
     if (permissions[command] || permissions.all) return true;
-
-    if (role === 'moderator') {
-        return {
-            playerlist: true,
-            status: true,
-            say: true,
-            kick: true
-        }[String(command || '').toLowerCase()] === true;
-    }
+    if (user && isTruthyCommandPermission(user[getCommandPermissionField(command)])) return true;
 
     return false;
+}
+
+function isTruthyCommandPermission(value) {
+    return value === true || String(value || '').toLowerCase() === 'true' || String(value || '') === '1';
+}
+
+function getCommandPermissionField(command) {
+    command = normalizeCommandName(command);
+    return {
+        playerlist: 'commandPlayerlist',
+        status: 'commandStatus',
+        say: 'commandSay',
+        kick: 'commandKick',
+        mass: 'commandMass',
+        color: 'commandColor',
+        merge: 'commandMerge',
+        tp: 'commandTp',
+        killall: 'commandKillall',
+        points: 'commandPoint',
+        name: 'commandName',
+        split: 'commandSplit'
+    }[command] || '';
 }
 
 function isPlayerCommandMessage(text) {
@@ -117,11 +133,7 @@ function parseCommandArgs(text) {
 }
 
 function sendCommandMessage(gameServer, player, message) {
-    if (gameServer && gameServer.sendSystemMessage) {
-        gameServer.sendSystemMessage(player, '[CMD] ' + message);
-    } else if (player && player.socket) {
-        player.socket.sendPacket(new Packet.Message('[CMD] ' + message));
-    }
+    return;
 }
 
 function getCommandTarget(gameServer, index) {
@@ -135,6 +147,22 @@ function getCommandTarget(gameServer, index) {
         socket: gameServer.clients[id],
         player: gameServer.clients[id].playerTracker
     };
+}
+
+function getSelfCommandTarget(handler) {
+    return {
+        id: 'self',
+        socket: handler.socket,
+        player: handler.socket && handler.socket.playerTracker
+    };
+}
+
+function getOptionalCommandTarget(handler, value) {
+    if (!value || String(value).toLowerCase() === 'self' || String(value).toLowerCase() === 'me') {
+        return getSelfCommandTarget(handler);
+    }
+
+    return getCommandTarget(handler.gameServer, value);
 }
 
 function findCommandPointUser(gameServer, identifier) {
@@ -254,22 +282,26 @@ function executePlayerCommand(handler, user, rawText) {
         return true;
     }
 
-    var target = getCommandTarget(gameServer, args[1]);
-    if (!target || !target.player) {
-        sendCommandMessage(gameServer, sender, 'Player index tidak ditemukan.');
-        return true;
-    }
-
     if (command === 'kick') {
+        var target = getCommandTarget(gameServer, args[1]);
+        if (!target || !target.player) {
+            sendCommandMessage(gameServer, sender, 'Usage: /kick <index>');
+            return true;
+        }
         if (target.socket.close) target.socket.close();
         sendCommandMessage(gameServer, sender, 'Player ' + target.id + ' kicked.');
         return true;
     }
 
     if (command === 'mass') {
-        var mass = parseInt(args[2], 10);
+        var target = args[2] ? getCommandTarget(gameServer, args[1]) : getSelfCommandTarget(handler);
+        var mass = parseInt(args[2] || args[1], 10);
+        if (!target || !target.player) {
+            sendCommandMessage(gameServer, sender, 'Player index tidak ditemukan.');
+            return true;
+        }
         if (isNaN(mass) || mass < 1) {
-            sendCommandMessage(gameServer, sender, 'Usage: /mass <index> <amount>');
+            sendCommandMessage(gameServer, sender, 'Usage: /mass <amount> atau /mass <index> <amount>');
             return true;
         }
         target.player.cells.forEach(function(cell) { cell.mass = mass; });
@@ -279,14 +311,27 @@ function executePlayerCommand(handler, user, rawText) {
 
     if (command === 'color') {
         var color;
-        if (String(args[2] || '').toLowerCase() === 'black') {
+        var target;
+        var colorOffset;
+        if (args.length >= 5 || (args.length >= 3 && String(args[2] || '').toLowerCase() === 'black')) {
+            target = getCommandTarget(gameServer, args[1]);
+            colorOffset = 2;
+        } else {
+            target = getSelfCommandTarget(handler);
+            colorOffset = 1;
+        }
+        if (!target || !target.player) {
+            sendCommandMessage(gameServer, sender, 'Player index tidak ditemukan.');
+            return true;
+        }
+        if (String(args[colorOffset] || '').toLowerCase() === 'black') {
             color = { r: 0, g: 0, b: 0 };
         } else {
-            var r = parseInt(args[2], 10);
-            var g = parseInt(args[3], 10);
-            var b = parseInt(args[4], 10);
+            var r = parseInt(args[colorOffset], 10);
+            var g = parseInt(args[colorOffset + 1], 10);
+            var b = parseInt(args[colorOffset + 2], 10);
             if (isNaN(r) || isNaN(g) || isNaN(b)) {
-                sendCommandMessage(gameServer, sender, 'Usage: /color <index> <r> <g> <b> atau /color <index> black');
+                sendCommandMessage(gameServer, sender, 'Usage: /color <r> <g> <b>, /color black, atau /color <index> <r> <g> <b>');
                 return true;
             }
             color = {
@@ -302,6 +347,11 @@ function executePlayerCommand(handler, user, rawText) {
     }
 
     if (command === 'merge') {
+        var target = getOptionalCommandTarget(handler, args[1]);
+        if (!target || !target.player) {
+            sendCommandMessage(gameServer, sender, 'Player index tidak ditemukan.');
+            return true;
+        }
         target.player.cells.forEach(function(cell) {
             cell.recombineTicks = 0;
         });
@@ -310,10 +360,15 @@ function executePlayerCommand(handler, user, rawText) {
     }
 
     if (command === 'tp') {
-        var x = parseInt(args[2], 10);
-        var y = parseInt(args[3], 10);
+        var target = args[3] ? getCommandTarget(gameServer, args[1]) : getSelfCommandTarget(handler);
+        var x = parseInt(args[3] ? args[2] : args[1], 10);
+        var y = parseInt(args[3] ? args[3] : args[2], 10);
+        if (!target || !target.player) {
+            sendCommandMessage(gameServer, sender, 'Player index tidak ditemukan.');
+            return true;
+        }
         if (isNaN(x) || isNaN(y)) {
-            sendCommandMessage(gameServer, sender, 'Usage: /tp <index> <x> <y>');
+            sendCommandMessage(gameServer, sender, 'Usage: /tp <x> <y> atau /tp <index> <x> <y>');
             return true;
         }
         target.player.cells.forEach(function(cell) {
@@ -325,9 +380,16 @@ function executePlayerCommand(handler, user, rawText) {
     }
 
     if (command === 'name') {
-        var newName = args.slice(2).join(' ');
+        var target = gameServer && gameServer.clients && gameServer.clients[parseInt(args[1], 10)] && args.length > 2 ?
+            getCommandTarget(gameServer, args[1]) :
+            getSelfCommandTarget(handler);
+        if (!target || !target.player) {
+            sendCommandMessage(gameServer, sender, 'Player index tidak ditemukan.');
+            return true;
+        }
+        var newName = target.id === 'self' ? args.slice(1).join(' ') : args.slice(2).join(' ');
         if (!newName) {
-            sendCommandMessage(gameServer, sender, 'Usage: /name <index> <newName>');
+            sendCommandMessage(gameServer, sender, 'Usage: /name <newName> atau /name <index> <newName>');
             return true;
         }
         target.player.setName(newName);
@@ -336,7 +398,12 @@ function executePlayerCommand(handler, user, rawText) {
     }
 
     if (command === 'split') {
-        var times = parseInt(args[2], 10) || 1;
+        var target = args[2] ? getCommandTarget(gameServer, args[1]) : getSelfCommandTarget(handler);
+        var times = parseInt(args[2] || args[1], 10) || 1;
+        if (!target || !target.player) {
+            sendCommandMessage(gameServer, sender, 'Player index tidak ditemukan.');
+            return true;
+        }
         times = Math.max(1, Math.min(16, times));
         gameServer.withWorld(target.player.world || target.socket.world, function() {
             for (var i = 0; i < times; i++) {

@@ -1102,6 +1102,20 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             ctx.restore();
         }
 
+        function drawWaterfallNameEffect(ctx, msg, x, y) {
+            if (!msg || msg.premiumEffect !== "waterfall") return;
+
+            var age = Math.max(0, Date.now() - (msg.time || Date.now()));
+
+            ctx.save();
+            ctx.fillStyle = "#57d7ff";
+            ctx.shadowColor = "#00a8ff";
+            ctx.shadowBlur = 8;
+            ctx.font = "16px Ubuntu";
+            ctx.fillText("💧", x + 1, y + 1 + Math.sin(age / 150) * 2);
+            ctx.restore();
+        }
+
         function drawNicknameAura(ctx, msg, x, y, width, height) {
             if (!msg || !msg.premiumEffect) return;
 
@@ -1226,6 +1240,31 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     ctx.fillRect(-1.5, -3, 3, 6);
                     ctx.restore();
                 }
+            } else if (msg.premiumEffect === "waterfall") {
+                var wave = ctx.createLinearGradient(x, topY, x, baseY + 8);
+                wave.addColorStop(0, "rgba(132, 231, 255, 0)");
+                wave.addColorStop(0.35, "rgba(58, 190, 255, .75)");
+                wave.addColorStop(1, "rgba(0, 115, 255, .15)");
+                ctx.fillStyle = wave;
+                ctx.shadowColor = "#00a8ff";
+                ctx.shadowBlur = 7 + pulse * 5;
+                for (i = 0; i < Math.max(6, Math.min(14, Math.floor(width / 8))); i++) {
+                    var dropX = x + (i / Math.max(1, Math.floor(width / 8))) * width;
+                    var dropY = topY + ((age / 45 + i * 9) % (height + 18));
+                    ctx.beginPath();
+                    ctx.ellipse(dropX, dropY, 2.4, 6 + Math.sin(age / 120 + i) * 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.strokeStyle = "rgba(102, 220, 255, .85)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x - 3, baseY);
+                for (i = 0; i <= Math.max(2, width / 8); i++) {
+                    var wx = x + i * 8;
+                    var wy = baseY + Math.sin(age / 95 + i) * 2;
+                    ctx.lineTo(wx, wy);
+                }
+                ctx.stroke();
             }
 
             ctx.restore();
@@ -1268,7 +1307,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             ctx.fillStyle = getChatNameColor(msg);
             if (msg.premiumEffect) {
                 ctx.save();
-                ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : "#ff1f1f";
+                ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : msg.premiumEffect === "waterfall" ? "#00a8ff" : "#ff1f1f";
                 ctx.shadowBlur = 8;
             }
             ctx.fillText(nameText, nameX, y);
@@ -1280,7 +1319,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             ctx.fillStyle = getChatTextColor(msg);
             if (msg.premiumEffect) {
                 ctx.save();
-                ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : "#ff1f1f";
+                ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : msg.premiumEffect === "waterfall" ? "#00a8ff" : "#ff1f1f";
                 ctx.shadowBlur = 6;
             }
             ctx.fillText(lines[0], msgX, y);
@@ -1297,7 +1336,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 ctx.fillStyle = getChatTextColor(msg);
                 if (msg.premiumEffect) {
                     ctx.save();
-                    ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : "#ff1f1f";
+                    ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : msg.premiumEffect === "waterfall" ? "#00a8ff" : "#ff1f1f";
                     ctx.shadowBlur = 6;
                 }
                 ctx.fillText(lines[j], paddingX, y);
