@@ -1,3 +1,4 @@
+'use strict';
 var Mode = require('./Mode');
 
 function Tournament() {
@@ -17,26 +18,18 @@ function Tournament() {
     // Gamemode Specific Variables
     this.gamePhase = 0; // 0 = Waiting for players, 1 = Prepare to start, 2 = Game in progress, 3 = End
     this.contenders = [];
-    this.eliminated = [];
     this.maxContenders = 12;
-    this.isBattleMode = false;
-    this.teamSize = 1;
-    this.teamCount = 0;
-    this.teamColors = [
-        {r: 245, g: 0, b: 0},
-        {r: 0, g: 120, b: 245}
-    ];
 
     this.winner;
-    this.winningTeam = -1;
     this.timer;
     this.timeLimit = 3600; // in seconds
 }
 
-module.exports = Tournament; // ⚡ hanya ini, tidak ada export lain
+module.exports = Tournament;
 Tournament.prototype = new Mode();
 
 // Gamemode Specific Functions
+
 Tournament.prototype.startGamePrep = function(gameServer) {
     this.gamePhase = 1;
     this.timer = this.prepTime;
@@ -49,139 +42,7 @@ Tournament.prototype.startGame = function(gameServer) {
     gameServer.config.playerDisconnectTime = this.dcTime;
 };
 
-Tournament.prototype.getTeamColor = function(team) {
-    var color = this.teamColors[team % this.teamColors.length];
-    return {
-        r: color.r,
-        g: color.g,
-        b: color.b
-    };
-};
-
-Tournament.prototype.getTeamSize = function() {
-    return this.teamSize > 0 ? this.teamSize : 1;
-};
-
-Tournament.prototype.isTeamBattle = function() {
-    return this.getTeamSize() > 1;
-};
-
-Tournament.prototype.hasTimeLimit = function() {
-    return !this.isBattleMode && this.timeLimit > 0;
-};
-
-Tournament.prototype.getTeamCount = function() {
-    if (this.teamCount > 0) return this.teamCount;
-    return Math.max(1, Math.ceil(this.maxContenders / this.getTeamSize()));
-};
-
-Tournament.prototype.getTeamPlayerCount = function(team) {
-    var count = 0;
-    for (var i = 0; i < this.contenders.length; i++) {
-        if (this.contenders[i].team === team) count++;
-    }
-    return count;
-};
-
-Tournament.prototype.getModeLabel = function() {
-    if (!this.isBattleMode) return "Tournament";
-    return this.isTeamBattle() ? "Battle 2 vs 2" : "Battle 1 vs 1";
-};
-
-Tournament.prototype.getPlayerLabel = function(player) {
-    if (!player) return "Waiting";
-    return player.getName ? (player.getName() || "Unnamed") : (player.name || "Unnamed");
-};
-
-Tournament.prototype.getTeamPlayers = function(team) {
-    var players = [];
-    for (var i = 0; i < this.contenders.length; i++) {
-        if (this.contenders[i].team === team) {
-            players.push(this.getPlayerLabel(this.contenders[i]));
-        }
-    }
-    return players;
-};
-
-Tournament.prototype.getTeamLabel = function(team) {
-    var players = this.getTeamPlayers(team);
-    var needed = this.getTeamSize();
-
-    while (players.length < needed) {
-        players.push("Waiting");
-    }
-
-    return players.join(" + ");
-};
-
-Tournament.prototype.writeBattleTeamsToLeaderboard = function(lb, startIndex) {
-    var index = startIndex || 0;
-
-    if (!this.isBattleMode) {
-        return index;
-    }
-
-    if (this.isTeamBattle()) {
-        lb[index++] = "Team A: " + this.getTeamLabel(0);
-        lb[index++] = "Team B: " + this.getTeamLabel(1);
-    } else {
-        lb[index++] = "Player 1: " + this.getPlayerLabel(this.contenders[0]);
-        lb[index++] = "Player 2: " + this.getPlayerLabel(this.contenders[1]);
-    }
-
-    return index;
-};
-
-Tournament.prototype.assignBattleTeam = function(player) {
-    var teamCount = this.getTeamCount();
-    var bestTeam = 0;
-    var bestCount = this.getTeamPlayerCount(0);
-
-    for (var i = 1; i < teamCount; i++) {
-        var count = this.getTeamPlayerCount(i);
-        if (count < bestCount) {
-            bestTeam = i;
-            bestCount = count;
-        }
-    }
-
-    player.team = bestTeam;
-    if (this.isTeamBattle()) {
-        player.color = this.getTeamColor(bestTeam);
-    }
-};
-
-Tournament.prototype.getAliveTeams = function() {
-    var teams = [];
-
-    for (var i = 0; i < this.contenders.length; i++) {
-        var team = this.contenders[i].team || 0;
-        if (teams.indexOf(team) == -1) {
-            teams.push(team);
-        }
-    }
-
-    return teams;
-};
-
-Tournament.prototype.getWinnerName = function() {
-    if (!this.isTeamBattle()) {
-        return this.winner ? this.winner.getName() : "";
-    }
-
-    var names = [];
-    for (var i = 0; i < this.contenders.length; i++) {
-        if (this.contenders[i].team === this.winningTeam) {
-            names.push(this.contenders[i].getName());
-        }
-    }
-
-    return names.length ? names.join(" + ") : ("Team " + (this.winningTeam + 1));
-};
-
 Tournament.prototype.endGame = function(gameServer) {
-    var teams = this.getAliveTeams();
-    this.winningTeam = teams.length ? teams[0] : -1;
     this.winner = this.contenders[0];
     this.gamePhase = 3;
     this.timer = this.endTime;
@@ -219,12 +80,11 @@ Tournament.prototype.prepare = function(gameServer) {
     if (gameServer.bots) {
         gameServer.bots.loadNames();
     }
+
     gameServer.run = false;
     this.gamePhase = 0;
     this.contenders = [];
-    this.eliminated = [];
     this.winner = null;
-    this.winningTeam = -1;
 
     if (config.tourneyAutoFill > 0) {
         this.timer = config.tourneyAutoFill;
@@ -239,12 +99,6 @@ Tournament.prototype.prepare = function(gameServer) {
     this.prepTime = config.tourneyPrepTime;
     this.endTime = config.tourneyEndTime;
     this.maxContenders = config.tourneyMaxPlayers;
-    var worldId = gameServer.activeWorld && gameServer.activeWorld.id;
-    this.isBattleMode = String(worldId || '').indexOf(':battle') === 0;
-    var defaultTeamSize = worldId === ':battle:2v2' ? 2 : 1;
-    this.teamSize = Math.max(1, parseInt(config.battleTeamSize, 10) || defaultTeamSize);
-    this.teamCount = Math.max(0, parseInt(config.battleTeamCount, 10) || 0);
-    this.haveTeams = this.isTeamBattle();
 
     this.timeLimit = config.tourneyTimeLimit * 60;
 };
@@ -253,20 +107,22 @@ Tournament.prototype.onPlayerDeath = function(gameServer) { };
 
 Tournament.prototype.formatTime = function(time) {
     if (time < 0) return "0:00";
-    var min = Math.floor(time/60);
+
+    var min = Math.floor(time / 60);
     var sec = time % 60;
     sec = (sec > 9) ? sec : "0" + sec.toString();
-    return min+":"+sec;
+    return min + ":" + sec;
 };
+
+// Override
 
 Tournament.prototype.onServerInit = function(gameServer) {
     this.prepare(gameServer);
 };
 
-Tournament.prototype.onPlayerSpawn = function(gameServer,player) {
+Tournament.prototype.onPlayerSpawn = function(gameServer, player) {
     if ((this.gamePhase == 0) && (this.contenders.length < this.maxContenders)) {
         player.color = gameServer.getRandomColor();
-        this.assignBattleTeam(player);
         this.contenders.push(player);
         gameServer.spawnPlayer(player);
 
@@ -284,8 +140,7 @@ Tournament.prototype.onCellRemove = function(cell) {
         var index = this.contenders.indexOf(owner);
         if (index != -1) {
             if ('_socket' in this.contenders[index].socket) human_just_died = true;
-            this.eliminated.push(owner);
-            this.contenders.splice(index,1);
+            this.contenders.splice(index, 1);
         }
 
         var humans = 0;
@@ -293,11 +148,7 @@ Tournament.prototype.onCellRemove = function(cell) {
             if ('_socket' in this.contenders[i].socket) humans++;
         }
 
-        var aliveTeams = this.getAliveTeams();
-        var teamBattleEnded = this.isTeamBattle() && aliveTeams.length <= 1;
-        var soloBattleEnded = !this.isTeamBattle() && this.contenders.length == 1;
-
-        if ((soloBattleEnded || teamBattleEnded || humans == 0 || (humans == 1 && human_just_died)) && this.gamePhase == 2) {
+        if ((this.contenders.length == 1 || humans == 0 || (humans == 1 && human_just_died)) && this.gamePhase == 2) {
             this.endGame(cell.owner.gameServer);
         } else {
             this.onPlayerDeath(cell.owner.gameServer);
@@ -310,10 +161,9 @@ Tournament.prototype.updateLB = function(gameServer) {
 
     switch (this.gamePhase) {
         case 0:
-            lb[0] = this.getModeLabel();
-            lb[1] = "Waiting for players";
-            lb[2] = this.contenders.length+"/"+this.maxContenders;
-            this.writeBattleTeamsToLeaderboard(lb, 3);
+            lb[0] = "Waiting for";
+            lb[1] = "players: ";
+            lb[2] = this.contenders.length + "/" + this.maxContenders;
             if (this.autoFill) {
                 if (this.timer <= 0) {
                     this.fillBots(gameServer);
@@ -323,9 +173,9 @@ Tournament.prototype.updateLB = function(gameServer) {
             }
             break;
         case 1:
-            lb[0] = this.getModeLabel();
-            lb[1] = "Starting in " + this.timer.toString();
-            this.writeBattleTeamsToLeaderboard(lb, 2);
+            lb[0] = "Game starting in";
+            lb[1] = this.timer.toString();
+            lb[2] = "Good luck!";
             if (this.timer <= 0) {
                 this.startGame(gameServer);
             } else {
@@ -333,21 +183,20 @@ Tournament.prototype.updateLB = function(gameServer) {
             }
             break;
         case 2:
-            lb[0] = this.getModeLabel();
-            var nextIndex = this.writeBattleTeamsToLeaderboard(lb, 1);
-            lb[nextIndex++] = "Alive: " + this.contenders.length+"/"+this.maxContenders;
-            if (this.hasTimeLimit()) {
-                lb[nextIndex++] = "Time: " + this.formatTime(this.timeLimit);
+            lb[0] = "Players Remaining";
+            lb[1] = this.contenders.length + "/" + this.maxContenders;
+            lb[2] = "Time Limit:";
+            lb[3] = this.formatTime(this.timeLimit);
+            if (this.timeLimit < 0) {
+                this.endGameTimeout(gameServer);
+            } else {
                 this.timeLimit--;
-                if (this.timeLimit < 0) {
-                    this.endGameTimeout(gameServer);
-                }
             }
             break;
         case 3:
-            lb[0] = this.getModeLabel();
-            lb[1] = "Winner:";
-            lb[2] = this.getWinnerName();
+            lb[0] = "Congratulations";
+            lb[1] = this.winner.getName();
+            lb[2] = "for winning!";
             if (this.timer <= 0) {
                 this.onServerInit(gameServer);
                 gameServer.startingFood();
