@@ -1769,7 +1769,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             matchStats.lastLeaderboardCheck = now;
         }
 
-        if (wasAliveLastFrame && !isAlive && hasSpawnedOnce && !matchResultVisible) {
+        if (wasAliveLastFrame && !isAlive && hasSpawnedOnce && !matchResultVisible && !isTournamentLikeMode()) {
             matchStats.endTime = now;
             hideTopTimePopup();
             showMatchResult();
@@ -1800,6 +1800,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
 
         return "Ubuntu, Arial, sans-serif";
+    }
+
+    function isTournamentLikeMode() {
+        var mode = String(wHandle.currentGameMode || gameMode || '');
+        return mode === ':tournament' || mode.indexOf(':battle') === 0;
     }
 
     function getMatchResultFooterHTML() {

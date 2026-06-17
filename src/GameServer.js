@@ -971,7 +971,7 @@ GameServer.prototype.removeNode = function(node) {
 	// Special on-remove actions
     node.onRemove(this);
 
-    if (removedPlayer && removedPlayer.cells.length <= 0 && !removedPlayer.matchResultSent) {
+    if (removedPlayer && removedPlayer.cells.length <= 0 && !removedPlayer.matchResultSent && !this.shouldDelayMatchResult(removedPlayer)) {
         removedPlayer.matchResultSent = true;
         this.pauseTop1Stats(removedPlayer, removedPlayer.world, true);
         this.sendMatchResult(removedPlayer);
@@ -987,6 +987,14 @@ GameServer.prototype.removeNode = function(node) {
         // Remove from client
         client.nodeDestroyQueue.push(node); 
     }
+}
+
+GameServer.prototype.shouldDelayMatchResult = function(player) {
+    var world = player && (player.world || this.activeWorld);
+    var mode = world && world.gameMode;
+
+    if (!mode || mode.name !== "Tournament") return false;
+    return mode.gamePhase == 2;
 }
 
 GameServer.prototype.mainLoop = function() {
