@@ -6,6 +6,20 @@ function UpdateNodes(destroyQueue, nodes, nonVisibleNodes) {
 
 module.exports = UpdateNodes;
 
+var SKIN_META_START = '\uE120';
+var SKIN_META_END = '\uE121';
+
+function getNodeName(node) {
+    var name = node.getName();
+    var skinName = node.getSkinName ? node.getSkinName() : '';
+
+    if (name && skinName) {
+        return SKIN_META_START + skinName + SKIN_META_END + name;
+    }
+
+    return name;
+}
+
 UpdateNodes.prototype.build = function() {
     
     // Calculate nodes sub packet size before making the data view
@@ -17,7 +31,7 @@ UpdateNodes.prototype.build = function() {
             continue;
         }
         
-        nodesLength = nodesLength + 16 + (node.getName().length * 2);
+        nodesLength = nodesLength + 16 + (getNodeName(node).length * 2);
     }
     
     var buf = new ArrayBuffer(3 + (this.destroyQueue.length * 12) + (this.nonVisibleNodes.length * 4) + nodesLength + 8);
@@ -64,7 +78,7 @@ UpdateNodes.prototype.build = function() {
         view.setUint8(offset + 13, v, true); // Flags
         offset += 14;
         
-        var name = node.getName();
+        var name = getNodeName(node);
         if (name) {
             for (var j = 0; j < name.length; j++) {
                 var c = name.charCodeAt(j);

@@ -5,6 +5,7 @@ function PlayerTracker(gameServer, socket) {
     this.isOnline = true;
     this.name = "";
     this.guildTag = "";
+    this.skinKey = "";
     this.gameServer = gameServer;
     this.socket = socket;
     this.nodeDestroyQueue = [];
@@ -84,6 +85,10 @@ PlayerTracker.prototype.getDisplayName = function() {
     }
 
     return "[" + this.guildTag + "] " + this.name;
+}
+
+PlayerTracker.prototype.getSkinName = function() {
+    return this.skinKey || "";
 }
 
 PlayerTracker.prototype.getScore = function(reCalcScore) {

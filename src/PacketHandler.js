@@ -47,6 +47,34 @@ function normalizePremiumChatEffect(value) {
     }[value] ? value : '';
 }
 
+function getPlayerSkinKey(user) {
+    return user && user.id ? 'user:' + String(user.id).toLowerCase() : '';
+}
+
+function getGuildSkinKey(user) {
+    var guildTag = String(user && user.guildTag || user && user.guildPrefix || '').trim().toLowerCase();
+    return guildTag ? 'guild:' + guildTag : '';
+}
+
+function getActiveSkinKey(user) {
+    var activeSkinType = String(user && user.activeSkinType || 'player').toLowerCase();
+    var guildSkinKey = getGuildSkinKey(user);
+
+    if (activeSkinType === 'guild' && guildSkinKey && user.guildSkinUrl) {
+        return guildSkinKey;
+    }
+
+    if (user && user.skinUrl) {
+        return getPlayerSkinKey(user);
+    }
+
+    if (guildSkinKey && user && user.guildSkinUrl) {
+        return guildSkinKey;
+    }
+
+    return '';
+}
+
 function applyAuthUserToClient(client, user) {
     client.authUser = {
         id: user.id,
@@ -65,6 +93,7 @@ function applyAuthUserToClient(client, user) {
     client.authUser.xp = parseInt(user.xp, 10) || 0;
     client.authUser.xpMax = parseInt(user.xpMax, 10) || 0;
     client.authUser.level = parseInt(user.level, 10) || 1;
+    client.skinKey = getActiveSkinKey(user);
     client.setGuildTag(client.authUser.guildTag);
 }
 
@@ -336,6 +365,7 @@ PacketHandler.prototype.setNickname = function(newNick) {
         }
     } else {
         client.setGuildTag("");
+        client.skinKey = "";
     }
 
     if (client.cells.length < 1) {

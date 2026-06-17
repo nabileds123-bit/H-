@@ -19,6 +19,19 @@
     // is this running in a touch capable environment?
         touchable = 'createTouch' in document,
         touches = []; // array of touch vectors
+    var nonPassiveEventOptions = false;
+    try {
+        var passiveTestOptions = Object.defineProperty({}, "passive", {
+            get: function () {
+                nonPassiveEventOptions = { passive: false };
+            }
+        });
+        var passiveTestHandler = function () {};
+        wHandle.addEventListener("testPassive", passiveTestHandler, passiveTestOptions);
+        wHandle.removeEventListener("testPassive", passiveTestHandler, passiveTestOptions);
+    } catch (e) {
+        nonPassiveEventOptions = false;
+    }
 
     var leftTouchID = -1,
         leftTouchPos = new Vector2(0,0),
@@ -61,15 +74,17 @@
 
 
         if(touchable) {
-            mainCanvas.addEventListener( 'touchstart', onTouchStart, false );
-            mainCanvas.addEventListener( 'touchmove', onTouchMove, false );
-            mainCanvas.addEventListener( 'touchend', onTouchEnd, false );
+            mainCanvas.addEventListener( 'touchstart', onTouchStart, nonPassiveEventOptions );
+            mainCanvas.addEventListener( 'touchmove', onTouchMove, nonPassiveEventOptions );
+            mainCanvas.addEventListener( 'touchend', onTouchEnd, nonPassiveEventOptions );
              }
 
         mainCanvas.onmouseup = function () {
         };
-        if (/firefox/i.test(navigator.userAgent)) {
-            document.addEventListener("DOMMouseScroll", handleWheel, false);
+        if ("onwheel" in document) {
+            document.addEventListener("wheel", handleWheel, nonPassiveEventOptions);
+        } else if (/firefox/i.test(navigator.userAgent)) {
+            document.addEventListener("DOMMouseScroll", handleWheel, nonPassiveEventOptions);
         } else {
             document.body.onmousewheel = handleWheel;
         }
@@ -255,7 +270,7 @@
 
     function onTouchMove(e) {
         // Prevent the browser from doing its default thing (scroll, zoom)
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
 
         for(var i = 0; i<e.changedTouches.length; i++){
             var touch =e.changedTouches[i];
@@ -292,6 +307,7 @@
 
 
     function handleWheel(event) {
+        if (event && event.cancelable) event.preventDefault();
     // Normalisasi ke dy (px): dy>0 = scroll down
     var dy = 0;
     if (typeof event.deltaY === 'number') {
@@ -495,7 +511,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     }
 
     function onWsClose(event) {
-        console.log("socket close");
+        console.log("socket close" + (event ? " code=" + event.code + " reason=" + (event.reason || "") + " clean=" + event.wasClean : ""));
         if (event && event.code === 4001) {
             console.log("selected game mode is inactive; reconnect stopped");
             wjQuery("#connecting").show();
@@ -512,6 +528,36 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function onWsMessage(msg) {
         handleWsMessage(new DataView(msg.data))
+    }
+
+    var SKIN_META_START = "\uE120";
+    var SKIN_META_END = "\uE121";
+
+    function parseCellName(name) {
+        name = String(name || "");
+        if (name.charAt(0) !== SKIN_META_START) {
+            return {
+                name: name,
+                skinName: ""
+            };
+        }
+
+        var endIndex = name.indexOf(SKIN_META_END, 1);
+        if (endIndex < 0) {
+            return {
+                name: name,
+                skinName: ""
+            };
+        }
+
+        return {
+            name: name.slice(endIndex + 1),
+            skinName: name.slice(1, endIndex).toLowerCase()
+        };
+    }
+
+    function isPrivateSkinKey(skinName) {
+        return /^(user|guild):/i.test(String(skinName || ""));
     }
 
     function handleWsMessage(msg) {
@@ -1264,6 +1310,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 if (0 == char) break;
                 name += String.fromCharCode(char)
             }
+            var parsedName = parseCellName(name);
+            name = parsedName.name;
             var node = null;
             if (nodes.hasOwnProperty(nodeid)) {
                 node = nodes[nodeid];
@@ -1279,6 +1327,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 node.ka = posX;
                 node.la = posY;
             }
+            node.skinName = parsedName.skinName;
             node.isVirus = flagVirus;
             node.isAgitated = flagAgitated;
             node.nx = posX;
@@ -2381,6 +2430,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         ny: 0,
         nSize: 0,
         flag: 0, //what does this mean
+        skinName: "",
         updateTime: 0,
         updateCode: 0,
         drawTime: 0,
@@ -2564,7 +2614,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     }
                 }
                 ctx.closePath();
-                var skinName = this.name.toLowerCase();
+                var hasPrivateSkinName = !!this.skinName;
+                var skinName = this.skinName || this.name.toLowerCase();
                 var clanSkinName = '';
                 var playerSkinName = skinName;
                 if (skinName.indexOf('[') != -1) {
@@ -2574,6 +2625,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     playerSkinName = skinName.slice(clanEnd + 1).trim();
                     skinName = skinFileMap[playerSkinName] ? playerSkinName : clanSkinName;
                     //console.log(skinName);
+                }
+                if (!hasPrivateSkinName && isPrivateSkinKey(skinName)) {
+                    skinName = '';
                 }
 
                 if (!this.isAgitated && showSkin && ':teams' != gameMode) {

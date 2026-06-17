@@ -248,23 +248,33 @@ GameServer.prototype.start = function() {
               });
           }
 
+          function getPlayerSkinKey(user) {
+            return user && user.id ? 'user:' + String(user.id).toLowerCase() : '';
+          }
+
+          function getGuildSkinKey(guildTag) {
+            guildTag = String(guildTag || '').trim().toLowerCase();
+            return guildTag ? 'guild:' + guildTag : '';
+          }
+
           userStore.listUsers().forEach(function(user) {
-            var playerName = String(user.username || user.skin || '').trim();
+            var playerSkinKey = getPlayerSkinKey(user);
             var guildTag = String(user.guildTag || '').trim();
+            var guildSkinKey = getGuildSkinKey(guildTag);
             var activeSkinType = String(user.activeSkinType || 'player').toLowerCase();
 
-            if (activeSkinType === 'guild' && guildTag && user.guildSkinUrl) {
-              names.push(guildTag);
-              skinFiles[guildTag.toLowerCase()] = user.guildSkinUrl;
+            if (activeSkinType === 'guild' && guildSkinKey && user.guildSkinUrl) {
+              names.push(guildSkinKey);
+              skinFiles[guildSkinKey] = user.guildSkinUrl;
               return;
             }
 
-            if (playerName && user.skinUrl) {
-              names.push(playerName);
-              skinFiles[playerName.toLowerCase()] = user.skinUrl;
-            } else if (guildTag && user.guildSkinUrl) {
-              names.push(guildTag);
-              skinFiles[guildTag.toLowerCase()] = user.guildSkinUrl;
+            if (playerSkinKey && user.skinUrl) {
+              names.push(playerSkinKey);
+              skinFiles[playerSkinKey] = user.skinUrl;
+            } else if (guildSkinKey && user.guildSkinUrl) {
+              names.push(guildSkinKey);
+              skinFiles[guildSkinKey] = user.guildSkinUrl;
             }
           });
 

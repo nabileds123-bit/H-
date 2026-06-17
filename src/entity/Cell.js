@@ -33,6 +33,14 @@ Cell.prototype.getName = function() {
 	}
 }
 
+Cell.prototype.getSkinName = function() {
+    if (this.owner && this.owner.getSkinName) {
+        return this.owner.getSkinName();
+    }
+
+    return "";
+}
+
 Cell.prototype.setColor = function(color) {
     this.color.r = color.r;
     this.color.b = color.b;
