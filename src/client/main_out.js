@@ -823,11 +823,62 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             return lines;
         }
 
+        function drawRedBullCharge(ctx, msg, x, y) {
+            if (!msg || !msg.isRedBull) return;
+
+            var age = Math.max(0, Date.now() - (msg.time || Date.now()));
+            var cycle = age % 900;
+            var progress = cycle / 900;
+            var dash = Math.sin(progress * Math.PI);
+            var bx = x + dash * 8;
+            var by = y + 9;
+
+            ctx.save();
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.globalAlpha = 0.25 + dash * 0.35;
+            ctx.strokeStyle = "#ff3b3b";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(bx - 16, by + 4);
+            ctx.lineTo(bx - 7, by + 4);
+            ctx.moveTo(bx - 13, by);
+            ctx.lineTo(bx - 5, by);
+            ctx.stroke();
+
+            ctx.globalAlpha = 1;
+            ctx.shadowColor = "#ff1f1f";
+            ctx.shadowBlur = 7;
+            ctx.fillStyle = "#d40000";
+            ctx.beginPath();
+            ctx.moveTo(bx + 1, by - 7);
+            ctx.lineTo(bx + 12, by);
+            ctx.lineTo(bx + 1, by + 7);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.moveTo(bx + 2, by - 6);
+            ctx.lineTo(bx - 5, by - 10);
+            ctx.lineTo(bx - 2, by - 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(bx + 2, by + 6);
+            ctx.lineTo(bx - 5, by + 10);
+            ctx.lineTo(bx - 2, by + 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
         for (var i = 0; i < visibleCount; i++) {
             var msg = chatBoard[chatBoard.length - visibleCount + i];
 
             var nameText = msg.name + ": ";
-            var nameX = paddingX;
+            var nameX = paddingX + (msg.isRedBull ? 28 : 0);
             var nameWidth = ctx.measureText(nameText).width;
             var msgX = nameX + nameWidth;
 
@@ -851,6 +902,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             if (y + lineHeight > maxY) break;
 
             // nama player
+            drawRedBullCharge(ctx, msg, paddingX + 8, y);
             ctx.fillStyle = getChatNameColor(msg);
             if (msg.isRedBull) {
                 ctx.save();
