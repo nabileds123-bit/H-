@@ -215,6 +215,8 @@ function normalizeUserChanges(body) {
         'email',
         'emailVerified',
         'accountType',
+        'commandRole',
+        'commandPermissions',
         'premiumChatColor',
         'premiumChatBadge',
         'premiumChatEffect',

@@ -47,6 +47,310 @@ function normalizePremiumChatEffect(value) {
     }[value] ? value : '';
 }
 
+function normalizeCommandRole(value) {
+    value = String(value || '').trim().toLowerCase();
+    return value === 'admin' || value === 'moderator' ? value : '';
+}
+
+function normalizeCommandPermissions(value) {
+    var permissions = {};
+    String(value || '').split(/[,\s]+/).forEach(function(item) {
+        item = item.trim().toLowerCase();
+        item = normalizeCommandName(item);
+        if (item) permissions[item] = true;
+    });
+    return permissions;
+}
+
+function normalizeCommandName(command) {
+    command = String(command || '').toLowerCase();
+    if (command === 'point') return 'points';
+    if (command === 'addpoints') return 'points';
+    return command;
+}
+
+function canUseCommand(user, command) {
+    command = normalizeCommandName(command);
+    var role = normalizeCommandRole(user && user.commandRole);
+    if (role === 'admin') return true;
+
+    var permissions = normalizeCommandPermissions(user && user.commandPermissions);
+    if (permissions[command] || permissions.all) return true;
+
+    if (role === 'moderator') {
+        return {
+            playerlist: true,
+            status: true,
+            say: true,
+            kick: true
+        }[String(command || '').toLowerCase()] === true;
+    }
+
+    return false;
+}
+
+function isPlayerCommandMessage(text) {
+    var match = /^\/([a-z]+)(\s|$)/i.exec(String(text || '').trim());
+    if (!match) return false;
+
+    return {
+        cmd: true,
+        playerlist: true,
+        kick: true,
+        mass: true,
+        color: true,
+        merge: true,
+        tp: true,
+        say: true,
+        killall: true,
+        point: true,
+        points: true,
+        addpoints: true,
+        status: true,
+        name: true,
+        split: true
+    }[match[1].toLowerCase()] === true;
+}
+
+function parseCommandArgs(text) {
+    return String(text || '').trim().split(/\s+/).filter(Boolean);
+}
+
+function sendCommandMessage(gameServer, player, message) {
+    if (gameServer && gameServer.sendSystemMessage) {
+        gameServer.sendSystemMessage(player, '[CMD] ' + message);
+    } else if (player && player.socket) {
+        player.socket.sendPacket(new Packet.Message('[CMD] ' + message));
+    }
+}
+
+function getCommandTarget(gameServer, index) {
+    var id = parseInt(index, 10);
+    if (isNaN(id) || !gameServer || !gameServer.clients || !gameServer.clients[id]) {
+        return null;
+    }
+
+    return {
+        id: id,
+        socket: gameServer.clients[id],
+        player: gameServer.clients[id].playerTracker
+    };
+}
+
+function findCommandPointUser(gameServer, identifier) {
+    var idText = String(identifier || '').trim();
+    var index = parseInt(idText, 10);
+
+    if (!isNaN(index) && String(index) === idText && gameServer && gameServer.clients && gameServer.clients[index]) {
+        var player = gameServer.clients[index].playerTracker;
+        if (player && player.authUser && player.authUser.id) {
+            return userStore.findByIdOrUsernameOrEmail(player.authUser.id);
+        }
+    }
+
+    return userStore.findByIdOrUsernameOrEmail(idText);
+}
+
+function syncLiveUserPoints(gameServer, userId, points) {
+    if (!gameServer || !gameServer.clients) return;
+
+    gameServer.clients.forEach(function(client) {
+        var player = client && client.playerTracker;
+        if (!player || !player.authUser || String(player.authUser.id || '') !== String(userId || '')) return;
+        player.authUser.points = points;
+        sendCommandMessage(gameServer, player, 'Points kamu sekarang: ' + points);
+    });
+}
+
+function executePlayerCommand(handler, user, rawText) {
+    var gameServer = handler.gameServer;
+    var sender = handler.socket.playerTracker;
+    var text = String(rawText || '').trim();
+    if (/^\/cmd(\s|$)/i.test(text)) {
+        text = text.replace(/^\/cmd\s*/i, '').trim();
+    } else {
+        text = text.replace(/^\//, '').trim();
+    }
+    var args = parseCommandArgs(text);
+    var command = normalizeCommandName(args[0]);
+
+    if (!command) {
+        sendCommandMessage(gameServer, sender, 'Usage: /mass <index> <amount>, /kick <index>, /tp <index> <x> <y>, /playerlist');
+        return true;
+    }
+
+    if (!canUseCommand(user, command)) {
+        sendCommandMessage(gameServer, sender, 'Kamu tidak punya akses command ini.');
+        return true;
+    }
+
+    if (command === 'playerlist') {
+        var lines = ['Players connected: ' + gameServer.clients.length];
+        gameServer.clients.forEach(function(client, i) {
+            if (client && client.playerTracker) {
+                lines.push(i + ': ' + (client.playerTracker.name || 'unnamed') + ' score=' + (client.playerTracker.score || 0));
+            }
+        });
+        sendCommandMessage(gameServer, sender, lines.join(' | '));
+        return true;
+    }
+
+    if (command === 'status') {
+        sendCommandMessage(gameServer, sender, 'Players: ' + gameServer.clients.length + ' | Uptime: ' + Math.floor(process.uptime()) + 's');
+        return true;
+    }
+
+    if (command === 'say') {
+        var broadcast = args.slice(1).join(' ');
+        if (!broadcast) {
+            sendCommandMessage(gameServer, sender, 'Usage: /say <message>');
+            return true;
+        }
+        gameServer.sendMessage('[Admin] ' + broadcast);
+        sendCommandMessage(gameServer, sender, 'Broadcast sent.');
+        return true;
+    }
+
+    if (command === 'killall') {
+        var removed = 0;
+        gameServer.clients.forEach(function(client) {
+            var player = client && client.playerTracker;
+            if (!player || !player.cells) return;
+            player.cells.slice(0).forEach(function(cell) {
+                gameServer.withWorld(player.world || client.world, function() {
+                    this.removeNode(cell);
+                    removed++;
+                });
+            });
+        });
+        sendCommandMessage(gameServer, sender, 'Removed ' + removed + ' cells.');
+        return true;
+    }
+
+    if (command === 'points') {
+        var targetUser = findCommandPointUser(gameServer, args[1]);
+        var amount = parseInt(args[2], 10);
+
+        if (!targetUser || isNaN(amount) || amount === 0) {
+            sendCommandMessage(gameServer, sender, 'Usage: /point <nickname> <amount>');
+            return true;
+        }
+
+        var currentPoints = parseInt(targetUser.points, 10) || 0;
+        var nextPoints = currentPoints + amount;
+        if (nextPoints < 0) {
+            sendCommandMessage(gameServer, sender, 'Points tidak boleh kurang dari 0.');
+            return true;
+        }
+
+        var updatedUser = userStore.updateUser(targetUser.id, {
+            points: nextPoints,
+            lastPointCommandBy: user.username || user.id || '',
+            lastPointCommandReason: args.slice(3).join(' '),
+            lastPointCommandAt: Date.now()
+        });
+        syncLiveUserPoints(gameServer, updatedUser.id, nextPoints);
+        sendCommandMessage(gameServer, sender, 'Points ' + updatedUser.username + ': ' + currentPoints + ' -> ' + nextPoints + ' (' + (amount > 0 ? '+' : '') + amount + ')');
+        return true;
+    }
+
+    var target = getCommandTarget(gameServer, args[1]);
+    if (!target || !target.player) {
+        sendCommandMessage(gameServer, sender, 'Player index tidak ditemukan.');
+        return true;
+    }
+
+    if (command === 'kick') {
+        if (target.socket.close) target.socket.close();
+        sendCommandMessage(gameServer, sender, 'Player ' + target.id + ' kicked.');
+        return true;
+    }
+
+    if (command === 'mass') {
+        var mass = parseInt(args[2], 10);
+        if (isNaN(mass) || mass < 1) {
+            sendCommandMessage(gameServer, sender, 'Usage: /mass <index> <amount>');
+            return true;
+        }
+        target.player.cells.forEach(function(cell) { cell.mass = mass; });
+        sendCommandMessage(gameServer, sender, 'Set mass of ' + (target.player.name || target.id) + ' to ' + mass + '.');
+        return true;
+    }
+
+    if (command === 'color') {
+        var color;
+        if (String(args[2] || '').toLowerCase() === 'black') {
+            color = { r: 0, g: 0, b: 0 };
+        } else {
+            var r = parseInt(args[2], 10);
+            var g = parseInt(args[3], 10);
+            var b = parseInt(args[4], 10);
+            if (isNaN(r) || isNaN(g) || isNaN(b)) {
+                sendCommandMessage(gameServer, sender, 'Usage: /color <index> <r> <g> <b> atau /color <index> black');
+                return true;
+            }
+            color = {
+                r: Math.max(0, Math.min(255, r)),
+                g: Math.max(0, Math.min(255, g)),
+                b: Math.max(0, Math.min(255, b))
+            };
+        }
+        target.player.setColor(color);
+        target.player.cells.forEach(function(cell) { if (cell.setColor) cell.setColor(color); });
+        sendCommandMessage(gameServer, sender, 'Color changed.');
+        return true;
+    }
+
+    if (command === 'merge') {
+        target.player.cells.forEach(function(cell) {
+            cell.recombineTicks = 0;
+        });
+        sendCommandMessage(gameServer, sender, 'Forced merge for ' + (target.player.name || target.id) + '.');
+        return true;
+    }
+
+    if (command === 'tp') {
+        var x = parseInt(args[2], 10);
+        var y = parseInt(args[3], 10);
+        if (isNaN(x) || isNaN(y)) {
+            sendCommandMessage(gameServer, sender, 'Usage: /tp <index> <x> <y>');
+            return true;
+        }
+        target.player.cells.forEach(function(cell) {
+            cell.position.x = x;
+            cell.position.y = y;
+        });
+        sendCommandMessage(gameServer, sender, 'Teleported player ' + target.id + '.');
+        return true;
+    }
+
+    if (command === 'name') {
+        var newName = args.slice(2).join(' ');
+        if (!newName) {
+            sendCommandMessage(gameServer, sender, 'Usage: /name <index> <newName>');
+            return true;
+        }
+        target.player.setName(newName);
+        sendCommandMessage(gameServer, sender, 'Changed name of player ' + target.id + '.');
+        return true;
+    }
+
+    if (command === 'split') {
+        var times = parseInt(args[2], 10) || 1;
+        times = Math.max(1, Math.min(16, times));
+        gameServer.withWorld(target.player.world || target.socket.world, function() {
+            for (var i = 0; i < times; i++) {
+                this.splitCells(target.player);
+            }
+        });
+        sendCommandMessage(gameServer, sender, 'Forced split x' + times + ' for player ' + target.id + '.');
+        return true;
+    }
+
+    sendCommandMessage(gameServer, sender, 'Unknown command: ' + command);
+    return true;
+}
+
 function getPlayerSkinKey(user) {
     return user && user.id ? 'user:' + String(user.id).toLowerCase() : '';
 }
@@ -88,7 +392,9 @@ function applyAuthUserToClient(client, user) {
         premiumChatEffect: user.premiumChatEffect || '',
         guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
         activeSkinType: user.activeSkinType || 'player',
-        country_code: user.country_code || user.countryCode || ''
+        country_code: user.country_code || user.countryCode || '',
+        commandRole: normalizeCommandRole(user.commandRole),
+        commandPermissions: user.commandPermissions || ''
     };
     client.authUser.xp = parseInt(user.xp, 10) || 0;
     client.authUser.xpMax = parseInt(user.xpMax, 10) || 0;
@@ -283,6 +589,11 @@ this.merg = true;
                         this.socket.playerTracker.setName(user.username);
                     }
                 }
+            }
+
+            if (isPlayerCommandMessage(message)) {
+                executePlayerCommand(this, user, message);
+                break;
             }
 
             if (!user || !isPremiumUser(user)) {

@@ -437,20 +437,30 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         wjQuery("#region").val() ? wjQuery("#locationKnown").append(wjQuery("#region")) : wjQuery("#locationUnknown").append(wjQuery("#region"))
     }
 
-    function attemptConnection() {
+    function attemptConnection(force) {
         console.log("Find " + w + gameMode);
-        wsConnect(CONNECTION_PROTOCOL + CONNECTION_URL)
+        wsConnect(CONNECTION_PROTOCOL + CONNECTION_URL, force)
     }
 
-    function showConnecting() {
+    function showConnecting(force) {
         if (ma && w) {
             wjQuery("#connecting").show();
-            attemptConnection()
+            if (!force && (wsIsOpen() || wsIsConnecting())) {
+                return;
+            }
+            attemptConnection(force)
         }
     }
 
-    function wsConnect(wsUrl) {
+    function wsConnect(wsUrl, force) {
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
         if (ws) {
+            if (!force && (ws.readyState === 0 || ws.readyState === 1)) {
+                return;
+            }
             ws.onopen = null;
             ws.onmessage = null;
             ws.onclose = null;
@@ -522,7 +532,10 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             wjQuery("#connecting").show();
             return;
         }
-        setTimeout(showConnecting, delay);
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+        }
+        reconnectTimer = setTimeout(showConnecting, delay);
         delay *= 1.5
     }
 
@@ -1431,6 +1444,29 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         }
     }
 
+    function isCommandMessage(str) {
+        var match = /^\/([a-z]+)(\s|$)/i.exec(String(str || "").trim());
+        if (!match) return false;
+
+        return {
+            cmd: true,
+            playerlist: true,
+            kick: true,
+            mass: true,
+            color: true,
+            merge: true,
+            tp: true,
+            say: true,
+            killall: true,
+            point: true,
+            points: true,
+            addpoints: true,
+            status: true,
+            name: true,
+            split: true
+        }[match[1].toLowerCase()] === true;
+    }
+
     function sendChat(str) {
         str = String(str || "").trim();
 
@@ -1444,8 +1480,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 return;
             }
 
+            var isAdminCommand = isCommandMessage(str);
             var canSendPremiumChat = typeof wHandle.canSendPremiumChat === 'function' ? wHandle.canSendPremiumChat() : false;
-            if (!canSendPremiumChat) {
+            if (!isAdminCommand && !canSendPremiumChat) {
                 if (typeof wHandle.showPremiumChatWarning === 'function') {
                     wHandle.showPremiumChatWarning();
                 }
@@ -1478,6 +1515,10 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function wsIsOpen() {
         return null != ws && ws.readyState == ws.OPEN
+    }
+
+    function wsIsConnecting() {
+        return null != ws && ws.readyState === 0
     }
 
     function sendUint8(a) {
@@ -2326,6 +2367,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         if (wsIsOpen()) {
             sendGameMode();
             sendUint8(1);
+        } else if (wsIsConnecting()) {
+            wjQuery("#connecting").show();
         } else {
             wsConnect();
         }
@@ -2440,6 +2483,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
 
     var delay = 500,
+        reconnectTimer = null,
         oldX = -1,
         oldY = -1,
         Canvas = null,

@@ -167,6 +167,8 @@ function createUser(data) {
         passwordHash: data.passwordHash,
         emailVerified: false,
         accountType: 'Free',
+        commandRole: '',
+        commandPermissions: '',
         premiumChatColor: '',
         premiumChatBadge: '',
         premiumChatEffect: '',
