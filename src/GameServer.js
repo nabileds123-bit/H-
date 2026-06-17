@@ -89,7 +89,8 @@ function GameServer(mult, prt) {
         maintenanceKey: 'change-this-key',
         maintenanceImage: '/img/bg.png',
         disabledWorlds: '',
-        defaultWorld: ''
+        defaultWorld: '',
+        hardcoreRoomMaxPlayers: 32
     };
     // Parse config
     this.loadConfig();
@@ -344,7 +345,7 @@ GameServer.prototype.start = function() {
         ws.remotePort = ws._socket.remotePort;
         ws.playerTracker = new PlayerTracker(this, ws);
         ws.packetHandler = new PacketHandler(this, ws);
-        this.setClientWorld(ws, this.getDefaultWorldId());
+        this.setClientWorld(ws, this.getDefaultWorldId(), true);
         ws.on('message', ws.packetHandler.handleMessage.bind(ws.packetHandler));
 
         var bindObject = { server: this, socket: ws };
@@ -527,26 +528,56 @@ GameServer.prototype.withWorld = function(world, callback) {
     return result;
 }
 
-GameServer.prototype.resolveWorldId = function(mode) {
-    if (mode == ':hardcore') {
-        if (this.worlds[':hardcore:1'] && this.worlds[':hardcore:2']) {
-            return Math.random() < 0.5 ? ':hardcore:1' : ':hardcore:2';
+GameServer.prototype.getWorldPlayerCount = function(world) {
+    if (!world || !world.clients) return 0;
+
+    var count = 0;
+    for (var i = 0; i < world.clients.length; i++) {
+        var client = world.clients[i];
+        if (client && client.playerTracker && client.playerTracker.getStatus()) {
+            count++;
         }
-        if (this.worlds[':hardcore:1']) return ':hardcore:1';
-        if (this.worlds[':hardcore:2']) return ':hardcore:2';
+    }
+    return count;
+}
+
+GameServer.prototype.getHardcoreRoomMaxPlayers = function() {
+    var maxPlayers = parseInt(this.config.hardcoreRoomMaxPlayers, 10);
+    return maxPlayers > 0 ? maxPlayers : parseInt(this.config.serverMaxConnections, 10) || 64;
+}
+
+GameServer.prototype.resolveHardcoreWorldId = function() {
+    var room1 = this.worlds[':hardcore:1'];
+    var room2 = this.worlds[':hardcore:2'];
+    var maxPlayers = this.getHardcoreRoomMaxPlayers();
+
+    if (room1 && this.getWorldPlayerCount(room1) < maxPlayers) return ':hardcore:1';
+    if (room2) return ':hardcore:2';
+    if (room1) return ':hardcore:1';
+    return null;
+}
+
+GameServer.prototype.resolveWorldId = function(mode, allowFallback) {
+    if (mode == ':hardcore') {
+        return this.resolveHardcoreWorldId();
     }
 
     if (this.worlds[mode]) {
         return mode;
     }
 
-    return this.getDefaultWorldId();
+    return allowFallback ? this.getDefaultWorldId() : null;
 }
 
-GameServer.prototype.setClientWorld = function(socket, mode) {
-    var world = this.worlds[this.resolveWorldId(mode)];
+GameServer.prototype.setClientWorld = function(socket, mode, allowFallback) {
+    var worldId = this.resolveWorldId(mode, allowFallback);
+    var world = this.worlds[worldId];
     if (!world) {
-        world = this.worlds[this.getDefaultWorldId()];
+        console.log("[Game] Client requested inactive world " + mode + "; closing connection");
+        if (socket && typeof socket.close === 'function') {
+            socket.close();
+        }
+        return false;
     }
 
     socket.sendPacket(new Packet.ClearNodes());
@@ -581,6 +612,7 @@ GameServer.prototype.setClientWorld = function(socket, mode) {
     this.withWorld(world, function() {
         this.gameMode.onPlayerInit(socket.playerTracker);
     });
+    return true;
 }
 
 GameServer.prototype.removeClientCells = function(client) {

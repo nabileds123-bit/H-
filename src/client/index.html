@@ -2310,7 +2310,8 @@ $(document).on('keyup', function(input) {
         pointer-events: none;
     }
 
-    #overlays.is-menu-only #helloDialog {
+    #overlays.is-menu-only #helloDialog,
+    #communityDropup.is-open {
         pointer-events: auto;
     }
 </style>
@@ -3006,8 +3007,7 @@ $(function () {
     var authUser = localStorage.getItem('authUser');
     var inviteSubMode = localStorage.getItem('inviteSubMode') || 'X5';
     var inviteSubModeTouched = false;
-    var hardcoreRooms = [':hardcore:1', ':hardcore:2'];
-    var selectedHardcoreRoom = localStorage.getItem('selectedHardcoreRoom') || '';
+    var hardcoreRooms = [':hardcore', ':hardcore:1', ':hardcore:2'];
     var battleLobbyModeValue = ':battle:1v1';
     var battleLobbyInviteMode = '1vs1';
     var battlePlayLoading = false;
@@ -3177,14 +3177,7 @@ $(function () {
     }
 
     function resolveGameModeRoom(mode) {
-        if (mode !== ':hardcore') return mode;
-
-        if (hardcoreRooms.indexOf(selectedHardcoreRoom) === -1) {
-            selectedHardcoreRoom = hardcoreRooms[Math.floor(Math.random() * hardcoreRooms.length)];
-            localStorage.setItem('selectedHardcoreRoom', selectedHardcoreRoom);
-        }
-
-        return selectedHardcoreRoom;
+        return mode;
     }
 
     function getClientTimeZone() {
@@ -4770,6 +4763,11 @@ $(function () {
     $('#communityDropup a[data-route="notification"]').on('click', function (event) {
         event.preventDefault();
         openNotificationDialog();
+    });
+
+    $('#communityDropup a[data-route="friends"]').on('click', function (event) {
+        event.preventDefault();
+        openFriendInviteModal();
     });
 
     $('#communityDropup a[data-route="high-score"]').on('click', function (event) {
