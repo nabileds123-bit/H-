@@ -105,6 +105,10 @@ Tournament.prototype.prepare = function(gameServer) {
 
 Tournament.prototype.onPlayerDeath = function(gameServer) { };
 
+Tournament.prototype.canPlayerMove = function(player) {
+    return this.gamePhase == 2;
+};
+
 Tournament.prototype.formatTime = function(time) {
     if (time < 0) return "0:00";
 

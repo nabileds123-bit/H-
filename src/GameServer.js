@@ -1554,8 +1554,10 @@ GameServer.prototype.updateMoveEngine = function() {
         if (client.isPaused) {
             continue;
         }
-        
-        cell.calcMove(client.mouse.x, client.mouse.y, this);
+
+        if (!this.gameMode.canPlayerMove || this.gameMode.canPlayerMove(client)) {
+            cell.calcMove(client.mouse.x, client.mouse.y, this);
+        }
 
         // Check if cells nearby
         var list = this.getCellsInRange(cell);

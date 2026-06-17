@@ -28,6 +28,10 @@ Mode.prototype.onCellRemove = function(cell) {
 	// Called when a player cell is removed
 }
 
+Mode.prototype.canPlayerMove = function(player) {
+    return true;
+}
+
 Mode.prototype.updateLB = function(gameServer) {
     // Called when the leaderboard update function is called
 }
