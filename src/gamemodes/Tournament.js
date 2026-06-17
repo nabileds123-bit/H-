@@ -19,6 +19,7 @@ function Tournament() {
     this.contenders = [];
     this.eliminated = [];
     this.maxContenders = 12;
+    this.isBattleMode = false;
     this.teamSize = 1;
     this.teamCount = 0;
     this.teamColors = [
@@ -65,6 +66,10 @@ Tournament.prototype.isTeamBattle = function() {
     return this.getTeamSize() > 1;
 };
 
+Tournament.prototype.hasTimeLimit = function() {
+    return !this.isBattleMode && this.timeLimit > 0;
+};
+
 Tournament.prototype.getTeamCount = function() {
     if (this.teamCount > 0) return this.teamCount;
     return Math.max(1, Math.ceil(this.maxContenders / this.getTeamSize()));
@@ -76,6 +81,55 @@ Tournament.prototype.getTeamPlayerCount = function(team) {
         if (this.contenders[i].team === team) count++;
     }
     return count;
+};
+
+Tournament.prototype.getModeLabel = function() {
+    if (!this.isBattleMode) return "Tournament";
+    return this.isTeamBattle() ? "Battle 2 vs 2" : "Battle 1 vs 1";
+};
+
+Tournament.prototype.getPlayerLabel = function(player) {
+    if (!player) return "Waiting";
+    return player.getName ? (player.getName() || "Unnamed") : (player.name || "Unnamed");
+};
+
+Tournament.prototype.getTeamPlayers = function(team) {
+    var players = [];
+    for (var i = 0; i < this.contenders.length; i++) {
+        if (this.contenders[i].team === team) {
+            players.push(this.getPlayerLabel(this.contenders[i]));
+        }
+    }
+    return players;
+};
+
+Tournament.prototype.getTeamLabel = function(team) {
+    var players = this.getTeamPlayers(team);
+    var needed = this.getTeamSize();
+
+    while (players.length < needed) {
+        players.push("Waiting");
+    }
+
+    return players.join(" + ");
+};
+
+Tournament.prototype.writeBattleTeamsToLeaderboard = function(lb, startIndex) {
+    var index = startIndex || 0;
+
+    if (!this.isBattleMode) {
+        return index;
+    }
+
+    if (this.isTeamBattle()) {
+        lb[index++] = "Team A: " + this.getTeamLabel(0);
+        lb[index++] = "Team B: " + this.getTeamLabel(1);
+    } else {
+        lb[index++] = "Player 1: " + this.getPlayerLabel(this.contenders[0]);
+        lb[index++] = "Player 2: " + this.getPlayerLabel(this.contenders[1]);
+    }
+
+    return index;
 };
 
 Tournament.prototype.assignBattleTeam = function(player) {
@@ -186,6 +240,7 @@ Tournament.prototype.prepare = function(gameServer) {
     this.endTime = config.tourneyEndTime;
     this.maxContenders = config.tourneyMaxPlayers;
     var worldId = gameServer.activeWorld && gameServer.activeWorld.id;
+    this.isBattleMode = String(worldId || '').indexOf(':battle') === 0;
     var defaultTeamSize = worldId === ':battle:2v2' ? 2 : 1;
     this.teamSize = Math.max(1, parseInt(config.battleTeamSize, 10) || defaultTeamSize);
     this.teamCount = Math.max(0, parseInt(config.battleTeamCount, 10) || 0);
@@ -198,8 +253,8 @@ Tournament.prototype.onPlayerDeath = function(gameServer) { };
 
 Tournament.prototype.formatTime = function(time) {
     if (time < 0) return "0:00";
-    var min = Math.floor(this.timeLimit/60);
-    var sec = this.timeLimit % 60;
+    var min = Math.floor(time/60);
+    var sec = time % 60;
     sec = (sec > 9) ? sec : "0" + sec.toString();
     return min+":"+sec;
 };
@@ -255,9 +310,10 @@ Tournament.prototype.updateLB = function(gameServer) {
 
     switch (this.gamePhase) {
         case 0:
-            lb[0] = "Waiting for";
-            lb[1] = "players: ";
+            lb[0] = this.getModeLabel();
+            lb[1] = "Waiting for players";
             lb[2] = this.contenders.length+"/"+this.maxContenders;
+            this.writeBattleTeamsToLeaderboard(lb, 3);
             if (this.autoFill) {
                 if (this.timer <= 0) {
                     this.fillBots(gameServer);
@@ -267,9 +323,9 @@ Tournament.prototype.updateLB = function(gameServer) {
             }
             break;
         case 1:
-            lb[0] = "Game starting in";
-            lb[1] = this.timer.toString();
-            lb[2] = "Good luck!";
+            lb[0] = this.getModeLabel();
+            lb[1] = "Starting in " + this.timer.toString();
+            this.writeBattleTeamsToLeaderboard(lb, 2);
             if (this.timer <= 0) {
                 this.startGame(gameServer);
             } else {
@@ -277,28 +333,21 @@ Tournament.prototype.updateLB = function(gameServer) {
             }
             break;
         case 2:
-            if (this.isTeamBattle()) {
-                lb[0] = "Battle 2 vs 2";
-                lb[1] = "Team A: " + this.getTeamPlayerCount(0);
-                lb[2] = "Team B: " + this.getTeamPlayerCount(1);
-                lb[3] = "Time Limit:";
-                lb[4] = this.formatTime(this.timeLimit);
-            } else {
-                lb[0] = "Players Remaining";
-                lb[1] = this.contenders.length+"/"+this.maxContenders;
-                lb[2] = "Time Limit:";
-                lb[3] = this.formatTime(this.timeLimit);
-            }
-            if (this.timeLimit < 0) {
-                this.endGameTimeout(gameServer);
-            } else {
+            lb[0] = this.getModeLabel();
+            var nextIndex = this.writeBattleTeamsToLeaderboard(lb, 1);
+            lb[nextIndex++] = "Alive: " + this.contenders.length+"/"+this.maxContenders;
+            if (this.hasTimeLimit()) {
+                lb[nextIndex++] = "Time: " + this.formatTime(this.timeLimit);
                 this.timeLimit--;
+                if (this.timeLimit < 0) {
+                    this.endGameTimeout(gameServer);
+                }
             }
             break;
         case 3:
-            lb[0] = "Congratulations";
-            lb[1] = this.getWinnerName();
-            lb[2] = "for winning!";
+            lb[0] = this.getModeLabel();
+            lb[1] = "Winner:";
+            lb[2] = this.getWinnerName();
             if (this.timer <= 0) {
                 this.onServerInit(gameServer);
                 gameServer.startingFood();

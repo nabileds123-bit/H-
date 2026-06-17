@@ -672,6 +672,17 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             case 48: // update leaderboard (custom text)
                 setCustomLB = true;
                 noRanking = true;
+                teamScores = null;
+                leaderBoard = [];
+                var LBtextNum = msg.getUint32(offset, true);
+                offset += 4;
+                for (i = 0; i < LBtextNum; ++i) {
+                    leaderBoard.push({
+                        id: 0,
+                        name: getString()
+                    });
+                }
+                drawLeaderBoard();
                 break;
             case 49: // update leaderboard (ffa)
                 if (!setCustomLB) {
