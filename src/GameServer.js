@@ -415,10 +415,10 @@ GameServer.prototype.initWorlds = function() {
         this.worlds[':experimental'] = this.createWorld(':experimental', new Gamemode.Experimental(), this.getModeConfig('experimental'));
     }
     if (!this.isWorldDisabled(':battle:1v1')) {
-        this.worlds[':battle:1v1'] = this.createWorld(':battle:1v1', new Gamemode.FFA(), this.getModeConfig('battle1v1'));
+        this.worlds[':battle:1v1'] = this.createWorld(':battle:1v1', new Gamemode.Tournament(), this.getBattleTournamentConfig('battle1v1', 2, 1));
     }
     if (!this.isWorldDisabled(':battle:2v2')) {
-        this.worlds[':battle:2v2'] = this.createWorld(':battle:2v2', new Gamemode.FFA(), this.getModeConfig('battle2v2'));
+        this.worlds[':battle:2v2'] = this.createWorld(':battle:2v2', new Gamemode.Tournament(), this.getBattleTournamentConfig('battle2v2', 4, 2));
     }
     this.setActiveWorld(this.worlds[this.getDefaultWorldId()]);
 }
@@ -496,6 +496,17 @@ GameServer.prototype.getModeConfig = function(prefix) {
             config[key] = this.config[overrideKey];
         }
     }
+
+    return config;
+}
+
+GameServer.prototype.getBattleTournamentConfig = function(prefix, maxPlayers, teamSize) {
+    var config = this.getModeConfig(prefix);
+
+    config.tourneyMaxPlayers = maxPlayers;
+    config.tourneyAutoFillPlayers = maxPlayers;
+    config.battleTeamSize = teamSize || 1;
+    config.battleTeamCount = Math.max(1, Math.ceil(maxPlayers / config.battleTeamSize));
 
     return config;
 }

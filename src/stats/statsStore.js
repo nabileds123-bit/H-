@@ -20,7 +20,7 @@ var TOP1_MODES = {
 
 var BATTLE_MODES = {
     '1vs1': true,
-    '3vs3': true
+    '2vs2': true
 };
 
 function clone(value) {
@@ -153,7 +153,7 @@ function normalizeTop1Mode(mode) {
 function normalizeBattleMode(mode) {
     mode = String(mode || '').toLowerCase();
     if (mode === ':battle:1v1' || mode === '1v1' || mode === '1vs1') return '1vs1';
-    if (mode === ':battle:2v2' || mode === ':battle:3v3' || mode === '2v2' || mode === '3v3' || mode === '3vs3') return '3vs3';
+    if (mode === ':battle:2v2' || mode === '2v2' || mode === '2vs2') return '2vs2';
     return BATTLE_MODES[mode] ? mode : '';
 }
 
@@ -405,7 +405,7 @@ function guildStats(period) {
             top1Ms: 0,
             battle: {
                 '1vs1': { win: 0, lose: 0, totalMatch: 0, winRate: 0 },
-                '3vs3': { win: 0, lose: 0, totalMatch: 0, winRate: 0 }
+                '2vs2': { win: 0, lose: 0, totalMatch: 0, winRate: 0 }
             }
         };
     });

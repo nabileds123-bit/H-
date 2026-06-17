@@ -2714,7 +2714,7 @@ $(document).on('keyup', function(input) {
                 <div class="account-detail-tabs">
                     <button type="button" class="account-detail-tab active" data-account-detail-tab="profile">Profile</button>
                     <button type="button" class="account-detail-tab" data-account-detail-tab="top1">Top 1</button>
-                    <button type="button" class="account-detail-tab" data-account-detail-tab="3vs3">3 vs 3</button>
+                    <button type="button" class="account-detail-tab" data-account-detail-tab="2vs2">2 vs 2</button>
                     <button type="button" class="account-detail-tab" data-account-detail-tab="1vs1">1 vs 1</button>
                 </div>
                 <div id="accountDetailProfile" class="account-detail-pane active">
@@ -2757,8 +2757,8 @@ $(document).on('keyup', function(input) {
                 <div id="accountDetailTop1" class="account-detail-pane">
                     <div class="account-detail-empty">Belum ada data Top 1.</div>
                 </div>
-                <div id="accountDetail3vs3" class="account-detail-pane">
-                    <div class="account-detail-empty">Belum ada data 3 vs 3.</div>
+                <div id="accountDetail2vs2" class="account-detail-pane">
+                    <div class="account-detail-empty">Belum ada data 2 vs 2.</div>
                 </div>
                 <div id="accountDetail1vs1" class="account-detail-pane">
                     <div class="account-detail-empty">Belum ada data 1 vs 1.</div>
@@ -4116,7 +4116,7 @@ $(function () {
     function getHighScoreModeValue() {
         var text = String($('#highScoreMode').val() || 'FFA').toLowerCase();
         if (text.indexOf('1') !== -1) return '1vs1';
-        if (text.indexOf('2') !== -1 || text.indexOf('3') !== -1) return '3vs3';
+        if (text.indexOf('2') !== -1) return '2vs2';
         if (text.indexOf('hardcore') !== -1) return 'hardcore';
         if (text.indexOf('x5') !== -1) return 'x5';
         return 'ffa';
@@ -4220,7 +4220,7 @@ $(function () {
     function loadHighScoreStats() {
         var period = getHighScorePeriodValue();
         var mode = getHighScoreModeValue();
-        var isBattle = mode === '1vs1' || mode === '3vs3';
+        var isBattle = mode === '1vs1' || mode === '2vs2';
         var endpoint = isBattle ? '/api/highscore/battle' : '/api/highscore/top1';
 
         $('.highscore-date').text(formatHighScoreDate(period));
@@ -4338,10 +4338,10 @@ $(function () {
             renderStatRows('#accountDetailTop1', rows.length ? rows : [{ label: 'Top 1 Time', value: '00:00' }]);
         });
 
-        ['1vs1', '3vs3'].forEach(function(mode) {
+        ['1vs1', '2vs2'].forEach(function(mode) {
             $.getJSON('/api/account/battle', { username: username, mode: mode, period: 'today' }, function(response) {
                 var stats = response.stats || {};
-                renderStatRows(mode === '1vs1' ? '#accountDetail1vs1' : '#accountDetail3vs3', [
+                renderStatRows(mode === '1vs1' ? '#accountDetail1vs1' : '#accountDetail2vs2', [
                     { label: 'Win', value: stats.win || 0 },
                     { label: 'Lose', value: stats.lose || 0 },
                     { label: 'Win Rate', value: (stats.winRate || 0) + '%' },
@@ -4815,7 +4815,7 @@ $(function () {
         var target = {
             profile: '#accountDetailProfile',
             top1: '#accountDetailTop1',
-            '3vs3': '#accountDetail3vs3',
+            '2vs2': '#accountDetail2vs2',
             '1vs1': '#accountDetail1vs1'
         }[tab];
 
