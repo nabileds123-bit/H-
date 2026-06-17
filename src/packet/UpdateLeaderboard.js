@@ -12,6 +12,41 @@ UpdateLeaderboard.prototype.build = function() {
     var validElements = 0;
     
     switch (this.packetLB) {
+        case 48: // Text list packet
+            for (var i = 0; i < lb.length; i++) {
+                if (typeof lb[i] == "undefined") {
+                    continue;
+                }
+
+                var text = String(lb[i] || "");
+                bufferSize += text.length * 2;
+                bufferSize += 2;
+                validElements++;
+            }
+
+            var buf = new ArrayBuffer(bufferSize);
+            var view = new DataView(buf);
+
+            view.setUint8(0, this.packetLB, true);
+            view.setUint32(1, validElements, true);
+
+            var offset = 5;
+            for (var i = 0; i < lb.length; i++) {
+                if (typeof lb[i] == "undefined") {
+                    continue;
+                }
+
+                text = String(lb[i] || "");
+                for (var j = 0; j < text.length; j++) {
+                    view.setUint16(offset, text.charCodeAt(j), true);
+                    offset += 2;
+                }
+
+                view.setUint16(offset, 0, true);
+                offset += 2;
+            }
+
+            return buf;
         case 49: // FFA-type Packet (List)
         	// Get size of packet            
             for (var i = 0; i < lb.length; i++) {
@@ -83,7 +118,7 @@ UpdateLeaderboard.prototype.build = function() {
             
             return buf;
         default:
-            break;
+            return new ArrayBuffer(0);
     }
     
 }

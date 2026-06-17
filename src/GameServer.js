@@ -1699,10 +1699,11 @@ GameServer.prototype.loadConfig = function() {
 // Custom prototype functions
 WebSocket.prototype.sendPacket = function(packet) {
     function getbuf(data) {
+        if (!data) return null;
         var array = new Uint8Array(data.buffer || data);
         var l = data.byteLength || data.length;
         var o = data.byteOffset || 0;
-        var buffer = new Buffer(l);
+        var buffer = Buffer.alloc(l);
 
         for (var i = 0; i < l; i++) {
             buffer[i] = array[o + i];
@@ -1713,6 +1714,9 @@ WebSocket.prototype.sendPacket = function(packet) {
 
     if (this.readyState == WebSocket.OPEN && packet.build) {
         var buf = packet.build();
-        this.send(getbuf(buf), { binary: true });
+        buf = getbuf(buf);
+        if (buf) {
+            this.send(buf, { binary: true });
+        }
     }
 }

@@ -444,10 +444,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function showConnecting(force) {
         if (ma && w) {
-            wjQuery("#connecting").show();
             if (!force && (wsIsOpen() || wsIsConnecting())) {
+                wjQuery("#connecting").hide();
                 return;
             }
+            wjQuery("#connecting").show();
             attemptConnection(force)
         }
     }
