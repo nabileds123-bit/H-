@@ -18,6 +18,7 @@ function Tournament() {
     // Gamemode Specific Variables
     this.gamePhase = 0; // 0 = Waiting for players, 1 = Prepare to start, 2 = Game in progress, 3 = End
     this.contenders = [];
+    this.eliminated = [];
     this.maxContenders = 12;
 
     this.winner;
@@ -46,12 +47,14 @@ Tournament.prototype.endGame = function(gameServer) {
     this.winner = this.contenders[0];
     this.gamePhase = 3;
     this.timer = this.endTime;
+    this.finishDelayedMatchResults(gameServer);
 };
 
 Tournament.prototype.endGameTimeout = function(gameServer) {
     gameServer.run = false;
     this.gamePhase = 4;
     this.timer = this.endTime;
+    this.finishDelayedMatchResults(gameServer);
 };
 
 Tournament.prototype.fillBots = function(gameServer) {
@@ -84,6 +87,7 @@ Tournament.prototype.prepare = function(gameServer) {
     gameServer.run = false;
     this.gamePhase = 0;
     this.contenders = [];
+    this.eliminated = [];
     this.winner = null;
 
     if (config.tourneyAutoFill > 0) {
@@ -104,6 +108,34 @@ Tournament.prototype.prepare = function(gameServer) {
 };
 
 Tournament.prototype.onPlayerDeath = function(gameServer) { };
+
+Tournament.prototype.queueEliminatedPlayer = function(player) {
+    if (!player || this.gamePhase != 2) return;
+    if (this.eliminated.indexOf(player) == -1) {
+        this.eliminated.push(player);
+    }
+};
+
+Tournament.prototype.sendPlayerMatchResult = function(gameServer, player, result) {
+    if (!player || player.matchResultSent) return;
+
+    player.matchResultSent = true;
+    if (gameServer.pauseTop1Stats) {
+        gameServer.pauseTop1Stats(player, player.world, true);
+    }
+    gameServer.sendMatchResult(player, result);
+};
+
+Tournament.prototype.finishDelayedMatchResults = function(gameServer) {
+    for (var i = 0; i < this.eliminated.length; i++) {
+        this.sendPlayerMatchResult(gameServer, this.eliminated[i], 'lose');
+    }
+    this.eliminated = [];
+
+    if (this.winner) {
+        this.sendPlayerMatchResult(gameServer, this.winner, 'win');
+    }
+};
 
 Tournament.prototype.canPlayerMove = function(player) {
     return this.gamePhase == 2;
@@ -141,6 +173,8 @@ Tournament.prototype.onCellRemove = function(cell) {
         human_just_died = false;
 
     if (owner.cells.length <= 0) {
+        this.queueEliminatedPlayer(owner);
+
         var index = this.contenders.indexOf(owner);
         if (index != -1) {
             if ('_socket' in this.contenders[index].socket) human_just_died = true;

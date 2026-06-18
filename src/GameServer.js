@@ -1285,22 +1285,26 @@ GameServer.prototype.sendTopTimePopup = function(player, totalMs) {
     });
 }
 
-GameServer.prototype.recordBattleResult = function(player) {
+GameServer.prototype.recordBattleResult = function(player, result) {
     if (!player || player.battleStatsRecorded) return;
 
     var world = player.world || this.activeWorld;
     var mode = statsStore.normalizeBattleMode(world && world.id);
     var userId = this.getPlayerStatsUserId(player);
+    result = String(result || 'lose').toLowerCase();
     if (!mode || !userId) return;
+    if (result !== 'win' && result !== 'lose') return;
 
     player.battleStatsRecorded = true;
     statsStore.addBattleRecord({
         userId: userId,
         mode: mode,
-        result: 'lose',
+        result: result,
         serverId: this.getStatsServerId(world),
         country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode)
     });
+
+    if (result !== 'lose') return;
 
     var leaderboard = world && world.leaderboard ? world.leaderboard : [];
     for (var i = 0; i < leaderboard.length; i++) {
@@ -1379,9 +1383,9 @@ GameServer.prototype.updateMatchLeaderboardStats = function(world) {
     }
 }
 
-GameServer.prototype.sendMatchResult = function(player) {
+GameServer.prototype.sendMatchResult = function(player, result) {
     if (!player || !player.socket) return;
-    this.recordBattleResult(player);
+    this.recordBattleResult(player, result);
     var xpResult = this.applyMatchXp(player);
 
     var payload = JSON.stringify({
