@@ -1454,7 +1454,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             node = nodes[nodeId];
             null != node && node.destroy();
         }
-        ua && 0 == playerCells.length && showOverlays(false)
+        ua && 0 == playerCells.length && !isTournamentLikeMode() && showOverlays(false)
     }
 
     function sendMouseMove() {

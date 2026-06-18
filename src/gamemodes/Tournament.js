@@ -45,6 +45,7 @@ Tournament.prototype.startGame = function(gameServer) {
 
 Tournament.prototype.endGame = function(gameServer) {
     this.winner = this.contenders[0];
+    this.updateEliminatedSpectators(this.winner);
     this.gamePhase = 3;
     this.timer = this.endTime;
     this.finishDelayedMatchResults(gameServer);
@@ -114,6 +115,17 @@ Tournament.prototype.queueEliminatedPlayer = function(player) {
     if (this.eliminated.indexOf(player) == -1) {
         this.eliminated.push(player);
     }
+    player.spectate = true;
+    player.spectatedPlayer = this.rankOne || null;
+};
+
+Tournament.prototype.updateEliminatedSpectators = function(target) {
+    for (var i = 0; i < this.eliminated.length; i++) {
+        if (this.eliminated[i]) {
+            this.eliminated[i].spectate = true;
+            this.eliminated[i].spectatedPlayer = target || null;
+        }
+    }
 };
 
 Tournament.prototype.sendPlayerMatchResult = function(gameServer, player, result) {
@@ -156,6 +168,19 @@ Tournament.prototype.onServerInit = function(gameServer) {
     this.prepare(gameServer);
 };
 
+Tournament.prototype.restartCurrentPlayers = function(gameServer) {
+    for (var i = 0; i < gameServer.clients.length; i++) {
+        var socket = gameServer.clients[i];
+        var player = socket && socket.playerTracker;
+        if (!player || !player.getStatus || !player.getStatus()) continue;
+        if (this.contenders.length >= this.maxContenders) break;
+
+        player.spectate = false;
+        player.spectatedPlayer = null;
+        this.onPlayerSpawn(gameServer, player);
+    }
+};
+
 Tournament.prototype.onPlayerSpawn = function(gameServer, player) {
     if ((this.gamePhase == 0) && (this.contenders.length < this.maxContenders)) {
         player.color = gameServer.getRandomColor();
@@ -180,6 +205,7 @@ Tournament.prototype.onCellRemove = function(cell) {
             if ('_socket' in this.contenders[index].socket) human_just_died = true;
             this.contenders.splice(index, 1);
         }
+        owner.spectatedPlayer = this.contenders[0] || this.rankOne || null;
 
         var humans = 0;
         for (var i = 0; i < this.contenders.length; i++) {
@@ -238,6 +264,7 @@ Tournament.prototype.updateLB = function(gameServer) {
             if (this.timer <= 0) {
                 this.onServerInit(gameServer);
                 gameServer.startingFood();
+                this.restartCurrentPlayers(gameServer);
             } else {
                 lb[3] = "Game restarting in";
                 lb[4] = this.timer.toString();
@@ -250,6 +277,7 @@ Tournament.prototype.updateLB = function(gameServer) {
             if (this.timer <= 0) {
                 this.onServerInit(gameServer);
                 gameServer.startingFood();
+                this.restartCurrentPlayers(gameServer);
             } else {
                 lb[2] = "Game restarting in";
                 lb[3] = this.timer.toString();
