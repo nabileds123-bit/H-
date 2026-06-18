@@ -608,7 +608,7 @@ GameServer.prototype.createWorld = function(id, gameMode, config) {
 }
 
 GameServer.prototype.initWorlds = function() {
-    if (!this.isWorldDisabled(':tournament')) {
+    if (Gamemode.Tournament && !this.isWorldDisabled(':tournament')) {
         this.worlds[':tournament'] = this.createWorld(':tournament', new Gamemode.Tournament(), this.getModeConfig('tournament'));
     }
     if (!this.isWorldDisabled(':x5')) {
@@ -1493,6 +1493,15 @@ GameServer.prototype.spawnPlayer = function(client) {
     
     // Set initial mouse coords
     client.mouse = {x: pos.x, y: pos.y};
+}
+
+GameServer.prototype.spawnPlayerForMode = function(client) {
+    if (this.gameMode && this.gameMode.onPlayerSpawn !== Gamemode.Mode.prototype.onPlayerSpawn) {
+        this.gameMode.onPlayerSpawn(this, client);
+        return;
+    }
+
+    this.spawnPlayer(client);
 }
 
 GameServer.prototype.virusCheck = function() {

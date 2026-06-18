@@ -4263,7 +4263,7 @@ $(function () {
     function getHighScoreModeValue() {
         var text = String($('#highScoreMode').val() || 'FFA').toLowerCase();
         if (text.indexOf('1') !== -1) return '1vs1';
-        if (text.indexOf('2') !== -1) return '2vs2';
+        if (text.indexOf('2') !== -1 || text.indexOf('3') !== -1) return '2vs2';
         if (text.indexOf('hardcore') !== -1) return 'hardcore';
         if (text.indexOf('x5') !== -1) return 'x5';
         return 'ffa';

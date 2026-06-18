@@ -154,6 +154,7 @@ function normalizeBattleMode(mode) {
     mode = String(mode || '').toLowerCase();
     if (mode === ':battle:1v1' || mode === '1v1' || mode === '1vs1') return '1vs1';
     if (mode === ':battle:2v2' || mode === '2v2' || mode === '2vs2') return '2vs2';
+    if (mode === ':battle:3v3' || mode === '3v3' || mode === '3vs3') return '2vs2';
     return BATTLE_MODES[mode] ? mode : '';
 }
 

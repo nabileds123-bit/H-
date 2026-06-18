@@ -749,11 +749,7 @@ PacketHandler.prototype.setNickname = function(newNick) {
     if (client.cells.length < 1) {
         // If client has no cells... then spawn a player
         this.gameServer.withWorld(client.world, function() {
-            if (this.gameMode && this.gameMode.onPlayerSpawn) {
-                this.gameMode.onPlayerSpawn(this, client);
-            } else {
-                this.spawnPlayer(client);
-            }
+            this.spawnPlayerForMode(client);
         });
         
         // Turn off spectate mode
