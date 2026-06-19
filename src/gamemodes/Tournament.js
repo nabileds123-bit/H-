@@ -199,6 +199,7 @@ Tournament.prototype.onCellRemove = function(cell) {
 
     if (owner.cells.length <= 0) {
         this.queueEliminatedPlayer(owner);
+        this.sendPlayerMatchResult(cell.owner.gameServer, owner, 'lose');
 
         var index = this.contenders.indexOf(owner);
         if (index != -1) {

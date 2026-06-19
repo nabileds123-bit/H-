@@ -760,7 +760,13 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     if (typeof wHandle.updatePlayerExpVisibility === "function") {
                         wHandle.updatePlayerExpVisibility();
                     }
-                    if (matchResultVisible) {
+                    if (resultData.result !== "win") {
+                        if (!matchStats.endTime) {
+                            matchStats.endTime = Date.now();
+                        }
+                        hideTopTimePopup();
+                        showMatchResult();
+                    } else if (matchResultVisible) {
                         showMatchResult();
                     }
                 } catch (e) {}

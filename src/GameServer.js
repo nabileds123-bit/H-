@@ -1618,6 +1618,7 @@ GameServer.prototype.sendMatchResult = function(player, result) {
     var xpResult = this.applyMatchXp(player);
 
     var payload = JSON.stringify({
+        result: result === 'win' ? 'win' : 'lose',
         foodEaten: player.matchFoodEaten || 0,
         cellsEaten: player.matchCellsEaten || 0,
         xpGain: xpResult.xpGain || 0,
