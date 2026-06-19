@@ -2233,7 +2233,7 @@ $(document).on('keyup', function(input) {
     .bubble-notifications {
         position: fixed;
         right: 0;
-        bottom: 55px;
+        bottom: 10px;
         width: 455px;
         max-width: calc(100vw - 24px);
         z-index: 9999;
@@ -3346,6 +3346,7 @@ $(function () {
     var battleLobbyPollTimer = null;
     var battleLobbyClientId = localStorage.getItem('battleLobbyClientId');
     var battleInvitePending = {};
+    var battleInvitePendingTimers = {};
     var notificationPollTimer = null;
     var activeFriendTab = 'friends';
     var notificationPopupSeen = {};
@@ -5572,6 +5573,34 @@ $(function () {
         return String(friendId || '') + '|' + String(battleLobbyModeValue || '');
     }
 
+    function clearBattleInvitePending(pendingKey) {
+        if (!pendingKey) return;
+
+        delete battleInvitePending[pendingKey];
+        if (battleInvitePendingTimers[pendingKey]) {
+            clearTimeout(battleInvitePendingTimers[pendingKey]);
+            delete battleInvitePendingTimers[pendingKey];
+        }
+        loadFriendInviteList();
+    }
+
+    function scheduleBattleInvitePendingClear(pendingKey, expiresAt) {
+        var delay = 60000;
+        var parsedExpiresAt = parseInt(expiresAt, 10);
+
+        if (!isNaN(parsedExpiresAt) && parsedExpiresAt > Date.now()) {
+            delay = Math.max(1000, parsedExpiresAt - Date.now());
+        }
+
+        if (battleInvitePendingTimers[pendingKey]) {
+            clearTimeout(battleInvitePendingTimers[pendingKey]);
+        }
+
+        battleInvitePendingTimers[pendingKey] = setTimeout(function() {
+            clearBattleInvitePending(pendingKey);
+        }, delay);
+    }
+
     function sendBattleInvite(friendId) {
         if (!friendId) return;
 
@@ -5581,6 +5610,7 @@ $(function () {
         }
 
         battleInvitePending[pendingKey] = true;
+        scheduleBattleInvitePendingClear(pendingKey);
         $('.battle-friend-row').filter(function() {
             return String($(this).data('friend-id')) === String(friendId);
         }).addClass('is-disabled is-pending').find('td:last').text('Pending');
@@ -5593,15 +5623,16 @@ $(function () {
         }, function(err, response, xhr) {
             if (err) {
                 if (xhr && xhr.status === 409) {
+                    scheduleBattleInvitePendingClear(pendingKey);
                     loadFriendInviteList();
                     return;
                 }
 
-                delete battleInvitePending[pendingKey];
-                loadFriendInviteList();
+                clearBattleInvitePending(pendingKey);
                 return;
             }
 
+            scheduleBattleInvitePendingClear(pendingKey, response && response.invite && response.invite.expiresAt);
             loadFriendInviteList();
         });
     }
