@@ -787,10 +787,8 @@ function handleGuildInvites(req, res, query) {
     });
 }
 
-function handleNotifications(req, res, query) {
-    var user = users.findBySessionToken(String(query.token || ''));
-    if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
-    var items = pendingInvitesForUser(user).map(function(invite) {
+function getNotificationItems(user) {
+    return pendingInvitesForUser(user).map(function(invite) {
         return {
             id: 'guild-invite-' + invite.id,
             type: 'guild_invite',
@@ -822,11 +820,65 @@ function handleNotifications(req, res, query) {
             invite: invite
         };
     }));
+}
+
+function handleNotifications(req, res, query) {
+    var user = users.findBySessionToken(String(query.token || ''));
+    if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+    var items = getNotificationItems(user);
 
     sendJson(res, 200, {
         ok: true,
         items: items,
         notifications: items
+    });
+}
+
+function handleNotificationStream(req, res, query) {
+    var token = String(query.token || '');
+    var user = users.findBySessionToken(token);
+    if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+    });
+    if (res.flushHeaders) res.flushHeaders();
+
+    var lastPayload = '';
+
+    function writeEvent(force) {
+        var freshUser = users.findBySessionToken(token);
+        if (!freshUser) {
+            res.write('event: auth-error\n');
+            res.write('data: {"ok":false,"message":"You must login first."}\n\n');
+            clearInterval(timer);
+            res.end();
+            return;
+        }
+
+        var items = getNotificationItems(freshUser);
+        var payload = JSON.stringify({ ok: true, items: items, notifications: items });
+        if (!force && payload === lastPayload) return;
+
+        lastPayload = payload;
+        res.write('event: notifications\n');
+        res.write('data: ' + payload + '\n\n');
+    }
+
+    var timer = setInterval(function() {
+        writeEvent(false);
+    }, 1000);
+    var heartbeat = setInterval(function() {
+        res.write(': ping\n\n');
+    }, 15000);
+
+    writeEvent(true);
+    req.on('close', function() {
+        clearInterval(timer);
+        clearInterval(heartbeat);
     });
 }
 
@@ -1404,7 +1456,8 @@ function handle(req, res) {
     if (pathname.indexOf('/api/auth/') !== 0 &&
         pathname.indexOf('/api/guild/') !== 0 &&
         pathname.indexOf('/api/friends') !== 0 &&
-        pathname !== '/api/notifications') {
+        pathname !== '/api/notifications' &&
+        pathname !== '/api/notifications/stream') {
         return false;
     }
 
@@ -1420,6 +1473,11 @@ function handle(req, res) {
 
     if (req.method === 'GET' && pathname === '/api/notifications') {
         handleNotifications(req, res, parsed.query || {});
+        return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/notifications/stream') {
+        handleNotificationStream(req, res, parsed.query || {});
         return true;
     }
 

@@ -23,6 +23,15 @@ function getQueryUser(query) {
     return query.userId || query.username || query.user || '';
 }
 
+function getPeriodMeta(period) {
+    var normalized = statsStore.normalizePeriod(period);
+    return {
+        period: normalized,
+        range: statsStore.getPeriodRange(normalized),
+        serverDate: statsStore.getJakartaDate()
+    };
+}
+
 function publicHandle(req, res) {
     var parsed = url.parse(req.url, true);
     var pathname = parsed.pathname;
@@ -63,11 +72,14 @@ function publicHandle(req, res) {
     }
 
     if (req.method === 'GET' && pathname === '/api/highscore/top1') {
+        var top1Period = getPeriodMeta(query.period);
         var rows = statsStore.top1HighScore(query.mode, query.period, parseInt(query.limit, 10) || 50);
         return sendJson(res, 200, {
             ok: true,
             mode: statsStore.normalizeTop1Mode(query.mode) || 'ffa',
-            period: statsStore.normalizePeriod(query.period),
+            period: top1Period.period,
+            range: top1Period.range,
+            serverDate: top1Period.serverDate,
             items: rows.map(function(row) {
                 row.top1Time = formatMs(row.top1Ms);
                 row.top1Seconds = Math.floor(Math.max(0, parseInt(row.top1Ms, 10) || 0) / 1000);
@@ -78,10 +90,13 @@ function publicHandle(req, res) {
     }
 
     if (req.method === 'GET' && pathname === '/api/highscore/battle') {
+        var battlePeriod = getPeriodMeta(query.period);
         return sendJson(res, 200, {
             ok: true,
             mode: statsStore.normalizeBattleMode(query.mode) || '1vs1',
-            period: statsStore.normalizePeriod(query.period),
+            period: battlePeriod.period,
+            range: battlePeriod.range,
+            serverDate: battlePeriod.serverDate,
             items: statsStore.battleHighScore(query.mode, query.period, parseInt(query.limit, 10) || 50)
         });
     }

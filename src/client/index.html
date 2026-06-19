@@ -3413,6 +3413,7 @@ $(function () {
     var battleLobbyClientId = localStorage.getItem('battleLobbyClientId');
     var battleInvitePending = {};
     var battleInvitePendingTimers = {};
+    var notificationEventSource = null;
     var notificationPollTimer = null;
     var activeFriendTab = 'friends';
     var notificationPopupSeen = {};
@@ -3842,9 +3843,7 @@ $(function () {
         }
 
         $.getJSON('/api/notifications', { token: token }, function(response) {
-            var items = response.items || response.notifications || [];
-            renderNotifications(items);
-            renderBubbleNotifications(items);
+            applyNotificationPayload(response);
         }).fail(function(xhr) {
             if (xhr && xhr.status === 401) {
                 stopNotificationPolling();
@@ -3857,18 +3856,63 @@ $(function () {
         });
     }
 
-    function startNotificationPolling() {
+    function applyNotificationPayload(response) {
+        var items = response && (response.items || response.notifications) || [];
+        renderNotifications(items);
+        renderBubbleNotifications(items);
+    }
+
+    function stopNotificationPolling() {
+        if (notificationEventSource) {
+            notificationEventSource.close();
+            notificationEventSource = null;
+        }
+
+        if (notificationPollTimer) {
+            clearInterval(notificationPollTimer);
+            notificationPollTimer = null;
+        }
+    }
+
+    function startNotificationPollingFallback() {
         if (!getAuthToken() || notificationPollTimer) return;
 
         refreshNotifications();
         notificationPollTimer = setInterval(refreshNotifications, 5000);
     }
 
-    function stopNotificationPolling() {
-        if (!notificationPollTimer) return;
+    function startNotificationPolling() {
+        var token = getAuthToken();
+        if (!token || notificationEventSource || notificationPollTimer) return;
 
-        clearInterval(notificationPollTimer);
-        notificationPollTimer = null;
+        if (!window.EventSource) {
+            startNotificationPollingFallback();
+            return;
+        }
+
+        notificationEventSource = new EventSource('/api/notifications/stream?token=' + encodeURIComponent(token));
+
+        notificationEventSource.addEventListener('notifications', function(event) {
+            try {
+                applyNotificationPayload(JSON.parse(event.data || '{}'));
+            } catch (err) {
+                refreshNotifications();
+            }
+        });
+
+        notificationEventSource.addEventListener('auth-error', function() {
+            stopNotificationPolling();
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authUser');
+            authToken = '';
+            authUser = '';
+            renderNotifications([]);
+        });
+
+        notificationEventSource.onerror = function() {
+            stopNotificationPolling();
+            startNotificationPollingFallback();
+        };
     }
 
     function showBubbleNotification(item) {
@@ -4870,11 +4914,13 @@ $(function () {
         return 'ffa';
     }
 
-    function formatHighScoreDate(period) {
+    function formatHighScoreDate(period, response) {
+        var serverDate = String(response && response.serverDate || '');
+        var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(serverDate);
         var now = new Date();
-        var day = String(now.getDate());
-        var month = String(now.getMonth() + 1);
-        var year = now.getFullYear();
+        var day = match ? match[3] : String(now.getDate());
+        var month = match ? match[2] : String(now.getMonth() + 1);
+        var year = match ? match[1] : String(now.getFullYear());
 
         if (day.length < 2) day = '0' + day;
         if (month.length < 2) month = '0' + month;
@@ -4978,6 +5024,7 @@ $(function () {
 
         $.getJSON(endpoint, { period: period, mode: mode, limit: 10 }, function(response) {
             var items = response.items || [];
+            $('.highscore-date').text(formatHighScoreDate(response.period || period, response));
             renderHighScoreRows(items, isBattle);
         }).fail(function() {
             renderHighScoreRows([], isBattle);
