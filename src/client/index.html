@@ -29,6 +29,7 @@
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="Vector2.js"></script>
     <script src="main_out.js?576"></script>
+    <script src="invite-system.js"></script>
 	<script>/ jshint -W097 /
 'use strict';
 
@@ -2138,6 +2139,102 @@ $(document).on('keyup', function(input) {
         overflow: hidden;
     }
 
+    #bubbleNotifications,
+    .bubble-notifications {
+        position: fixed;
+        top: 72px;
+        right: 16px;
+        width: 340px;
+        max-width: calc(100vw - 24px);
+        z-index: 9999;
+        pointer-events: none;
+    }
+
+    .bubble_invite {
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        padding: 9px 11px;
+        border-radius: 6px;
+        background: rgba(15, 15, 15, 0.92);
+        color: #fff;
+        font-family: Ubuntu, Arial, sans-serif;
+        font-size: 13px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        border-left: 3px solid #999;
+    }
+
+    .bubble_invite.success {
+        border-left-color: #3fc463;
+    }
+
+    .bubble_invite.warning {
+        border-left-color: #f0ad4e;
+    }
+
+    .bubble_invite.error {
+        border-left-color: #e74c3c;
+    }
+
+    .bubble_invite .invite-reject,
+    .bubble_invite .invite-close {
+        cursor: pointer;
+        color: #d6a24a;
+        font-size: 15px;
+        flex: 0 0 auto;
+    }
+
+    .bubble_invite .invite-accept {
+        cursor: pointer;
+        flex: 1 1 auto;
+    }
+
+    .bubble_invite .invite-accept:hover {
+        text-decoration: underline;
+    }
+
+    .friend-add-box {
+        display: flex;
+        gap: 8px;
+        margin: 12px 14px 10px 14px;
+    }
+
+    .friend-add-box input {
+        flex: 1;
+        height: 31px;
+        font-size: 12px;
+    }
+
+    .friend-add-box .btn {
+        height: 31px;
+        padding: 5px 8px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .friend-tabs {
+        display: flex;
+        gap: 6px;
+        margin: 0 14px 8px 14px;
+    }
+
+    .friend-tab {
+        cursor: pointer;
+        border: 1px solid #d7d7d7;
+        background: #f8f8f8;
+        border-radius: 3px;
+        padding: 4px 9px;
+        font-size: 12px;
+    }
+
+    .friend-tab.active {
+        font-weight: bold;
+        background: #eaf4ff;
+        border-color: #8ebee8;
+    }
+
     #friendInviteModal.is-open {
         display: block;
     }
@@ -2153,10 +2250,19 @@ $(document).on('keyup', function(input) {
     }
 
     .friend-invite-list {
-        margin: 26px 14px 8px 14px;
-        min-height: 330px;
+        margin: 0 14px 8px 14px;
+        min-height: 272px;
+        max-height: 272px;
+        overflow-y: auto;
         border: 1px solid #ddd;
         background: #fff;
+    }
+
+    .friend-empty,
+    .notification-empty {
+        padding: 12px;
+        color: #888;
+        font-size: 13px;
     }
 
     .friend-invite-row {
@@ -2167,6 +2273,15 @@ $(document).on('keyup', function(input) {
         border-bottom: 1px solid #eee;
         color: #999;
         font-size: 13px;
+    }
+
+    .friend-invite-row.friend-row-pending {
+        background: #f1f1f1;
+        color: #aaa;
+    }
+
+    .friend-invite-row.friend-row-pending .friend-name {
+        color: #aaa;
     }
 
     .friend-invite-row:last-child {
@@ -2221,13 +2336,75 @@ $(document).on('keyup', function(input) {
     }
 
     .friend-mode {
-        width: 34px;
+        width: 86px;
         text-align: center;
     }
 
     .friend-online {
-        width: 24px;
+        width: 64px;
         text-align: center;
+    }
+
+    .friend-action-btn {
+        min-width: 28px;
+        height: 24px;
+        padding: 2px 6px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background: #fff;
+        color: #337ab7;
+        font-size: 12px;
+        line-height: 18px;
+    }
+
+    .friend-action-btn:disabled {
+        color: #999;
+        background: #e6e6e6;
+        cursor: default;
+    }
+
+    .friend-request-accept {
+        color: #2d8a2d;
+        border-color: #9fd39f;
+    }
+
+    .friend-request-decline {
+        color: #b33;
+        border-color: #e0a0a0;
+    }
+
+    .friend-status-text {
+        display: inline-block;
+        color: #777;
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .battle-friends-list {
+        min-height: 96px;
+        max-height: 130px;
+        overflow-y: auto;
+        border-top: 1px solid #e4e4e4;
+    }
+
+    .battle-friend-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 7px 8px;
+        border-bottom: 1px solid #eee;
+        color: #777;
+        font-size: 12px;
+    }
+
+    .battle-friend-row.is-disabled {
+        opacity: 0.45;
+    }
+
+    .battle-friend-row .friend-name {
+        flex: 1;
+        min-width: 0;
     }
 
     .friend-online-dot {
@@ -2566,9 +2743,20 @@ $(document).on('keyup', function(input) {
         </div>
 
     </div>
-    <div id="friendInviteModal">
+    <div id="bubbleNotifications" class="bubble-notifications" aria-live="polite"></div>
+    <div id="friendInviteModal" class="friend-invite-modal">
         <h3 class="friend-invite-title">Invite friends to <span id="friendInviteMode">FFA - X5</span></h3>
-        <div class="friend-invite-list">
+        <div class="friend-add-box">
+            <input id="friendSearchInput" type="text" class="form-control" placeholder="Player name">
+            <button id="friendAddBtn" type="button" class="btn btn-primary">
+                <i class="fa fa-user-plus"></i> Add Friend
+            </button>
+        </div>
+        <div class="friend-tabs">
+            <button type="button" class="friend-tab active" data-friend-tab="friends">Friends</button>
+            <button type="button" class="friend-tab" data-friend-tab="pending">Pending</button>
+        </div>
+        <div class="friend-invite-list" id="friendsList">
         </div>
         <div class="friend-invite-footer">
             <a href="#friends" id="friendInviteFriendsLink"><i class="fa fa-users"></i>Friends</a>
@@ -2763,6 +2951,7 @@ $(document).on('keyup', function(input) {
         </div>
         <div class="spa-page-body">
             <div id="notificationView">
+                <div id="notificationsList" class="notifications-list"></div>
             </div>
         </div>
         <div class="dialog-footer">
@@ -2839,7 +3028,7 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Queue</div>
-                    <div id="battleLobbyQueue" class="battle-settings-value">no data</div>
+                    <div id="battleLobbyQueue" class="battle-settings-value">Estimasi match: No data</div>
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Status</div>
@@ -2855,12 +3044,12 @@ $(document).on('keyup', function(input) {
                 </div>
             </div>
             <div class="battle-lobby-panel is-players">
-                <div class="battle-lobby-panel-title"><span class="glyphicon glyphicon-user"></span>Players <span id="battleLobbyPlayerCount">1/2</span></div>
+                <div class="battle-lobby-panel-title"><span class="glyphicon glyphicon-user"></span>Players <span id="battleLobbyPlayerCount"></span></div>
                 <div id="battleLobbyPlayerRows">
                 <div class="battle-player-row">
                     <span class="battle-avatar">O</span>
                     <span id="battleLobbyPlayerName">-</span>
-                    <span class="battle-percent">59%</span>
+                    <span class="battle-percent">Ready</span>
                 </div>
                 </div>
                 <button id="battleLobbyStart" type="button">Start</button>
@@ -2870,11 +3059,12 @@ $(document).on('keyup', function(input) {
                 <div class="battle-chat-body"></div>
                 <input class="battle-chat-input" type="text" placeholder="Message..">
             </div>
-            <div class="battle-lobby-panel is-short">
+            <div class="battle-lobby-panel is-short" id="battleFriendsPanel">
                 <div class="battle-lobby-panel-title">
                     <span class="fa fa-user-plus"></span>Friends
-                    <label class="battle-friends-head"><input type="checkbox" checked> show all invitations</label>
+                    <label class="battle-friends-head"><input type="checkbox" id="battleShowAllInvitations" checked> show all invitations</label>
                 </div>
+                <div id="battleFriendsList" class="battle-friends-list"></div>
             </div>
         </div>
     </div>
@@ -2984,6 +3174,8 @@ $(function () {
     var battleLobbyQueued = false;
     var battleLobbyPollTimer = null;
     var battleLobbyClientId = localStorage.getItem('battleLobbyClientId');
+    var activeFriendTab = 'friends';
+    var notificationPopupSeen = {};
     var guildViewerRole = 'guest';
     var activeGuildDetail = null;
     var guildList = [];
@@ -3351,7 +3543,8 @@ $(function () {
     }
 
     function renderNotifications(items) {
-        var view = $('#notificationView');
+        var view = $('#notificationsList');
+        if (!view.length) view = $('#notificationView');
         if (!items || !items.length) {
             view.html('<div class="guild-empty">No notifications.</div>');
             return;
@@ -3359,6 +3552,31 @@ $(function () {
 
         view.html(items.map(function(item) {
             var invite = item.invite || {};
+            if (item.type === 'friend_request') {
+                return [
+                    '<div class="notification-item">',
+                    '<div class="notification-title">' + escapeHtml(item.message || 'Friend request') + '</div>',
+                    '<div class="notification-meta"></div>',
+                    '<div class="notification-actions">',
+                    '<button type="button" class="btn btn-success notification-friend-open">Open Friends</button>',
+                    '</div>',
+                    '</div>'
+                ].join('');
+            }
+
+            if (item.type === 'battle_invite') {
+                return [
+                    '<div class="notification-item">',
+                    '<div class="notification-title">' + escapeHtml(item.message || 'Battle invite') + '</div>',
+                    '<div class="notification-meta">' + escapeHtml(item.status || 'pending') + '</div>',
+                    '<div class="notification-actions">',
+                    '<button type="button" class="btn btn-success battle-invite-accept" data-invite-id="' + escapeHtml(item.entityId || '') + '">Join</button>',
+                    '<button type="button" class="btn btn-default battle-invite-decline" data-invite-id="' + escapeHtml(item.entityId || '') + '">Decline</button>',
+                    '</div>',
+                    '</div>'
+                ].join('');
+            }
+
             return [
                 '<div class="notification-item">',
                 '<div class="notification-title">' + escapeHtml(item.message || 'Notification') + '</div>',
@@ -3400,9 +3618,52 @@ $(function () {
         }
 
         $.getJSON('/api/notifications', { token: token }, function(response) {
-            renderNotifications(response.items || []);
+            var items = response.items || response.notifications || [];
+            renderNotifications(items);
+            renderBubbleNotifications(items);
         }).fail(function() {
             renderNotifications([]);
+        });
+    }
+
+    function showBubbleNotification(item) {
+        var root = $('#bubbleNotifications');
+        if (!root.length) {
+            root = $('<div id="bubbleNotifications" class="bubble-notifications" aria-live="polite"></div>').appendTo('body');
+        }
+
+        var id = String(item.id || ('local-' + Date.now()));
+        var inviteType = item.inviteType || (item.type === 'battle_invite' ? 'battle' : item.type === 'friend_request' ? 'friend' : '');
+        var entityId = item.entityId || item.targetId || item.inviteId || '';
+        var canAction = item.status === 'pending' && (inviteType === 'friend' || inviteType === 'battle');
+        var html = '';
+
+        if (canAction) {
+            html += '<i class="fa fa-times invite-reject" data-type="' + escapeHtml(inviteType) + '" data-id="' + escapeHtml(entityId) + '"></i>';
+            html += '<span class="invite-accept" data-type="' + escapeHtml(inviteType) + '" data-id="' + escapeHtml(entityId) + '"><strong>' + escapeHtml(item.title || 'Notification') + '</strong> ' + escapeHtml(item.message || '') + '</span>';
+        } else {
+            html += '<i class="fa fa-info-circle"></i><span><strong>' + escapeHtml(item.title || 'Notification') + '</strong> ' + escapeHtml(item.message || '') + '</span>';
+        }
+
+        var div = $('<div class="bubble_invite warning" id="mess_' + escapeHtml(id) + '">' + html + '</div>');
+        root.append(div);
+
+        while (root.children().length > 15) {
+            root.children().first().remove();
+        }
+
+        setTimeout(function() {
+            div.remove();
+        }, 15000);
+    }
+
+    function renderBubbleNotifications(items) {
+        (items || []).forEach(function(item) {
+            if (!item || item.status !== 'pending') return;
+            var id = String(item.id || item.entityId || '');
+            if (!id || notificationPopupSeen[id]) return;
+            notificationPopupSeen[id] = true;
+            showBubbleNotification(item);
         });
     }
 
@@ -3635,22 +3896,36 @@ $(function () {
                 '<div class="battle-player-row">' +
                 '<span class="battle-avatar">' + escapeHtml(String(players[i].name || 'P').charAt(0).toUpperCase() || 'P') + '</span>' +
                 '<span>' + escapeHtml(players[i].name || 'Player') + '</span>' +
-                '<span class="battle-percent">' + escapeHtml(String(Math.min(required, i + 1)) + '/' + required) + '</span>' +
+                '<span class="battle-percent">Ready</span>' +
                 '</div>'
             );
         }
 
         $('#battleLobbyPlayerRows').html(rows.join(''));
-        $('#battleLobbyPlayerCount').text(count + '/' + required);
-        $('#battleLobbyQueue').text(count + '/' + required);
+        $('#battleLobbyPlayerCount').text('');
+    }
+
+    function resetBattleLobbyEstimate() {
+        $('#battleLobbyQueue').text('Estimasi match: No data');
+    }
+
+    function renderBattleLobbyEstimate(response) {
+        if (!battleLobbyQueued) {
+            resetBattleLobbyEstimate();
+            return;
+        }
+
+        $('#battleLobbyQueue').text('Estimasi match: ' + (response && response.matchEstimate || '-10 menit'));
     }
 
     function renderBattleLobbyStatus(response) {
         var required = response && response.required || getBattleLobbyRequiredPlayers();
         var count = response && typeof response.count === 'number' ? response.count : 1;
+        var status = response && response.status || 'Waiting for players';
 
         renderBattleLobbyPlayers(response && response.players, count, required);
-        $('#battleLobbyStatus').text(response && response.status || 'Waiting for players');
+        renderBattleLobbyEstimate(response);
+        $('#battleLobbyStatus').text(battleLobbyQueued && !(response && response.ready) ? 'Finding match...' : status);
     }
 
     function stopBattleLobbyPolling() {
@@ -3697,6 +3972,7 @@ $(function () {
     function handleBattleLobbyResponse(err, response) {
         if (err) {
             $('#battleLobbyStatus').text(err);
+            resetBattleLobbyEstimate();
             setBattleStartLoading(false);
             battleLobbyQueued = false;
             stopBattleLobbyPolling();
@@ -3705,6 +3981,7 @@ $(function () {
 
         if (!response.ok) {
             $('#battleLobbyStatus').text(response.message || 'Battle lobby unavailable.');
+            resetBattleLobbyEstimate();
             setBattleStartLoading(false);
             battleLobbyQueued = false;
             stopBattleLobbyPolling();
@@ -3714,7 +3991,16 @@ $(function () {
         renderBattleLobbyStatus(response);
 
         if (response.ready) {
-            startBattleFromLobby();
+            $('#battleLobbyStatus').text('Preparing...');
+            $('#battleLobbyStart').html('<span class="battle-play-spinner"></span><span>Preparing</span>');
+            stopBattleLobbyPolling();
+
+            if (!battleStartTimer) {
+                battleStartTimer = setTimeout(function () {
+                    battleStartTimer = null;
+                    startBattleFromLobby();
+                }, 1000);
+            }
         }
     }
 
@@ -3727,7 +4013,8 @@ $(function () {
 
         battleLobbyQueued = true;
         setBattleStartLoading(true);
-        $('#battleLobbyStatus').text('Finding players...');
+        $('#battleLobbyStatus').text('Finding match...');
+        $('#battleLobbyQueue').text('Estimasi match: -10 menit');
         $('#battleLobbyStart').html('<span class="battle-play-spinner"></span><span>Waiting</span>');
 
         battleLobbyRequest('/api/battle/lobby', function(err, response) {
@@ -3743,6 +4030,11 @@ $(function () {
 
         battleLobbyQueued = false;
         stopBattleLobbyPolling();
+        if (battleStartTimer) {
+            clearTimeout(battleStartTimer);
+            battleStartTimer = null;
+        }
+        resetBattleLobbyEstimate();
         battleLobbyRequest('/api/battle/lobby/leave', function() {});
     }
 
@@ -3780,6 +4072,8 @@ $(function () {
         updateBattleRegionLabel();
         $('#battleLobbyStatus').text('Waiting for start');
         renderBattleLobbyPlayers([{ name: getBattleLobbyPlayerName() }], 1, getBattleLobbyRequiredPlayers());
+        resetBattleLobbyEstimate();
+        loadFriendInviteList();
         $('#battleLobbyDialog').addClass('is-open');
     }
 
@@ -4685,6 +4979,224 @@ $(function () {
     function openFriendInviteModal() {
         updateFriendInviteTitle();
         $('#friendInviteModal').addClass('is-open');
+        loadFriendInviteList();
+    }
+
+    function renderFriendInviteList(items) {
+        var $list = $('#friendInviteModal .friend-invite-list');
+        items = items || [];
+
+        items = items.filter(function(friend) {
+            var status = friend.relationStatus || friend.status || 'none';
+            if (activeFriendTab === 'friends') {
+                return status === 'friend' || status === 'accepted' || status === 'none';
+            }
+            return status === 'incoming' || status === 'outgoing';
+        });
+
+        if (!items.length) {
+            $list.html('<div class="friend-empty">' + (activeFriendTab === 'pending' ? 'No pending friend invitations.' : 'No players found.') + '</div>');
+            return;
+        }
+
+        $list.html(items.map(function(friend, index) {
+            var status = friend.relationStatus || friend.status || 'none';
+            if (status === 'accepted') status = 'friend';
+            var pending = status === 'outgoing';
+            var rowClass = pending ? ' friend-row-pending' : '';
+            var initial = String(friend.username || 'P').charAt(0).toUpperCase() || 'P';
+            var avatarClass = index % 2 ? 'friend-avatar-red' : 'friend-avatar-blue';
+            var tag = friend.guildTag ? '[' + friend.guildTag + ']' : '';
+            var actions = '';
+
+            if (status === 'friend') {
+                actions = '<button type="button" class="friend-action-btn friend-invite-action" data-friend-id="' + escapeHtml(friend.id) + '">Invite</button>';
+            } else if (status === 'incoming') {
+                actions =
+                    '<button type="button" class="friend-action-btn friend-request-accept" title="Accept" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-check"></i></button> ' +
+                    '<button type="button" class="friend-action-btn friend-request-decline" title="Reject" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-times"></i></button>';
+            } else if (status === 'outgoing') {
+                actions = '<button type="button" class="friend-action-btn" disabled>Pending</button>';
+            } else {
+                actions = '<button type="button" class="friend-action-btn friend-add-action" data-friend-id="' + escapeHtml(friend.id) + '">Add</button>';
+            }
+
+            return [
+                '<div class="friend-invite-row' + rowClass + '">',
+                '<div class="friend-avatar ' + avatarClass + '"><span>' + escapeHtml(initial) + '</span></div>',
+                '<div class="friend-name" title="' + escapeHtml(friend.username || 'Player') + '">' + escapeHtml(friend.username || 'Player') + '</div>',
+                '<div class="friend-tag">' + escapeHtml(tag) + '</div>',
+                '<div class="friend-mode"><span class="friend-status-text">' + escapeHtml(status === 'friend' ? 'Friend' : status === 'incoming' ? 'Request' : status === 'outgoing' ? 'Menunggu Acc' : '') + '</span></div>',
+                '<div class="friend-online">' + actions + '</div>',
+                '</div>'
+            ].join('');
+        }).join(''));
+    }
+
+    function renderBattleFriends(items) {
+        var $list = $('#battleFriendsList');
+        if (!$list.length) return;
+
+        items = (items || []).filter(function(friend) {
+            var status = friend.relationStatus || friend.status || 'none';
+            if (status === 'accepted') status = 'friend';
+            if (status !== 'friend') return false;
+            if ($('#battleShowAllInvitations').is(':checked')) return true;
+            return friend.online && !friend.inBattle;
+        });
+
+        if (!items.length) {
+            $list.html('<div class="friend-empty">No friends available.</div>');
+            return;
+        }
+
+        $list.html(items.map(function(friend) {
+            var disabled = !friend.online || friend.inBattle;
+            var statusText = friend.inBattle ? 'Battle' : (friend.online ? 'Online' : 'Offline');
+            return [
+                '<div class="battle-friend-row' + (disabled ? ' is-disabled' : '') + '">',
+                '<div class="friend-name"><strong>' + escapeHtml(friend.username || friend.name || 'Player') + '</strong><br><small>' + escapeHtml(statusText) + '</small></div>',
+                '<button type="button" class="btn btn-primary btn-xs battle-friend-invite" data-friend-id="' + escapeHtml(friend.id) + '"' + (disabled ? ' disabled' : '') + '>Invite</button>',
+                '</div>'
+            ].join('');
+        }).join(''));
+    }
+
+    function loadFriendInviteList() {
+        var token = getAuthToken();
+        var $list = $('#friendInviteModal .friend-invite-list');
+
+        if (!token) {
+            $list.html('<div class="friend-invite-row"><div class="friend-name" style="padding-left:12px;">Login untuk add friend.</div></div>');
+            return;
+        }
+
+        $list.html('<div class="friend-invite-row"><div class="friend-name" style="padding-left:12px;">Loading friends...</div></div>');
+
+        $.getJSON('/api/friends', { token: token }, function(response) {
+            renderFriendInviteList(response && response.items || []);
+            renderBattleFriends(response && (response.friends || response.items) || []);
+        }).fail(function(xhr) {
+            var response = xhr.responseJSON || {};
+            $list.html('<div class="friend-invite-row"><div class="friend-name" style="padding-left:12px;">' + escapeHtml(response.message || 'Failed to load friends.') + '</div></div>');
+        });
+    }
+
+    function updateFriendListFromResponse(response) {
+        if (response && response.items) {
+            renderFriendInviteList(response.items);
+            renderBattleFriends(response.friends || response.items);
+        } else {
+            loadFriendInviteList();
+        }
+        refreshNotifications();
+    }
+
+    function friendAction(path, friendId) {
+        if (!friendId) return;
+
+        postAuth(path, {
+            token: getAuthToken(),
+            targetId: friendId
+        }, function(err, response) {
+            if (err) {
+                alert(err);
+                return;
+            }
+
+            updateFriendListFromResponse(response);
+        });
+    }
+
+    function addFriendFromInput() {
+        var name = $.trim($('#friendSearchInput').val() || '');
+        if (!name) {
+            alert('Player name is required.');
+            return;
+        }
+
+        postAuth('/api/friends/invite', {
+            token: getAuthToken(),
+            playerName: name
+        }, function(err, response) {
+            if (err) {
+                alert(err);
+                return;
+            }
+
+            $('#friendSearchInput').val('');
+            activeFriendTab = 'pending';
+            $('.friend-tab').removeClass('active');
+            $('.friend-tab[data-friend-tab="pending"]').addClass('active');
+            updateFriendListFromResponse(response);
+        });
+    }
+
+    function getFriendInviteLink() {
+        var text = $.trim($('#inviteLinkText').text() || '');
+        if (text && text.indexOf('Join a server first') === -1) {
+            return text;
+        }
+
+        return window.location.href;
+    }
+
+    function inviteFriend(friendId) {
+        var link = getFriendInviteLink();
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(link).then(function() {
+                alert('Invite link copied.');
+            }, function() {
+                alert('Invite link: ' + link);
+            });
+        } else {
+            alert('Invite link: ' + link);
+        }
+    }
+
+    function sendBattleInvite(friendId) {
+        if (!friendId) return;
+
+        postAuth('/api/battle/invite', {
+            token: getAuthToken(),
+            targetUserId: friendId,
+            battleId: battleLobbyModeValue,
+            mode: battleLobbyModeValue
+        }, function(err, response) {
+            if (err) {
+                alert(err);
+                return;
+            }
+
+            alert(response.message || 'Invitation sent.');
+            loadFriendInviteList();
+        });
+    }
+
+    function respondBattleInvite(inviteId, accepted) {
+        postAuth('/api/battle/invite/respond', {
+            token: getAuthToken(),
+            id: inviteId,
+            accepted: !!accepted
+        }, function(err, response) {
+            if (err) {
+                alert(err);
+                refreshNotifications();
+                return;
+            }
+
+            refreshNotifications();
+            if (accepted && response.mode) {
+                closeFriendInviteModal();
+                closeBattleLiveDialog();
+                closeBattleLobbyDialog(true);
+                if (typeof window.setGameMode === 'function') {
+                    window.setGameMode(resolveGameModeRoom(response.mode), true);
+                }
+                setNick(document.getElementById('nick').value);
+            }
+        });
     }
 
     function positionCommunityDropup($sourceLink) {
@@ -5513,8 +6025,111 @@ $(function () {
         event.stopPropagation();
     });
 
-    $('#friendInviteFriendsLink').on('click', function () {
-        closeFriendInviteModal();
+    $('#friendInviteFriendsLink').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openFriendInviteModal();
+    });
+
+    $('#friendAddBtn').on('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        addFriendFromInput();
+    });
+
+    $('#friendSearchInput').on('keydown', function (event) {
+        if (event.keyCode === 13) {
+            event.preventDefault();
+            addFriendFromInput();
+        }
+    });
+
+    $('#friendInviteModal').on('click', '.friend-tab', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        activeFriendTab = $(this).data('friend-tab') || 'friends';
+        $('.friend-tab').removeClass('active');
+        $(this).addClass('active');
+        loadFriendInviteList();
+    });
+
+    $('#friendInviteModal').on('click', '.friend-add-action', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        friendAction('/api/friends/add', $(this).data('friend-id'));
+    });
+
+    $('#friendInviteModal').on('click', '.friend-request-accept', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        friendAction('/api/friends/accept', $(this).data('friend-id'));
+    });
+
+    $('#friendInviteModal').on('click', '.friend-request-decline', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        friendAction('/api/friends/decline', $(this).data('friend-id'));
+    });
+
+    $('#friendInviteModal').on('click', '.friend-invite-action', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        inviteFriend($(this).data('friend-id'));
+    });
+
+    $('#battleFriendsPanel').on('click', '.battle-friend-invite', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        sendBattleInvite($(this).data('friend-id'));
+    });
+
+    $('#battleShowAllInvitations').on('change', function () {
+        loadFriendInviteList();
+    });
+
+    $('#notificationView').on('click', '.notification-friend-open', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCommunityDropup();
+        openFriendInviteModal();
+    });
+
+    $('#notificationView').on('click', '.battle-invite-accept', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        respondBattleInvite($(this).data('invite-id'), true);
+    });
+
+    $('#notificationView').on('click', '.battle-invite-decline', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        respondBattleInvite($(this).data('invite-id'), false);
+    });
+
+    $('#bubbleNotifications').on('click', '.invite-accept', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var type = $(this).data('type');
+        var id = $(this).data('id');
+        if (type === 'battle') {
+            respondBattleInvite(id, true);
+        } else if (type === 'friend') {
+            friendAction('/api/friends/accept', id);
+        }
+        $(this).closest('.bubble_invite').remove();
+    });
+
+    $('#bubbleNotifications').on('click', '.invite-reject', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var type = $(this).data('type');
+        var id = $(this).data('id');
+        if (type === 'battle') {
+            respondBattleInvite(id, false);
+        } else if (type === 'friend') {
+            friendAction('/api/friends/decline', id);
+        }
+        $(this).closest('.bubble_invite').remove();
     });
 
     $(document).on('click', function () {

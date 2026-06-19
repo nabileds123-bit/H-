@@ -204,6 +204,24 @@ GameServer.prototype.start = function() {
         return;
       }
 
+      if (pathname == '/api/battle/invite' && req.method == 'POST') {
+        readJson(req, function(err, body) {
+          if (err) return sendJson(res, 400, { ok: false, message: 'Invalid JSON.', error: 'Invalid JSON.' });
+          var result = self.createBattleInvite(body);
+          sendJson(res, result.ok ? 200 : (result.status || 400), result);
+        });
+        return;
+      }
+
+      if (pathname == '/api/battle/invite/respond' && req.method == 'POST') {
+        readJson(req, function(err, body) {
+          if (err) return sendJson(res, 400, { ok: false, message: 'Invalid JSON.', error: 'Invalid JSON.' });
+          var result = self.respondBattleInvite(body);
+          sendJson(res, result.ok ? 200 : (result.status || 400), result);
+        });
+        return;
+      }
+
       if (pathname == '/api/battle/lobby' && req.method == 'POST') {
         readJson(req, function(err, body) {
           if (err) return sendJson(res, 400, { ok: false, message: 'Invalid JSON.' });
@@ -485,6 +503,51 @@ GameServer.prototype.releaseBattleLobbyIfReady = function(mode) {
     lobby.members = lobby.members.slice(size);
 }
 
+GameServer.prototype.getBattleLobbyQueueCount = function(mode) {
+    var total = 0;
+
+    if (mode) {
+        total += this.getBattleLobby(mode).members.length;
+    } else {
+        for (var key in this.battleLobbies) {
+            if (this.battleLobbies[key] && this.battleLobbies[key].members) {
+                total += this.battleLobbies[key].members.length;
+            }
+        }
+    }
+
+    return total;
+}
+
+GameServer.prototype.getBattleOnlinePlayerCount = function() {
+    var total = 0;
+
+    for (var i = 0; i < this.clients.length; i++) {
+        var socket = this.clients[i];
+        if (socket && socket.playerTracker && socket.playerTracker.getStatus && socket.playerTracker.getStatus()) {
+            total++;
+        }
+    }
+
+    return total;
+}
+
+GameServer.prototype.getBattleMatchEstimate = function(mode) {
+    var queueCount = this.getBattleLobbyQueueCount(mode);
+    var onlineCount = this.getBattleOnlinePlayerCount();
+    var activity = onlineCount || queueCount;
+
+    if (queueCount >= this.getBattleLobbySize(mode) || activity >= 20) {
+        return '-1 menit';
+    }
+
+    if (queueCount > 1 || activity >= 8) {
+        return '-5 menit';
+    }
+
+    return '-10 menit';
+}
+
 GameServer.prototype.getBattleLobbyPayload = function(mode, clientId) {
     this.pruneBattleLobby(mode);
     this.releaseBattleLobbyIfReady(mode);
@@ -517,6 +580,7 @@ GameServer.prototype.getBattleLobbyPayload = function(mode, clientId) {
         }),
         count: players.length,
         required: size,
+        matchEstimate: this.getBattleMatchEstimate(mode),
         status: ready ? 'Match ready' : (this.isBattleWorldAvailable(mode) ? 'Waiting for players' : 'Battle in progress')
     };
 }
@@ -586,6 +650,171 @@ GameServer.prototype.leaveBattleLobby = function(data) {
     });
 
     return this.getBattleLobbyPayload(mode, clientId);
+}
+
+GameServer.prototype.makeBattleInviteId = function() {
+    return 'bi_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+GameServer.prototype.getAuthUserFromToken = function(token) {
+    return userStore.findBySessionToken(String(token || ''));
+}
+
+GameServer.prototype.findOnlineClientByUserId = function(userId) {
+    userId = String(userId || '');
+
+    for (var i = 0; i < this.clients.length; i++) {
+        var tracker = this.clients[i] && this.clients[i].playerTracker;
+        var authUser = tracker && tracker.authUser;
+        if (authUser && String(authUser.id || '') === userId && tracker.getStatus && tracker.getStatus()) {
+            return tracker;
+        }
+    }
+
+    return null;
+}
+
+GameServer.prototype.isUserInBattle = function(userId) {
+    var tracker = this.findOnlineClientByUserId(userId);
+    var worldId = tracker && tracker.world && tracker.world.id || '';
+    return String(worldId).indexOf(':battle') === 0;
+}
+
+GameServer.prototype.normalizeUserInviteList = function(list) {
+    return Array.isArray(list) ? list.filter(function(item) {
+        return item && item.id;
+    }) : [];
+}
+
+GameServer.prototype.removeBattleInviteFromUser = function(user, field, inviteId) {
+    var list = this.normalizeUserInviteList(user && user[field]).filter(function(invite) {
+        return String(invite.id || '') !== String(inviteId || '');
+    });
+    var changes = {};
+    changes[field] = list;
+    return userStore.updateUser(user.id, changes);
+}
+
+GameServer.prototype.upsertBattleInviteForUser = function(user, field, invite) {
+    var list = this.normalizeUserInviteList(user && user[field]);
+    var replaced = false;
+
+    list = list.map(function(item) {
+        if (String(item.id || '') !== String(invite.id || '')) return item;
+        replaced = true;
+        return invite;
+    });
+
+    if (!replaced) {
+        list.push(invite);
+    }
+
+    var changes = {};
+    changes[field] = list;
+    return userStore.updateUser(user.id, changes);
+}
+
+GameServer.prototype.createBattleInvite = function(data) {
+    var sender = this.getAuthUserFromToken(data && data.token);
+    if (!sender) return { ok: false, status: 401, message: 'Please login to continue.', error: 'Please login to continue.' };
+
+    var target = userStore.findByIdOrUsernameOrEmail(String(data.targetUserId || data.targetId || data.userId || '').trim());
+    if (!target) return { ok: false, status: 404, message: 'Player not found.', error: 'Player not found.' };
+    if (String(target.id || '') === String(sender.id || '')) {
+        return { ok: false, status: 400, message: 'You cannot invite yourself.', error: 'You cannot invite yourself.' };
+    }
+
+    if (!Array.isArray(sender.friends) || sender.friends.indexOf(target.id) === -1) {
+        return { ok: false, status: 403, message: 'You can only invite friends.', error: 'You can only invite friends.' };
+    }
+
+    if (!this.findOnlineClientByUserId(target.id)) {
+        return { ok: false, status: 400, message: 'Player is offline.', error: 'Player is offline.' };
+    }
+
+    if (this.isUserInBattle(target.id)) {
+        return { ok: false, status: 400, message: 'Player is not available.', error: 'Player is not available.' };
+    }
+
+    sender = userStore.findByIdOrUsernameOrEmail(sender.id) || sender;
+    target = userStore.findByIdOrUsernameOrEmail(target.id) || target;
+
+    var mode = this.normalizeBattleLobbyMode(data && data.mode) || ':battle:1v1';
+    var duplicate = this.normalizeUserInviteList(sender.battleInvitesSent).filter(function(invite) {
+        return invite.toUserId === target.id && invite.mode === mode && invite.status === 'pending' && (!invite.expiresAt || invite.expiresAt > Date.now());
+    })[0];
+    if (duplicate) {
+        return { ok: false, status: 409, message: 'Battle invitation already pending.', error: 'Battle invitation already pending.' };
+    }
+
+    var now = Date.now();
+    var invite = {
+        id: this.makeBattleInviteId(),
+        battleId: String(data.battleId || mode),
+        mode: mode,
+        fromUserId: sender.id,
+        fromUsername: sender.username,
+        toUserId: target.id,
+        toUsername: target.username,
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+        expiresAt: now + 60000
+    };
+
+    this.upsertBattleInviteForUser(sender, 'battleInvitesSent', invite);
+    this.upsertBattleInviteForUser(target, 'battleInvitesReceived', invite);
+
+    return { ok: true, invite: invite, message: 'Invitation sent.' };
+}
+
+GameServer.prototype.respondBattleInvite = function(data) {
+    var user = this.getAuthUserFromToken(data && data.token);
+    if (!user) return { ok: false, status: 401, message: 'Please login to continue.', error: 'Please login to continue.' };
+
+    var inviteId = String(data && (data.id || data.inviteId) || '').trim();
+    var accepted = !!(data && data.accepted);
+    user = userStore.findByIdOrUsernameOrEmail(user.id) || user;
+
+    var invite = this.normalizeUserInviteList(user.battleInvitesReceived).filter(function(item) {
+        return String(item.id || '') === inviteId;
+    })[0];
+
+    if (!invite) return { ok: false, status: 404, message: 'Invitation not found.', error: 'Invitation not found.' };
+
+    var sender = userStore.findByIdOrUsernameOrEmail(invite.fromUserId);
+    if (invite.status !== 'pending' || (invite.expiresAt && invite.expiresAt <= Date.now())) {
+        invite.status = 'expired';
+        invite.updatedAt = Date.now();
+        this.upsertBattleInviteForUser(user, 'battleInvitesReceived', invite);
+        if (sender) this.upsertBattleInviteForUser(sender, 'battleInvitesSent', invite);
+        return { ok: false, status: 400, message: 'Battle is no longer active.', error: 'Battle is no longer active.' };
+    }
+
+    invite.status = accepted ? 'accepted' : 'rejected';
+    invite.updatedAt = Date.now();
+
+    this.upsertBattleInviteForUser(user, 'battleInvitesReceived', invite);
+    if (sender) this.upsertBattleInviteForUser(sender, 'battleInvitesSent', invite);
+
+    if (!accepted) {
+        return { ok: true, message: 'Battle invitation rejected.' };
+    }
+
+    if (!this.isBattleWorldAvailable(invite.mode)) {
+        invite.status = 'expired';
+        invite.updatedAt = Date.now();
+        this.upsertBattleInviteForUser(user, 'battleInvitesReceived', invite);
+        if (sender) this.upsertBattleInviteForUser(sender, 'battleInvitesSent', invite);
+        return { ok: false, status: 400, message: 'Battle is no longer active.', error: 'Battle is no longer active.' };
+    }
+
+    return {
+        ok: true,
+        battleId: invite.battleId,
+        mode: invite.mode,
+        message: 'Battle invitation accepted.'
+    };
 }
 
 GameServer.prototype.createWorld = function(id, gameMode, config) {

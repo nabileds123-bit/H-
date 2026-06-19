@@ -59,6 +59,31 @@ function normalizeStore(store) {
             changed = true;
         }
 
+        if (!Array.isArray(user.friends)) {
+            user.friends = [];
+            changed = true;
+        }
+
+        if (!Array.isArray(user.friendRequestsSent)) {
+            user.friendRequestsSent = [];
+            changed = true;
+        }
+
+        if (!Array.isArray(user.friendRequestsReceived)) {
+            user.friendRequestsReceived = [];
+            changed = true;
+        }
+
+        if (!Array.isArray(user.battleInvitesSent)) {
+            user.battleInvitesSent = [];
+            changed = true;
+        }
+
+        if (!Array.isArray(user.battleInvitesReceived)) {
+            user.battleInvitesReceived = [];
+            changed = true;
+        }
+
         return user;
     });
 
@@ -197,6 +222,11 @@ function createUser(data) {
         guildSkinUrl: '',
         guildSkinPath: '',
         country_code: String(data.country_code || data.countryCode || '').trim().toUpperCase(),
+        friends: [],
+        friendRequestsSent: [],
+        friendRequestsReceived: [],
+        battleInvitesSent: [],
+        battleInvitesReceived: [],
         verifyEmail: data.verifyEmail,
         resetPassword: null,
         createdAt: Date.now(),

@@ -790,19 +790,314 @@ function handleGuildInvites(req, res, query) {
 function handleNotifications(req, res, query) {
     var user = users.findBySessionToken(String(query.token || ''));
     if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+    var items = pendingInvitesForUser(user).map(function(invite) {
+        return {
+            id: 'guild-invite-' + invite.id,
+            type: 'guild_invite',
+            inviteId: invite.id,
+            message: 'You have been invited to join [' + invite.guild_tag + '] ' + invite.guild_name,
+            invite: invite
+        };
+    }).concat(getIncomingFriendRequests(user).map(function(friend) {
+        return {
+            id: 'friend-request-' + friend.id,
+            type: 'friend_request',
+            targetId: friend.id,
+            inviteType: 'friend',
+            entityId: friend.id,
+            status: 'pending',
+            title: 'Friend Invite',
+            message: friend.username + ' sent you a friend request.',
+            friend: publicFriendProfile(friend, 'incoming')
+        };
+    })).concat(getPendingBattleInvites(user).map(function(invite) {
+        return {
+            id: 'battle-invite-' + invite.id,
+            type: 'battle_invite',
+            inviteType: 'battle',
+            entityId: invite.id,
+            status: invite.status || 'pending',
+            title: 'Battle Invite',
+            message: (invite.fromUsername || 'Player') + ' invited you to play ' + (invite.mode || 'Battle') + '.',
+            invite: invite
+        };
+    }));
 
     sendJson(res, 200, {
         ok: true,
-        items: pendingInvitesForUser(user).map(function(invite) {
-            return {
-                id: 'guild-invite-' + invite.id,
-                type: 'guild_invite',
-                inviteId: invite.id,
-                message: 'You have been invited to join [' + invite.guild_tag + '] ' + invite.guild_name,
-                invite: invite
-            };
-        })
+        items: items,
+        notifications: items
     });
+}
+
+function normalizeIdList(list) {
+    var seen = {};
+    var result = [];
+
+    (Array.isArray(list) ? list : []).forEach(function(value) {
+        var id = String(value || '').trim();
+        if (id && !seen[id]) {
+            seen[id] = true;
+            result.push(id);
+        }
+    });
+
+    return result;
+}
+
+function addId(list, id) {
+    list = normalizeIdList(list);
+    id = String(id || '').trim();
+    if (id && list.indexOf(id) === -1) {
+        list.push(id);
+    }
+    return list;
+}
+
+function removeId(list, id) {
+    id = String(id || '').trim();
+    return normalizeIdList(list).filter(function(value) {
+        return value !== id;
+    });
+}
+
+function hasId(list, id) {
+    return normalizeIdList(list).indexOf(String(id || '').trim()) !== -1;
+}
+
+function publicFriendProfile(user, status) {
+    var accepted = status === 'friend';
+    return {
+        id: user.id,
+        username: user.username || 'Player',
+        name: user.username || 'Player',
+        nick: user.username || 'Player',
+        status: accepted ? 'accepted' : (status || 'none'),
+        relationStatus: status || 'none',
+        online: !!user.sessionToken,
+        inBattle: false,
+        invitePending: false,
+        level: parseInt(user.level, 10) || 1,
+        accountType: user.accountType || 'Free',
+        guildTag: user.guildTag || '',
+        country_code: normalizeCountryCode(user.country_code || user.countryCode),
+        lastLoginAt: user.lastLoginAt || user.updatedAt || user.createdAt || Date.now()
+    };
+}
+
+function getIncomingFriendRequests(user) {
+    var incoming = normalizeIdList(user.friendRequestsReceived);
+    return users.listUsers().filter(function(item) {
+        return item && incoming.indexOf(String(item.id || '')) !== -1;
+    });
+}
+
+function getPendingBattleInvites(user) {
+    var now = Date.now();
+    return (Array.isArray(user.battleInvitesReceived) ? user.battleInvitesReceived : []).filter(function(invite) {
+        return invite && invite.status === 'pending' && (!invite.expiresAt || invite.expiresAt > now);
+    });
+}
+
+function getFriendStatus(user, other) {
+    if (hasId(user.friends, other.id)) return 'friend';
+    if (hasId(user.friendRequestsReceived, other.id)) return 'incoming';
+    if (hasId(user.friendRequestsSent, other.id)) return 'outgoing';
+    return 'none';
+}
+
+function buildFriendsPayload(user) {
+    var current = users.findByIdOrUsernameOrEmail(user.id) || user;
+    var items = users.listUsers()
+        .filter(function(item) {
+            return item && String(item.id || '') !== String(current.id || '');
+        })
+        .map(function(item) {
+            return publicFriendProfile(item, getFriendStatus(current, item));
+        });
+
+    items.sort(function(a, b) {
+        var order = { incoming: 0, friend: 1, outgoing: 2, none: 3 };
+        var left = Object.prototype.hasOwnProperty.call(order, a.status) ? order[a.status] : 9;
+        var right = Object.prototype.hasOwnProperty.call(order, b.status) ? order[b.status] : 9;
+        var diff = left - right;
+        if (diff) return diff;
+        return String(a.username || '').localeCompare(String(b.username || ''));
+    });
+
+    return {
+        ok: true,
+        items: items,
+        friends: items
+    };
+}
+
+function handleFriendsList(req, res, query) {
+    var user = users.findBySessionToken(String(query.token || ''));
+    if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+    sendJson(res, 200, buildFriendsPayload(user));
+}
+
+function handleFriendAdd(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var target = users.findByIdOrUsernameOrEmail(String(body.target || body.targetId || body.username || '').trim());
+        if (!target) return sendJson(res, 404, { ok: false, message: 'Player not found.' });
+        if (String(target.id || '') === String(user.id || '')) {
+            return sendJson(res, 400, { ok: false, message: 'You cannot add yourself.' });
+        }
+
+        user = users.findByIdOrUsernameOrEmail(user.id) || user;
+        target = users.findByIdOrUsernameOrEmail(target.id) || target;
+
+        if (hasId(user.friends, target.id)) {
+            return sendJson(res, 409, { ok: false, message: 'Player is already your friend.' });
+        }
+        if (hasId(user.friendRequestsSent, target.id)) {
+            return sendJson(res, 409, { ok: false, message: 'Friend request already pending.' });
+        }
+        if (hasId(user.friendRequestsReceived, target.id)) {
+            return acceptFriendRequest(res, user, target);
+        }
+
+        users.updateUser(user.id, {
+            friendRequestsSent: addId(user.friendRequestsSent, target.id)
+        });
+        users.updateUser(target.id, {
+            friendRequestsReceived: addId(target.friendRequestsReceived, user.id)
+        });
+
+        sendJson(res, 200, Object.assign({ message: 'Friend request sent.' }, buildFriendsPayload(user)));
+    });
+}
+
+function handleFriendInvite(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.', error: 'Invalid request.' });
+
+        body.target = body.target || body.targetId || body.username || body.playerName;
+        handleFriendAddWithBody(res, body);
+    });
+}
+
+function handleFriendAddWithBody(res, body) {
+    var user = users.findBySessionToken(String(body.token || ''));
+    if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.', error: 'You must login first.' });
+
+    var target = users.findByIdOrUsernameOrEmail(String(body.target || body.targetId || body.username || body.playerName || '').trim());
+    if (!target) return sendJson(res, 404, { ok: false, message: 'Player not found.', error: 'Player not found.' });
+    if (String(target.id || '') === String(user.id || '')) {
+        return sendJson(res, 400, { ok: false, message: 'You cannot add yourself.', error: 'You cannot add yourself.' });
+    }
+
+    user = users.findByIdOrUsernameOrEmail(user.id) || user;
+    target = users.findByIdOrUsernameOrEmail(target.id) || target;
+
+    if (hasId(user.friends, target.id)) {
+        return sendJson(res, 409, { ok: false, message: 'Player is already your friend.', error: 'Already friends.' });
+    }
+    if (hasId(user.friendRequestsSent, target.id)) {
+        return sendJson(res, 409, { ok: false, message: 'Friend request already pending.', error: 'Friend invitation already pending.' });
+    }
+    if (hasId(user.friendRequestsReceived, target.id)) {
+        return acceptFriendRequest(res, user, target);
+    }
+
+    users.updateUser(user.id, {
+        friendRequestsSent: addId(user.friendRequestsSent, target.id)
+    });
+    users.updateUser(target.id, {
+        friendRequestsReceived: addId(target.friendRequestsReceived, user.id)
+    });
+
+    sendJson(res, 200, Object.assign({ message: 'Friend request sent.' }, buildFriendsPayload(user)));
+}
+
+function acceptFriendRequest(res, user, requester) {
+    user = users.findByIdOrUsernameOrEmail(user.id) || user;
+    requester = users.findByIdOrUsernameOrEmail(requester.id) || requester;
+
+    if (!hasId(user.friendRequestsReceived, requester.id) && !hasId(requester.friendRequestsSent, user.id)) {
+        return sendJson(res, 404, { ok: false, message: 'Friend request not found.' });
+    }
+
+    users.updateUser(user.id, {
+        friends: addId(user.friends, requester.id),
+        friendRequestsReceived: removeId(user.friendRequestsReceived, requester.id),
+        friendRequestsSent: removeId(user.friendRequestsSent, requester.id)
+    });
+    users.updateUser(requester.id, {
+        friends: addId(requester.friends, user.id),
+        friendRequestsSent: removeId(requester.friendRequestsSent, user.id),
+        friendRequestsReceived: removeId(requester.friendRequestsReceived, user.id)
+    });
+
+    sendJson(res, 200, Object.assign({ message: 'Friend request accepted.' }, buildFriendsPayload(user)));
+}
+
+function handleFriendAccept(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var requester = users.findByIdOrUsernameOrEmail(String(body.target || body.targetId || body.username || '').trim());
+        if (!requester) return sendJson(res, 404, { ok: false, message: 'Player not found.' });
+
+        acceptFriendRequest(res, user, requester);
+    });
+}
+
+function handleFriendRespond(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.', error: 'Invalid request.' });
+
+        if (body.accepted) {
+            body.targetId = body.targetId || body.target || body.id;
+            var user = users.findBySessionToken(String(body.token || ''));
+            if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.', error: 'You must login first.' });
+            var requester = users.findByIdOrUsernameOrEmail(String(body.targetId || '').trim());
+            if (!requester) return sendJson(res, 404, { ok: false, message: 'Player not found.', error: 'Player not found.' });
+            return acceptFriendRequest(res, user, requester);
+        }
+
+        body.targetId = body.targetId || body.target || body.id;
+        return declineFriendRequestWithBody(res, body);
+    });
+}
+
+function handleFriendDecline(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        declineFriendRequestWithBody(res, body);
+    });
+}
+
+function declineFriendRequestWithBody(res, body) {
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.', error: 'You must login first.' });
+
+        var requester = users.findByIdOrUsernameOrEmail(String(body.target || body.targetId || body.username || '').trim());
+        if (!requester) return sendJson(res, 404, { ok: false, message: 'Player not found.', error: 'Player not found.' });
+
+        user = users.findByIdOrUsernameOrEmail(user.id) || user;
+        requester = users.findByIdOrUsernameOrEmail(requester.id) || requester;
+
+        users.updateUser(user.id, {
+            friendRequestsReceived: removeId(user.friendRequestsReceived, requester.id)
+        });
+        users.updateUser(requester.id, {
+            friendRequestsSent: removeId(requester.friendRequestsSent, user.id)
+        });
+
+        sendJson(res, 200, Object.assign({ message: 'Friend request declined.' }, buildFriendsPayload(user)));
 }
 
 function handleGuildInvite(req, res) {
@@ -1104,6 +1399,7 @@ function handle(req, res) {
 
     if (pathname.indexOf('/api/auth/') !== 0 &&
         pathname.indexOf('/api/guild/') !== 0 &&
+        pathname.indexOf('/api/friends') !== 0 &&
         pathname !== '/api/notifications') {
         return false;
     }
@@ -1120,6 +1416,36 @@ function handle(req, res) {
 
     if (req.method === 'GET' && pathname === '/api/notifications') {
         handleNotifications(req, res, parsed.query || {});
+        return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/friends') {
+        handleFriendsList(req, res, parsed.query || {});
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/friends/add') {
+        handleFriendAdd(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/friends/invite') {
+        handleFriendInvite(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/friends/accept') {
+        handleFriendAccept(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/friends/decline') {
+        handleFriendDecline(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/friends/respond') {
+        handleFriendRespond(req, res);
         return true;
     }
 
