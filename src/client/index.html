@@ -2168,18 +2168,16 @@ $(document).on('keyup', function(input) {
         height: 550px;
         transform: translateY(-50%);
         z-index: 255;
-        flex-direction: column;
-        gap: 8px;
     }
 
     .side-container.is-open {
-        display: flex;
+        display: block;
     }
 
     .friends-online {
+        position: relative;
         width: 100%;
-        flex: 1 1 auto;
-        min-height: 0;
+        height: 100%;
         background: #fff;
         border-radius: 15px;
         box-shadow: 0 2px 8px rgba(0,0,0,.35);
@@ -2218,13 +2216,17 @@ $(document).on('keyup', function(input) {
 
     #friend-invite-modal {
         display: none;
-        width: 100%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 350px;
         min-height: 0;
         background: #fff;
-        border-radius: 15px;
+        border-radius: 4px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+        transform: translate(-50%, -50%);
         overflow: hidden;
-        flex: 0 0 auto;
+        z-index: 4;
     }
 
     #bubbleNotifications,
@@ -2593,7 +2595,7 @@ $(document).on('keyup', function(input) {
 
     @media (max-width: 760px) {
         #friend-invite-modal {
-            width: auto;
+            width: calc(100% - 28px);
             min-height: 0;
         }
     }</style>
@@ -2910,21 +2912,21 @@ $(document).on('keyup', function(input) {
     </div>
     </div>
     <div class="side-container">
-        <div id="friend-invite-modal">
-            <h3 class="friend-invite-title">Add Friend</h3>
-            <div class="friend-add-box">
-                <input id="friend_i_n" type="text" class="form-control" placeholder="Player name">
-                <input id="friend_i_m" type="text" class="form-control" placeholder="Message" style="display:none;">
-                <button id="friendAddSubmit" type="button" class="btn btn-primary">
-                    <i class="fa fa-user-plus"></i> Add Friend
-                </button>
-            </div>
-        </div>
         <div class="modal-content friends-online">
             <div class="modal-header">
                 <h4 class="modal-title">Invite friends to <span class="friends-modal-mode">FFA - X5</span></h4>
             </div>
             <div class="modal-body">
+                <div id="friend-invite-modal">
+                    <h3 class="friend-invite-title">Add Friend</h3>
+                    <div class="friend-add-box">
+                        <input id="friend_i_n" type="text" class="form-control" placeholder="Player name">
+                        <input id="friend_i_m" type="text" class="form-control" placeholder="Message" style="display:none;">
+                        <button id="friendAddSubmit" type="button" class="btn btn-primary">
+                            <i class="fa fa-user-plus"></i> Add Friend
+                        </button>
+                    </div>
+                </div>
                 <div class="bub-table-list m-t-10" id="friends-view-modal-data">
                     <h2 class="center friends-empty-text">0 friends online</h2>
                     <table class="table table-striped table-hover">
@@ -5375,6 +5377,26 @@ $(function () {
         }).join(''));
     }
 
+    function getFriendItemsFromResponse(response) {
+        var map = {};
+
+        function addRows(rows) {
+            (rows || []).forEach(function(friend) {
+                if (!friend) return;
+                var key = String(friend.id || friend.userId || friend.username || friend.name || '').toLowerCase();
+                if (!key) return;
+                map[key] = $.extend({}, map[key] || {}, friend);
+            });
+        }
+
+        addRows(response && response.items);
+        addRows(response && response.friends);
+
+        return Object.keys(map).map(function(key) {
+            return map[key];
+        });
+    }
+
     function loadFriendInviteList() {
         var token = getAuthToken();
         var $panel = $('#friends-view-modal-data');
@@ -5391,8 +5413,9 @@ $(function () {
         $tbody.empty();
 
         $.getJSON('/api/friends', { token: token }, function(response) {
-            renderFriendInviteList(response && response.items || []);
-            renderBattleFriends(response && (response.friends || response.items) || []);
+            var items = getFriendItemsFromResponse(response);
+            renderFriendInviteList(items);
+            renderBattleFriends(items);
         }).fail(function(xhr) {
             var response = xhr.responseJSON || {};
             $panel.find('.friends-empty-text').show().text(response.message || 'Failed to load friends.');
@@ -5402,9 +5425,10 @@ $(function () {
     }
 
     function updateFriendListFromResponse(response) {
-        if (response && response.items) {
-            renderFriendInviteList(response.items);
-            renderBattleFriends(response.friends || response.items);
+        var items = getFriendItemsFromResponse(response);
+        if (items.length) {
+            renderFriendInviteList(items);
+            renderBattleFriends(items);
         } else {
             loadFriendInviteList();
         }
