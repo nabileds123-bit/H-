@@ -2168,15 +2168,18 @@ $(document).on('keyup', function(input) {
         height: 550px;
         transform: translateY(-50%);
         z-index: 255;
+        flex-direction: column;
+        gap: 8px;
     }
 
     .side-container.is-open {
-        display: block;
+        display: flex;
     }
 
     .friends-online {
         width: 100%;
-        height: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
         background: #fff;
         border-radius: 15px;
         box-shadow: 0 2px 8px rgba(0,0,0,.35);
@@ -2194,6 +2197,7 @@ $(document).on('keyup', function(input) {
     }
 
     .bub-table-list {
+        position: relative;
         min-height: 0;
         max-height: none;
         height: calc(100% - 52px);
@@ -2201,34 +2205,36 @@ $(document).on('keyup', function(input) {
     }
 
     .friends-empty-text {
-        margin: 70px 0;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        margin: 0;
+        transform: translateY(-50%);
         color: #999;
         font-size: 18px;
+        text-align: center;
     }
 
     #friend-invite-modal {
         display: none;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 350px;
+        width: 100%;
         min-height: 0;
         background: #fff;
-        border-radius: 4px;
+        border-radius: 15px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
-        transform: translate(-50%, -50%);
-        z-index: 300;
         overflow: hidden;
+        flex: 0 0 auto;
     }
 
     #bubbleNotifications,
     .bubble-notifications {
         position: fixed;
-        top: 72px;
-        right: 16px;
-        width: 340px;
+        right: 12px;
+        top: 12px;
+        width: 360px;
         max-width: calc(100vw - 24px);
-        z-index: 9999;
+        z-index: 5000;
         pointer-events: none;
     }
 
@@ -2237,19 +2243,21 @@ $(document).on('keyup', function(input) {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 8px;
-        padding: 9px 11px;
-        border-radius: 6px;
-        background: rgba(15, 15, 15, 0.92);
-        color: #fff;
+        margin-bottom: 6px;
+        padding: 8px 10px;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.95);
+        color: #222;
         font-family: Ubuntu, Arial, sans-serif;
         font-size: 13px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-        border-left: 3px solid #999;
+        line-height: 1.25;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+        border-left: 4px solid #999;
+        text-shadow: none;
     }
 
     .bubble_invite.success {
-        border-left-color: #3fc463;
+        border-left-color: #5cb85c;
     }
 
     .bubble_invite.warning {
@@ -2257,24 +2265,48 @@ $(document).on('keyup', function(input) {
     }
 
     .bubble_invite.error {
-        border-left-color: #e74c3c;
+        border-left-color: #d9534f;
     }
 
     .bubble_invite .invite-reject,
     .bubble_invite .invite-close {
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border: 0;
+        background: transparent;
         cursor: pointer;
-        color: #d6a24a;
-        font-size: 15px;
+        color: #777;
+        font-size: 16px;
+        line-height: 18px;
+        text-align: center;
         flex: 0 0 auto;
     }
 
     .bubble_invite .invite-accept {
         cursor: pointer;
         flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .bubble_invite .invite-accept:hover {
         text-decoration: underline;
+    }
+
+    .bubble_invite strong {
+        color: #111;
+    }
+
+    @media (max-width: 760px) {
+        #bubbleNotifications,
+        .bubble-notifications {
+            top: 10px;
+            right: 10px;
+            width: 320px;
+        }
     }
 
     .friend-add-box {
@@ -2561,13 +2593,8 @@ $(document).on('keyup', function(input) {
 
     @media (max-width: 760px) {
         #friend-invite-modal {
-            left: 10px;
-            right: 10px;
-            top: auto;
-            bottom: 10px;
             width: auto;
-            min-height: 360px;
-            transform: none;
+            min-height: 0;
         }
     }</style>
 <style>
@@ -2883,6 +2910,16 @@ $(document).on('keyup', function(input) {
     </div>
     </div>
     <div class="side-container">
+        <div id="friend-invite-modal">
+            <h3 class="friend-invite-title">Add Friend</h3>
+            <div class="friend-add-box">
+                <input id="friend_i_n" type="text" class="form-control" placeholder="Player name">
+                <input id="friend_i_m" type="text" class="form-control" placeholder="Message" style="display:none;">
+                <button id="friendAddSubmit" type="button" class="btn btn-primary">
+                    <i class="fa fa-user-plus"></i> Add Friend
+                </button>
+            </div>
+        </div>
         <div class="modal-content friends-online">
             <div class="modal-header">
                 <h4 class="modal-title">Invite friends to <span class="friends-modal-mode">FFA - X5</span></h4>
@@ -2907,16 +2944,6 @@ $(document).on('keyup', function(input) {
         </div>
     </div>
     <div id="bubbleNotifications" class="bubble-notifications" aria-live="polite"></div>
-    <div id="friend-invite-modal">
-        <h3 class="friend-invite-title">Add Friend</h3>
-        <div class="friend-add-box">
-            <input id="friend_i_n" type="text" class="form-control" placeholder="Player name">
-            <input id="friend_i_m" type="text" class="form-control" placeholder="Message" style="display:none;">
-            <button id="friendAddSubmit" type="button" class="btn btn-primary">
-                <i class="fa fa-user-plus"></i> Add Friend
-            </button>
-        </div>
-    </div>
     <div id="guildDialog">
         <div class="form-group">
             <a href="#home" class="dialog-brand guild-home-link" style="font-size:14px;">Bubble.am</a>
@@ -3736,7 +3763,7 @@ $(function () {
         var html = '';
 
         if (canAction) {
-            html += '<i class="fa fa-times invite-reject" data-type="' + escapeHtml(inviteType) + '" data-id="' + escapeHtml(entityId) + '"></i>';
+            html += '<button type="button" class="invite-reject" data-type="' + escapeHtml(inviteType) + '" data-id="' + escapeHtml(entityId) + '">&times;</button>';
             html += '<span class="invite-accept" data-type="' + escapeHtml(inviteType) + '" data-id="' + escapeHtml(entityId) + '"><strong>' + escapeHtml(item.title || 'Notification') + '</strong> ' + escapeHtml(item.message || '') + '</span>';
         } else {
             html += '<i class="fa fa-info-circle"></i><span><strong>' + escapeHtml(item.title || 'Notification') + '</strong> ' + escapeHtml(item.message || '') + '</span>';
@@ -3753,6 +3780,44 @@ $(function () {
             div.remove();
         }, 15000);
     }
+
+    function updateNotifications(s1, info, type, expireT) {
+        var root = $('#bubbleNotifications');
+        if (!root.length) {
+            root = $('<div>')
+                .attr('id', 'bubbleNotifications')
+                .addClass('bubble-notifications')
+                .attr('aria-live', 'polite')
+                .appendTo('body');
+        }
+
+        var id = 'mess_' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+        var className = type || 'warning';
+        var html = String(info || '');
+        var div = $('<div id="' + escapeHtml(id) + '" class="bubble_invite ' + escapeHtml(className) + '">' + html + '</div>');
+        root.append(div);
+
+        setTimeout(function () {
+            div.fadeOut(200, function () {
+                $(this).remove();
+            });
+        }, expireT || 15000);
+
+        return id;
+    }
+
+    function showInvitePlayPopup(playerName, modeName, inviteId) {
+        var safeId = escapeHtml(inviteId || '');
+        updateNotifications(12, [
+            '<button type="button" class="invite-reject" data-type="battle" data-id="' + safeId + '">&times;</button>',
+            '<span class="invite-accept" data-type="battle" data-id="' + safeId + '">',
+            '<strong>' + escapeHtml(playerName || 'Player') + '</strong> invited you to play ' + escapeHtml(modeName || 'Battle') + '.',
+            '</span>'
+        ].join(''), 'warning', 15000);
+    }
+
+    window.updateNotifications = updateNotifications;
+    window.showInvitePlayPopup = showInvitePlayPopup;
 
     function renderBubbleNotifications(items) {
         (items || []).forEach(function(item) {
@@ -3976,6 +4041,13 @@ $(function () {
 
     function getBattleLobbyRequiredPlayers() {
         return battleLobbyInviteMode === '2vs2' ? 4 : 2;
+    }
+
+    function getBattleInviteModeFromValue(modeValue) {
+        modeValue = String(modeValue || '');
+        if (modeValue.indexOf('2v2') !== -1) return '2vs2';
+        if (modeValue.indexOf('3v3') !== -1) return '3vs3';
+        return '1vs1';
     }
 
     function updateBattleRewardLabels() {
@@ -5061,7 +5133,7 @@ $(function () {
         $('#battle_chat').scrollTop($('#battle_chat')[0] ? $('#battle_chat')[0].scrollHeight : 0);
     }
 
-    function updateNotifications(type, text) {
+    function updateSimpleNotification(type, text) {
         showBubbleNotification({
             id: 'local-' + Date.now(),
             title: type || 'Notification',
@@ -5085,7 +5157,7 @@ $(function () {
     window.bInvA = bInvA;
     window.cInvite = cInvite;
     window.bubbleBattleChat = bubbleBattleChat;
-    window.updateNotifications = updateNotifications;
+    window.updateSimpleNotification = updateSimpleNotification;
     window.updateBattleQueueEstimate = updateBattleQueueEstimate;
 
     function isLoggedIn() {
@@ -5413,11 +5485,10 @@ $(function () {
             mode: battleLobbyModeValue
         }, function(err, response) {
             if (err) {
-                alert(err);
+                if (window.console && console.warn) console.warn(err);
                 return;
             }
 
-            alert(response.message || 'Invitation sent.');
             loadFriendInviteList();
         });
     }
@@ -5429,7 +5500,7 @@ $(function () {
             accepted: !!accepted
         }, function(err, response) {
             if (err) {
-                alert(err);
+                if (window.console && console.warn) console.warn(err);
                 refreshNotifications();
                 return;
             }
@@ -5439,10 +5510,7 @@ $(function () {
                 closeFriendInviteModal();
                 closeBattleLiveDialog();
                 closeBattleLobbyDialog(true);
-                if (typeof window.setGameMode === 'function') {
-                    window.setGameMode(resolveGameModeRoom(response.mode), true);
-                }
-                setNick(document.getElementById('nick').value);
+                openBattleLobby(response.mode, getBattleInviteModeFromValue(response.mode));
             }
         });
     }
