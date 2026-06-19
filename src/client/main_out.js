@@ -2860,6 +2860,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         _color: "#000000",
         _stroke: false,
         _strokeColor: "#000000",
+        _strokeWidth: 5,
         _size: 16,
         _canvas: null,
         _ctx: null,
@@ -2901,20 +2902,22 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     value = this._value,
                     scale = this._scale,
                     fontsize = this._size,
-                    font = fontsize + 'px Ubuntu';
+                    font = fontsize + 'px Ubuntu',
+                    strokePadding = this._stroke ? Math.ceil(this._strokeWidth) + 2 : 3;
                 ctx.font = font;
                 var h = ~~(.2 * fontsize);
-                canvas.width = (ctx.measureText(value).width +
-                    6) * scale;
-                canvas.height = (fontsize + h) * scale;
+                canvas.width = (ctx.measureText(value).width + strokePadding * 2) * scale;
+                canvas.height = (fontsize + h + strokePadding * 2) * scale;
                 ctx.font = font;
                 ctx.scale(scale, scale);
                 ctx.globalAlpha = 1;
-                ctx.lineWidth = 3;
+                ctx.lineJoin = 'round';
+                ctx.miterLimit = 2;
+                ctx.lineWidth = this._strokeWidth;
                 ctx.strokeStyle = this._strokeColor;
                 ctx.fillStyle = this._color;
-                this._stroke && ctx.strokeText(value, 3, fontsize - h / 2);
-                ctx.fillText(value, 3, fontsize - h / 2)
+                this._stroke && ctx.strokeText(value, strokePadding, strokePadding + fontsize - h / 2);
+                ctx.fillText(value, strokePadding, strokePadding + fontsize - h / 2)
             }
             return this._canvas
         },

@@ -84,6 +84,17 @@ function normalizeStore(store) {
             changed = true;
         }
 
+        if (!/^(I|II|III|IV|V|VI|VII)$/.test(String(user.battleTier || '').trim().toUpperCase())) {
+            user.battleTier = 'I';
+            changed = true;
+        } else {
+            var normalizedTier = String(user.battleTier || '').trim().toUpperCase();
+            if (user.battleTier !== normalizedTier) {
+                user.battleTier = normalizedTier;
+                changed = true;
+            }
+        }
+
         return user;
     });
 
@@ -213,6 +224,7 @@ function createUser(data) {
         xp: 0,
         xpMax: 0,
         level: 1,
+        battleTier: 'I',
         cellColor: '#000000',
         skin: '',
         skinUrl: '',

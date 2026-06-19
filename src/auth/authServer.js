@@ -95,6 +95,11 @@ function normalizeCountryCode(value) {
     return /^[A-Z]{2}$/.test(code) ? code : '';
 }
 
+function normalizeBattleTier(value) {
+    value = String(value || 'I').trim().toUpperCase();
+    return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'I';
+}
+
 function getRequestCountryCode(req) {
     return normalizeCountryCode(req && req.headers && req.headers['cf-ipcountry']);
 }
@@ -128,6 +133,7 @@ function publicAuthUser(user, lastLoginAt) {
         xp: parseInt(user.xp, 10) || 0,
         xpMax: parseInt(user.xpMax, 10) || 0,
         level: parseInt(user.level, 10) || 1,
+        battleTier: normalizeBattleTier(user.battleTier),
         skin: user.skin || '',
         skinUrl: user.skinUrl || '',
         skinPath: user.skinPath || '',
@@ -153,6 +159,7 @@ function publicPlayerProfile(user) {
         xp: parseInt(user.xp, 10) || 0,
         xpMax: parseInt(user.xpMax, 10) || 0,
         level: parseInt(user.level, 10) || 1,
+        battleTier: normalizeBattleTier(user.battleTier),
         skin: user.skin || '',
         skinUrl: user.skinUrl || '',
         activeSkinType: user.activeSkinType || 'player',

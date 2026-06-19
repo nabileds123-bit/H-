@@ -237,6 +237,7 @@ function normalizeUserChanges(body) {
         'xp',
         'xpMax',
         'level',
+        'battleTier',
         'cellColor',
         'guildTag',
         'skin',
@@ -259,7 +260,16 @@ function normalizeUserChanges(body) {
         changes.passwordHash = passwords.hashPassword(String(body.password));
     }
 
+    if (Object.prototype.hasOwnProperty.call(changes, 'battleTier')) {
+        changes.battleTier = normalizeBattleTier(changes.battleTier);
+    }
+
     return changes;
+}
+
+function normalizeBattleTier(value) {
+    value = String(value || 'I').trim().toUpperCase();
+    return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'I';
 }
 
 function handleLogin(req, res) {

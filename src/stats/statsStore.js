@@ -192,8 +192,14 @@ function getUserInfo(identifier) {
         email: user.email || '',
         guildId: getUserGuildId(user),
         guildTag: user.guildTag || '',
+        battleTier: normalizeBattleTier(user.battleTier),
         country_code: normalizeCountryCode(user.country_code || user.countryCode)
     };
+}
+
+function normalizeBattleTier(value) {
+    value = String(value || 'I').trim().toUpperCase();
+    return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'I';
 }
 
 function upsertTop1Time(data) {
@@ -296,7 +302,7 @@ function getTop1SummaryForUser(identifier, period) {
 function getBattleSummaryForUser(identifier, mode, period) {
     var user = getUserInfo(identifier);
     var battleMode = normalizeBattleMode(mode);
-    var summary = { win: 0, lose: 0, totalMatch: 0, winRate: 0 };
+    var summary = { win: 0, lose: 0, totalMatch: 0, winRate: 0, tier: user ? user.battleTier : 'I' };
     if (!user || !battleMode) return summary;
 
     var range = getPeriodRange(period);

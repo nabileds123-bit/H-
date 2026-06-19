@@ -699,9 +699,19 @@ $(document).on('keyup', function(input) {
     }
 
     .account-battle-summary .battle-tier {
-        color: #e0c760;
-        font-weight: 900;
-        text-shadow: 0 1px 0 rgba(0,0,0,.18);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        vertical-align: middle;
+    }
+
+    .account-battle-summary .battle-tier img {
+        display: block;
+        width: 38px;
+        height: 38px;
+        object-fit: contain;
     }
 
     .account-battle-summary .battle-win {
@@ -5123,13 +5133,25 @@ $(function () {
         }).join('') + '</div>');
     }
 
+    function normalizeBattleTier(value) {
+        value = String(value || 'VII').toUpperCase();
+        return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'I';
+    }
+
+    function renderBattleTierBadge(tier) {
+        tier = normalizeBattleTier(tier);
+        return '<span class="battle-tier"><img src="/img/tier-' + tier + '.svg" alt="Tier ' + tier + '" title="Tier ' + tier + '"></span>';
+    }
+
     function renderBattleAccountDetail(target, response) {
         var stats = response && response.stats || {};
         var records = response && response.records || [];
         var total = stats.totalMatch || 0;
         var win = stats.win || 0;
         var lose = stats.lose || 0;
-        var winRate = stats.winRate || 0;
+        var bestWinStreak = 0;
+        var runningWinStreak = 0;
+        var currentWinStreak = 0;
 
         var rows = records.map(function(record) {
             var scoreFor = parseInt(record.scoreFor, 10);
@@ -5146,14 +5168,32 @@ $(function () {
             ].join('');
         }).join('');
 
-        $(target).html([
+        records.slice().reverse().forEach(function(record) {
+            if (String(record.result || '').toLowerCase() === 'win') {
+                runningWinStreak++;
+                bestWinStreak = Math.max(bestWinStreak, runningWinStreak);
+            } else {
+                runningWinStreak = 0;
+            }
+        });
+
+        for (var i = 0; i < records.length; i++) {
+            if (String(records[i].result || '').toLowerCase() !== 'win') break;
+            currentWinStreak++;
+        }
+
+        var summary = total > 0 ? [
             '<div class="account-battle-summary">',
-            '<span class="battle-tier">VII</span>',
-            ' / ' + escapeHtml(total),
+            renderBattleTierBadge(stats.tier || 'VII'),
             ' / <span class="battle-win">' + escapeHtml(win) + '</span>',
             ' / <span class="battle-lose">' + escapeHtml(lose) + '</span>',
-            ' / ' + escapeHtml(winRate) + '%',
-            '</div>',
+            ' / ' + escapeHtml(bestWinStreak),
+            ' / ' + escapeHtml(currentWinStreak),
+            '</div>'
+        ].join('') : '';
+
+        $(target).html([
+            summary,
             '<div class="account-battle-list">',
             rows || '<div class="account-detail-empty">Belum ada data battle.</div>',
             '</div>'
