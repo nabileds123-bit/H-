@@ -690,6 +690,71 @@ $(document).on('keyup', function(input) {
         color: #777;
     }
 
+    .account-battle-summary {
+        margin: 14px 0 12px 0;
+        color: #8d2c2c;
+        font-size: 18px;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .account-battle-summary .battle-tier {
+        color: #e0c760;
+        font-weight: 900;
+        text-shadow: 0 1px 0 rgba(0,0,0,.18);
+    }
+
+    .account-battle-summary .battle-win {
+        color: #8d2c2c;
+    }
+
+    .account-battle-summary .battle-lose {
+        color: #3157a3;
+    }
+
+    .account-battle-list {
+        height: 386px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        background: #fff;
+    }
+
+    .account-battle-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
+        align-items: center;
+        min-height: 43px;
+        border-bottom: 1px solid #ddd;
+        background: #f8f8f8;
+        color: #8d2c2c;
+        font-size: 13px;
+    }
+
+    .account-battle-row:nth-child(even) {
+        background: #fff;
+    }
+
+    .account-battle-row:last-child {
+        border-bottom: 0;
+    }
+
+    .account-battle-name,
+    .account-battle-opponent {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    .account-battle-score {
+        color: #8d1616;
+        font-size: 16px;
+        font-weight: 900;
+        text-align: center;
+    }
+
     #accountDetailSearchStatus {
         min-height: 22px;
         padding: 8px 4px 0;
@@ -2233,7 +2298,7 @@ $(document).on('keyup', function(input) {
     .bubble-notifications {
         position: fixed;
         right: 0;
-        bottom: 10px;
+        bottom: 0;
         width: auto;
         min-width: 300px;
         max-width: min(455px, calc(100vw - 24px));
@@ -2312,7 +2377,7 @@ $(document).on('keyup', function(input) {
         .bubble-notifications {
             left: 10px;
             right: 0;
-            bottom: 10px;
+            bottom: 0;
             min-width: 0;
             max-width: calc(100vw - 20px);
         }
@@ -3780,7 +3845,14 @@ $(function () {
             var items = response.items || response.notifications || [];
             renderNotifications(items);
             renderBubbleNotifications(items);
-        }).fail(function() {
+        }).fail(function(xhr) {
+            if (xhr && xhr.status === 401) {
+                stopNotificationPolling();
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('authUser');
+                authToken = '';
+                authUser = '';
+            }
             renderNotifications([]);
         });
     }
@@ -5004,6 +5076,43 @@ $(function () {
         }).join('') + '</div>');
     }
 
+    function renderBattleAccountDetail(target, response) {
+        var stats = response && response.stats || {};
+        var records = response && response.records || [];
+        var total = stats.totalMatch || 0;
+        var win = stats.win || 0;
+        var lose = stats.lose || 0;
+        var winRate = stats.winRate || 0;
+
+        var rows = records.map(function(record) {
+            var scoreFor = parseInt(record.scoreFor, 10);
+            var scoreAgainst = parseInt(record.scoreAgainst, 10);
+            if (isNaN(scoreFor)) scoreFor = record.result === 'win' ? 1 : 0;
+            if (isNaN(scoreAgainst)) scoreAgainst = record.result === 'win' ? 0 : 1;
+
+            return [
+                '<div class="account-battle-row">',
+                '<span class="account-battle-name">' + escapeHtml(record.username || $('#accountDetailTitle').text() || '-') + '</span>',
+                '<span class="account-battle-score">' + scoreFor + ':' + scoreAgainst + '</span>',
+                '<span class="account-battle-opponent">' + escapeHtml(record.opponentUsername || '-') + '</span>',
+                '</div>'
+            ].join('');
+        }).join('');
+
+        $(target).html([
+            '<div class="account-battle-summary">',
+            '<span class="battle-tier">VII</span>',
+            ' / ' + escapeHtml(total),
+            ' / <span class="battle-win">' + escapeHtml(win) + '</span>',
+            ' / <span class="battle-lose">' + escapeHtml(lose) + '</span>',
+            ' / ' + escapeHtml(winRate) + '%',
+            '</div>',
+            '<div class="account-battle-list">',
+            rows || '<div class="account-detail-empty">Belum ada data battle.</div>',
+            '</div>'
+        ].join(''));
+    }
+
     function loadAccountDetailStats(username) {
         if (!username) return;
 
@@ -5015,14 +5124,10 @@ $(function () {
         });
 
         ['1vs1', '2vs2'].forEach(function(mode) {
-            $.getJSON('/api/account/battle', { username: username, mode: mode, period: 'today' }, function(response) {
-                var stats = response.stats || {};
-                renderStatRows(mode === '1vs1' ? '#accountDetail1vs1' : '#accountDetail2vs2', [
-                    { label: 'Win', value: stats.win || 0 },
-                    { label: 'Lose', value: stats.lose || 0 },
-                    { label: 'Win Rate', value: (stats.winRate || 0) + '%' },
-                    { label: 'Total Match', value: stats.totalMatch || 0 }
-                ]);
+            $.getJSON('/api/account/battle', { username: username, mode: mode, period: 'global', limit: 60 }, function(response) {
+                renderBattleAccountDetail(mode === '1vs1' ? '#accountDetail1vs1' : '#accountDetail2vs2', response);
+            }).fail(function() {
+                renderBattleAccountDetail(mode === '1vs1' ? '#accountDetail1vs1' : '#accountDetail2vs2', { stats: {}, records: [] });
             });
         });
     }

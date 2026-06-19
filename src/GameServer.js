@@ -1513,9 +1513,20 @@ GameServer.prototype.recordBattleResult = function(player, result) {
     var world = player.world || this.activeWorld;
     var mode = statsStore.normalizeBattleMode(world && world.id);
     var userId = this.getPlayerStatsUserId(player);
+    var leaderboard = world && world.leaderboard ? world.leaderboard : [];
+    var winner = null;
     result = String(result || 'lose').toLowerCase();
     if (!mode || !userId) return;
     if (result !== 'win' && result !== 'lose') return;
+
+    if (result === 'lose') {
+        for (var w = 0; w < leaderboard.length; w++) {
+            if (leaderboard[w] && leaderboard[w] !== player && this.getPlayerStatsUserId(leaderboard[w]) && leaderboard[w].cells.length > 0) {
+                winner = leaderboard[w];
+                break;
+            }
+        }
+    }
 
     player.battleStatsRecorded = true;
     statsStore.addBattleRecord({
@@ -1523,14 +1534,14 @@ GameServer.prototype.recordBattleResult = function(player, result) {
         mode: mode,
         result: result,
         serverId: this.getStatsServerId(world),
-        country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode)
+        country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode),
+        opponentUsername: winner ? winner.getName() : ''
     });
 
     if (result !== 'lose') return;
 
-    var leaderboard = world && world.leaderboard ? world.leaderboard : [];
     for (var i = 0; i < leaderboard.length; i++) {
-        var winner = leaderboard[i];
+        winner = leaderboard[i];
         if (!winner || winner === player || winner.battleStatsRecorded || !this.getPlayerStatsUserId(winner) || winner.cells.length <= 0) continue;
         winner.battleStatsRecorded = true;
         statsStore.addBattleRecord({
@@ -1538,7 +1549,8 @@ GameServer.prototype.recordBattleResult = function(player, result) {
             mode: mode,
             result: 'win',
             serverId: this.getStatsServerId(world),
-            country_code: winner.authUser && (winner.authUser.country_code || winner.authUser.countryCode)
+            country_code: winner.authUser && (winner.authUser.country_code || winner.authUser.countryCode),
+            opponentUsername: player.getName()
         });
         break;
     }

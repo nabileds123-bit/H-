@@ -52,11 +52,13 @@ function publicHandle(req, res) {
 
     if (req.method === 'GET' && pathname === '/api/account/battle') {
         var battle = statsStore.getBattleSummaryForUser(getQueryUser(query), query.mode, query.period);
+        var records = statsStore.getBattleRecordsForUser(getQueryUser(query), query.mode, query.period, parseInt(query.limit, 10) || 50);
         return sendJson(res, 200, {
             ok: true,
             mode: statsStore.normalizeBattleMode(query.mode),
             period: statsStore.normalizePeriod(query.period),
-            stats: battle
+            stats: battle,
+            records: records
         });
     }
 

@@ -265,6 +265,9 @@ function addBattleRecord(data) {
         mode: mode,
         server_id: String(data.serverId || 'default'),
         result: result,
+        opponent_username: String(data.opponentUsername || data.opponent || '').trim(),
+        score_for: result === 'win' ? 1 : 0,
+        score_against: result === 'win' ? 0 : 1,
         match_date: data.matchDate || getJakartaDate(),
         created_at: Date.now()
     };
@@ -306,6 +309,39 @@ function getBattleSummaryForUser(identifier, mode, period) {
     summary.totalMatch = summary.win + summary.lose;
     summary.winRate = summary.totalMatch ? Math.round((summary.win / summary.totalMatch) * 100) : 0;
     return summary;
+}
+
+function getBattleRecordsForUser(identifier, mode, period, limit) {
+    var user = getUserInfo(identifier);
+    var battleMode = normalizeBattleMode(mode);
+    var range = getPeriodRange(period);
+
+    if (!user || !battleMode) return [];
+
+    return readStore().battleMatchRecords.filter(function(record) {
+        return record.user_id === user.userId && record.mode === battleMode && inRange(record.match_date, range);
+    }).sort(function(a, b) {
+        return (parseInt(b.created_at, 10) || 0) - (parseInt(a.created_at, 10) || 0);
+    }).slice(0, limit || 50).map(function(record) {
+        var result = String(record.result || '').toLowerCase();
+        var scoreFor = parseInt(record.score_for, 10);
+        var scoreAgainst = parseInt(record.score_against, 10);
+
+        if (isNaN(scoreFor)) scoreFor = result === 'win' ? 1 : 0;
+        if (isNaN(scoreAgainst)) scoreAgainst = result === 'win' ? 0 : 1;
+
+        return {
+            id: record.id,
+            username: record.username || user.username,
+            opponentUsername: record.opponent_username || record.opponentUsername || '-',
+            mode: record.mode,
+            result: result,
+            scoreFor: scoreFor,
+            scoreAgainst: scoreAgainst,
+            matchDate: record.match_date || '',
+            createdAt: record.created_at || 0
+        };
+    });
 }
 
 function top1HighScore(mode, period, limit) {
@@ -461,6 +497,7 @@ module.exports = {
     addBattleRecord: addBattleRecord,
     audit: audit,
     battleHighScore: battleHighScore,
+    getBattleRecordsForUser: getBattleRecordsForUser,
     getBattleSummaryForUser: getBattleSummaryForUser,
     getJakartaDate: getJakartaDate,
     getPeriodRange: getPeriodRange,
