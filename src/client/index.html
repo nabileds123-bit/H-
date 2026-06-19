@@ -32,32 +32,15 @@
 	<script>/ jshint -W097 /
 'use strict';
 
-var SplitInterval;
 var MacroInterval;
-var SplitDebounce = false;
 var MacroDebounce = false;
 $(document).on('keydown', function(input) {
     if ($("#overlays").is(":visible")) {
-        clearInterval(SplitInterval);
         clearInterval(MacroInterval);
-        SplitDebounce = false;
         MacroDebounce = false;
         return;
     }
-    if (input.keyCode == 16) {
-        if (SplitDebounce) {
-            return;
-        }
-        SplitDebounce = true;
-        SplitInterval = setInterval(function() {
-            $("body").trigger($.Event("keydown", {
-                keyCode: 32
-            }));
-            $("body").trigger($.Event("keyup", {
-                keyCode: 32
-            }));
-        }, 0);
-    } else if (input.keyCode == 69) {
+    if (input.keyCode == 69) {
   if (MacroDebounce) {
             return;
         }
@@ -74,11 +57,7 @@ $(document).on('keydown', function(input) {
 })
 
 $(document).on('keyup', function(input) {
-    if (input.keyCode == 16) {
-        SplitDebounce = false;
-        clearInterval(SplitInterval);
-        return;
-    } else if (input.keyCode == 69) {
+    if (input.keyCode == 69) {
         MacroDebounce = false;
         clearInterval(MacroInterval);
         return;
