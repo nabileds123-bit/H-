@@ -235,14 +235,6 @@ $(document).on('keyup', function(input) {
         box-sizing: content-box;
     }
 
-    .region-message {
-        display: none;
-        margin-bottom: 12px;
-        margin-left: 6px;
-        margin-right: 6px;
-        text-align: center;
-    }
-
     #nick, #locationKnown #region {
         width: 64%;
         float: left;
@@ -1402,6 +1394,13 @@ $(document).on('keyup', function(input) {
         padding: 14px 14px 18px 14px;
     }
 
+    .battle-live-empty {
+        padding: 28px 8px;
+        color: #888;
+        font-size: 14px;
+        text-align: center;
+    }
+
     .battle-live-row {
         display: grid;
         grid-template-columns: 74px 1fr 64px 1fr 74px;
@@ -2115,13 +2114,13 @@ $(document).on('keyup', function(input) {
         width: 0%;
         max-width: 100%;
         border-radius: 3px;
-        background:
-            linear-gradient(
-                to bottom,
-                rgb(116, 171, 208) 0%,
-                rgb(91, 158, 190) 50%,
-                rgb(68, 134, 165) 100%
-            );
+        background: repeating-linear-gradient(
+            -45deg,
+            rgb(91, 158, 190),
+            rgb(91, 158, 190) 10px,
+            rgb(116, 171, 208) 10px,
+            rgb(116, 171, 208) 20px
+        );
         transition: width .55s ease;
         z-index: 0;
     }
@@ -2366,6 +2365,10 @@ $(document).on('keyup', function(input) {
 
     .friend-invite-row.friend-row-pending .friend-name {
         color: #aaa;
+    }
+
+    .friend-invite-row.friend-row-invite {
+        cursor: pointer;
     }
 
     .friend-invite-row:last-child {
@@ -2616,21 +2619,9 @@ $(document).on('keyup', function(input) {
             <div id="locationUnknown">
                <select id="region" class="form-control" required>
                     <option disabled value=""> -- Select a Region --</option>
-                    <option value="US-Fremont">US West</option>
-                    <option value="US-Atlanta">US East</option>
-                    <option value="BR-Brazil">South America</option>
-                    <option selected value="EU-London">Europe</option>
-                    <option value="RU-Russia">Russia</option>
-                    <option value="TK-Turkey">Turkey</option>
-                    <option value="JP-Tokyo">East Asia</option>
-                    <option value="CN-China">China</option>
-                    <option value="SG-Singapore">Southeast Asia</option>
+                    <option selected value="US-Atlanta">East &amp; North America</option>
+                    <option value="OC-Sydney">Oceania</option>
                 </select>
-            </div>
-            <div>
-                <div class="text-muted region-message CN-China">
-
-                </div>
             </div>
             <div class="form-group">
                 <div id="modeButtonWrap">
@@ -3188,7 +3179,7 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Region</div>
-                    <div class="battle-settings-value battle-region">Southeast Asia</div>
+                    <div class="battle-settings-value battle-region">East &amp; North America</div>
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Queue</div>
@@ -3235,62 +3226,7 @@ $(document).on('keyup', function(input) {
             <button id="battleLiveClose" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="battle-live-list">
-            <div class="battle-live-row">
-                <div class="battle-live-tier">IV</div>
-                <div class="battle-live-team-left">Cluster, Agro</div>
-                <div class="battle-live-score"><strong>1:0</strong><span class="battle-live-time">01:25</span></div>
-                <div class="battle-live-team-right">NzR, Gmacho</div>
-                <div class="battle-live-tier">VI</div>
-            </div>
-            <div class="battle-live-row">
-                <div class="battle-live-tier">IV</div>
-                <div class="battle-live-team-left">J e s i c a, NaPersonal</div>
-                <div class="battle-live-score"><strong>1:0</strong><span class="battle-live-time">01:07</span></div>
-                <div class="battle-live-team-right">Esay, Prostowryj</div>
-                <div class="battle-live-tier is-empty">I</div>
-            </div>
-            <div class="battle-live-row">
-                <div class="battle-live-tier">IV</div>
-                <div class="battle-live-team-left">Skowy</div>
-                <div class="battle-live-score"><strong>0:0</strong><span class="battle-live-time">01:56</span></div>
-                <div class="battle-live-team-right">jeferson OwO</div>
-                <div class="battle-live-tier is-empty">I</div>
-            </div>
-            <div class="battle-live-row">
-                <div class="battle-live-tier">IV</div>
-                <div class="battle-live-team-left">im not in love, Gwiazdka</div>
-                <div class="battle-live-score"><strong>0:0</strong><span class="battle-live-time">01:52</span></div>
-                <div class="battle-live-team-right">SenSei, Fantazia</div>
-                <div class="battle-live-tier is-empty">I</div>
-            </div>
-            <div class="battle-live-row">
-                <div class="battle-live-tier">IV</div>
-                <div class="battle-live-team-left">b pro, Naofumi81</div>
-                <div class="battle-live-score"><strong>0:0</strong><span class="battle-live-time">00:11</span></div>
-                <div class="battle-live-team-right">Radi, WieszakSSJ</div>
-                <div class="battle-live-tier is-empty">I</div>
-            </div>
-            <div class="battle-live-row">
-                <div class="battle-live-tier"></div>
-                <div class="battle-live-team-left">ROBAK181818, XaMMo492</div>
-                <div class="battle-live-score"><strong>1:0</strong><span class="battle-live-time">03:59</span></div>
-                <div class="battle-live-team-right">FMB, COME Canibales</div>
-                <div class="battle-live-tier is-empty">I</div>
-            </div>
-            <div class="battle-live-row">
-                <div class="battle-live-tier"></div>
-                <div class="battle-live-team-left">TokoSoP, PembasmiLONTE1</div>
-                <div class="battle-live-score"><strong>1:0</strong><span class="battle-live-time">01:20</span></div>
-                <div class="battle-live-team-right">MENINGGAL, RICKY nih TODD</div>
-                <div class="battle-live-tier is-empty">I</div>
-            </div>
-            <div class="battle-live-row">
-                <div class="battle-live-tier is-empty">I</div>
-                <div class="battle-live-team-left">Leakzy</div>
-                <div class="battle-live-score"><strong>0:0</strong><span class="battle-live-time">00:00</span></div>
-                <div class="battle-live-team-right">FabianWillma</div>
-                <div class="battle-live-tier"></div>
-            </div>
+            <div class="battle-live-empty">No live battles.</div>
         </div>
     </div>
 </div>
@@ -3543,36 +3479,20 @@ $(function () {
     function getRegionForClient() {
         var timezone = getClientTimeZone();
 
-        if (/Asia\/(Jakarta|Pontianak|Makassar|Jayapura|Singapore|Kuala_Lumpur|Bangkok|Ho_Chi_Minh|Manila|Brunei|Phnom_Penh|Vientiane|Yangon)/.test(timezone)) {
-            return 'SG-Singapore';
-        }
-
-        if (/Asia\/(Tokyo|Seoul)/.test(timezone)) {
-            return 'JP-Tokyo';
-        }
-
-        if (/Asia\/(Shanghai|Hong_Kong|Taipei|Macau|Chongqing|Urumqi)/.test(timezone)) {
-            return 'CN-China';
-        }
-
-        if (/Europe\//.test(timezone)) {
-            return 'EU-London';
-        }
-
-        if (/America\/(Los_Angeles|Vancouver|Tijuana|Phoenix|Denver|Boise|Portland|San_Francisco|Seattle)/.test(timezone)) {
-            return 'US-Fremont';
+        if (/Australia\/|Pacific\/(Auckland|Chatham|Fiji|Guam|Honolulu|Noumea|Port_Moresby|Tongatapu)|Antarctica\/(McMurdo|Macquarie)/.test(timezone)) {
+            return 'OC-Sydney';
         }
 
         if (/America\//.test(timezone)) {
             return 'US-Atlanta';
         }
 
-        return 'EU-London';
+        return 'US-Atlanta';
     }
 
     function getRegionLabel(region) {
         var option = $('#region option[value="' + region + '"]');
-        return option.length ? option.text().replace(/\s*\([^)]*\)\s*$/, '') : 'Southeast Asia';
+        return option.length ? option.text().replace(/\s*\([^)]*\)\s*$/, '') : 'East & North America';
     }
 
     function updateBattleRegionLabel() {
@@ -3589,7 +3509,7 @@ $(function () {
         }
 
         if (!$('#region').val()) {
-            $('#region').val('EU-London');
+            $('#region').val('US-Atlanta');
         }
 
         if (typeof window.setRegion === 'function') {
@@ -4058,6 +3978,17 @@ $(function () {
         return battleLobbyInviteMode === '2vs2' ? 4 : 2;
     }
 
+    function updateBattleRewardLabels() {
+        if (battleLobbyInviteMode === '1vs1') {
+            $('.battle-reward').text('0.5 pt');
+            $('.battle-defeated').text('-0.25 pt');
+            return;
+        }
+
+        $('.battle-reward').text('1.5 pt');
+        $('.battle-defeated').text('-0.7 pt');
+    }
+
     function getBattleLobbyPlayerName() {
         return authUser || $('#nick').val() || 'Player';
     }
@@ -4265,6 +4196,7 @@ $(function () {
         $('#accountDetailDialog').removeClass('is-open');
         $('.battle-mode').text(battleLobbyInviteMode.replace('vs', ' vs '));
         updateBattleRegionLabel();
+        updateBattleRewardLabels();
         $('.battle-srvstatus').text('Waiting for start');
         renderBattleLobbyPlayers([{ name: getBattleLobbyPlayerName() }], 1, getBattleLobbyRequiredPlayers());
         resetBattleLobbyEstimate();
@@ -5278,7 +5210,23 @@ $(function () {
         var $tbody = $('#friends-view-modal-data table tbody');
         items = items || [];
 
-        var visibleItems = items.slice();
+        var visibleItems = items.filter(function(friend) {
+            var status = friend.relationStatus || friend.status || 'none';
+            if (status === 'accepted') status = 'friend';
+
+            if (activeFriendTab === 'pending') {
+                return status === 'incoming' || status === 'outgoing';
+            }
+
+            return status === 'friend';
+        }).sort(function(left, right) {
+            var leftOnline = left && left.online && !left.inBattle ? 1 : 0;
+            var rightOnline = right && right.online && !right.inBattle ? 1 : 0;
+
+            if (leftOnline !== rightOnline) return rightOnline - leftOnline;
+
+            return String(left.username || left.name || '').localeCompare(String(right.username || right.name || ''));
+        });
 
         if (!$tbody.length) return;
         $tbody.empty();
@@ -5293,30 +5241,31 @@ $(function () {
             var status = friend.relationStatus || friend.status || 'none';
             if (status === 'accepted') status = 'friend';
             var pending = status === 'outgoing';
-            var rowClass = pending ? ' friend-row-pending' : '';
+            var canInvite = status === 'friend' && friend.online && !friend.inBattle;
+            var rowClass = (pending ? ' friend-row-pending' : '') + (canInvite ? ' friend-row-invite' : '');
             var initial = String(friend.username || 'P').charAt(0).toUpperCase() || 'P';
             var avatarClass = index % 2 ? 'friend-avatar-red' : 'friend-avatar-blue';
             var tag = friend.guildTag ? '[' + friend.guildTag + ']' : '';
             var actions = '';
 
             if (status === 'friend') {
-                actions = '<button type="button" class="friend-action-btn friend-invite-action" data-friend-id="' + escapeHtml(friend.id) + '">Invite</button>';
+                actions = '<span class="friend-status-text">' + (canInvite ? 'Online' : 'Offline') + '</span>';
             } else if (status === 'incoming') {
                 actions =
                     '<button type="button" class="friend-action-btn friend-request-accept" title="Accept" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-check"></i></button> ' +
                     '<button type="button" class="friend-action-btn friend-request-decline" title="Reject" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-times"></i></button>';
             } else if (status === 'outgoing') {
-                actions = '<button type="button" class="friend-action-btn" disabled>Pending</button>';
+                actions = '<span class="friend-status-text">Pending</span>';
             } else {
-                actions = '<button type="button" class="friend-action-btn friend-add-action" data-friend-id="' + escapeHtml(friend.id) + '">Add</button>';
+                actions = '';
             }
 
             return [
-                '<tr class="friend-invite-row' + rowClass + '">',
+                '<tr class="friend-invite-row' + rowClass + '" data-friend-id="' + escapeHtml(canInvite ? friend.id : '') + '">',
                 '<td class="friend-avatar ' + avatarClass + '"><span>' + escapeHtml(initial) + '</span></td>',
                 '<td class="friend-name" title="' + escapeHtml(friend.username || 'Player') + '">' + escapeHtml(friend.username || 'Player') + '</td>',
                 '<td class="friend-tag">' + escapeHtml(tag) + '</td>',
-                '<td class="friend-mode"><span class="friend-status-text">' + escapeHtml(status === 'friend' ? 'Friend' : status === 'incoming' ? 'Request' : status === 'outgoing' ? 'Menunggu Acc' : '') + '</span></td>',
+                '<td class="friend-mode"><span class="friend-status-text">' + escapeHtml(status === 'friend' ? 'Friend' : status === 'incoming' ? 'Request' : status === 'outgoing' ? 'Waiting approval' : '') + '</span></td>',
                 '<td class="friend-online">' + actions + '</td>',
                 '</tr>'
             ].join('');
@@ -6490,7 +6439,7 @@ $(function () {
         friendAction('/api/friends/decline', $(this).data('friend-id'));
     });
 
-    $('.side-container').on('click', '.friend-invite-action', function (event) {
+    $('.side-container').on('click', '.friend-row-invite', function (event) {
         event.preventDefault();
         event.stopPropagation();
         inviteFriend($(this).data('friend-id'));

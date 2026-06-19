@@ -256,15 +256,8 @@ GameServer.prototype.start = function() {
 
       if (pathname == '/client/info.php' || pathname == '/info.php') {
         var baseRegions = [
-          'US-Fremont',
           'US-Atlanta',
-          'BR-Brazil',
-          'EU-London',
-          'RU-Russia',
-          'TK-Turkey',
-          'JP-Tokyo',
-          'CN-China',
-          'SG-Singapore'
+          'OC-Sydney'
         ];
         var regions = {};
         var onlinePlayers = 0;
@@ -278,9 +271,9 @@ GameServer.prototype.start = function() {
 
         for (var r = 0; r < baseRegions.length; r++) {
           regions[baseRegions[r]] = {
-            numPlayers: baseRegions[r] === 'SG-Singapore' ? onlinePlayers : 0,
+            numPlayers: onlinePlayers,
             numRealms: 1,
-            numServers: baseRegions[r] === 'SG-Singapore' ? 1 : 0
+            numServers: 1
           };
         }
 
@@ -1551,6 +1544,48 @@ GameServer.prototype.recordBattleResult = function(player, result) {
     }
 }
 
+GameServer.prototype.getBattlePointDelta = function(mode, result) {
+    if (mode === '1vs1') {
+        return result === 'win' ? 0.5 : -0.25;
+    }
+
+    if (mode === '2vs2') {
+        return result === 'win' ? 1.5 : -0.7;
+    }
+
+    return 0;
+}
+
+GameServer.prototype.applyBattlePoints = function(player, result) {
+    var world = player && (player.world || this.activeWorld);
+    var mode = statsStore.normalizeBattleMode(world && world.id);
+    var userId = this.getPlayerStatsUserId(player);
+    result = String(result || 'lose').toLowerCase();
+
+    if (!mode || !userId || (result !== 'win' && result !== 'lose')) return null;
+
+    var delta = this.getBattlePointDelta(mode, result);
+    if (!delta) return null;
+
+    var currentUser = userStore.findByUsernameOrEmail(player.authUser.username);
+    if (!currentUser) return null;
+
+    var currentPoints = parseFloat(currentUser.points);
+    if (isNaN(currentPoints)) currentPoints = 0;
+
+    var points = Math.max(0, Math.round((currentPoints + delta) * 100) / 100);
+    var updatedUser = userStore.updateUser(userId, { points: points });
+
+    if (updatedUser && player.authUser) {
+        player.authUser.points = points;
+    }
+
+    return {
+        points: points,
+        delta: delta
+    };
+}
+
 GameServer.prototype.updateMatchLeaderboardStats = function(world) {
     var now = Date.now();
     var leaderboard = world && world.leaderboard ? world.leaderboard : this.leaderboard;
@@ -1616,6 +1651,7 @@ GameServer.prototype.sendMatchResult = function(player, result) {
     if (!player || !player.socket) return;
     this.recordBattleResult(player, result);
     var xpResult = this.applyMatchXp(player);
+    var pointResult = this.applyBattlePoints(player, result);
 
     var payload = JSON.stringify({
         result: result === 'win' ? 'win' : 'lose',
@@ -1625,7 +1661,9 @@ GameServer.prototype.sendMatchResult = function(player, result) {
         xp: xpResult.xp || 0,
         xpMax: xpResult.xpMax || this.getXpMax(1),
         level: xpResult.level || 1,
-        leveledUp: xpResult.leveledUp || 0
+        leveledUp: xpResult.leveledUp || 0,
+        points: pointResult ? pointResult.points : undefined,
+        pointsDelta: pointResult ? pointResult.delta : 0
     });
 
     var buf = new ArrayBuffer(1 + payload.length * 2 + 2);

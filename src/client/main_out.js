@@ -756,6 +756,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                         if (typeof resultData.level !== "undefined") {
                             wHandle.localStorage.authLevel = resultData.level || 1;
                         }
+                        if (typeof resultData.points !== "undefined") {
+                            wHandle.localStorage.authPoints = resultData.points || 0;
+                        }
                     }
                     if (typeof wHandle.updatePlayerExpVisibility === "function") {
                         wHandle.updatePlayerExpVisibility();
