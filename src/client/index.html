@@ -90,6 +90,106 @@ $(document).on('keyup', function(input) {
 
     .btn-play,.btn-settings,.btn-spectate,.btn-friend { display:block; height:35px; }
 
+    #helloContainer {
+        min-height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 24px 12px;
+        box-sizing: border-box;
+    }
+
+    .main-panel {
+        position: relative;
+    }
+
+    .connecting-overlay {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 700;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .connecting-box {
+        width: 350px;
+        background-color: #fff;
+        margin: 100px auto;
+        border-radius: 15px;
+        padding: 5px 15px;
+    }
+
+    .side-container {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: calc(50% + 205px);
+        width: 310px;
+        transform: translateY(-50%);
+        z-index: 255;
+    }
+
+    .side-container.is-open {
+        display: block;
+    }
+
+    .friends-online {
+        background: #fff;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.35);
+        overflow: hidden;
+    }
+
+    .friends-online .modal-header {
+        padding: 12px 14px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .friends-online .modal-body {
+        padding: 10px 12px;
+    }
+
+    .bub-table-list {
+        min-height: 220px;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+
+    .friends-empty-text {
+        margin: 70px 0;
+        color: #999;
+        font-size: 18px;
+    }
+
+    #escapingLEVEL {
+        margin: 10px 6px 0;
+    }
+
+    #escapingLEVEL .exp-text {
+        color: #fff;
+        font-size: 12px;
+        text-align: center;
+        text-shadow: 0 1px 2px #000;
+    }
+
+    #escapingLEVEL .exp-bar {
+        position: relative;
+        height: 12px;
+        border: 1px solid #154865;
+        background: #f5f5f5;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    #escapingLEVEL .progress-bar {
+        height: 100%;
+        background: #5b9ebe;
+    }
+
     .btn-row {
         display: flex;
         width: 100%;
@@ -2458,6 +2558,8 @@ $(document).on('keyup', function(input) {
 <div id="fb-root"></div>
 <div id="overlays"
      style="display:none; position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/img/bg.png') center center / cover no-repeat; z-index: 200;">
+    <div id="helloContainer">
+    <div class="main-panel">
     <div id="helloDialog">
         <div id="dialogContent">
         <form id="homeView" role="form">
@@ -2476,6 +2578,13 @@ $(document).on('keyup', function(input) {
                     <option value=":teams">Teams</option>
                     <option value=":experimental">Experimental</option>
                 </select>
+                <div id="radio_mode" style="display:none;">
+                    <label class="radio-ffa"><input type="radio" name="mode_type" value="5"> MegaSplit</label>
+                    <label class="radio-ffa"><input type="radio" name="mode_type" value="7" checked> Hardcore</label>
+                    <label class="radio-battle"><input type="radio" name="mode_type" value="12"> Battle 1v1</label>
+                    <label class="radio-battle"><input type="radio" name="mode_type" value="11"> Battle 2v2</label>
+                    <label class="radio-battle"><input type="radio" name="mode_type" value="13"> Battle 3v3</label>
+                </div>
                 <br clear="both"/>
             </div>
             <div id="locationUnknown">
@@ -2508,7 +2617,7 @@ $(document).on('keyup', function(input) {
                     <button  type="button" id="playBtn"
                             class="btn btn-play btn-primary btn-needs-server">Play
                     </button>
-                    <button type="button" id="friendPlayBtn" class="btn btn-success btn-friend" title="Play with Friends">
+                    <button type="button" id="friendPlayBtn" class="btn btn-success btn-friend showFriends" title="Play with Friends">
                         <i class="fa fa-user-plus"></i>
                     </button>
                     <button onclick="$('#settings, #instructions').toggle();return false;"
@@ -2529,6 +2638,18 @@ $(document).on('keyup', function(input) {
                     <label><input id="darkThemeCheckbox" type="checkbox"> Dark Theme</label>
                     <label><input id="noColorsCheckbox" type="checkbox"> No colors</label>
                     <label><input id="showMassCheckbox" type="checkbox"> Show mass</label>
+                    <label><input id="check_enableChat" type="checkbox" checked> Chat</label>
+                    <label><input id="check_ShowOthersMass" type="checkbox"> Show others mass</label>
+                    <label><input id="check_setShowBorders" type="checkbox" checked> Show border</label>
+                    <label><input id="check_Notify" type="checkbox" checked> Notifications</label>
+                    <label><input id="check_Notify11" type="checkbox" checked> Battle invites</label>
+                </div>
+                <div style="display:none;">
+                    <input id="check_Skins" type="checkbox">
+                    <input id="check_Names" type="checkbox">
+                    <input id="check_DarkTheme" type="checkbox">
+                    <input id="check_Colors" type="checkbox">
+                    <input id="check_ShowMass" type="checkbox">
                 </div>
                 <div id="inviteFriendsPanel" class="invite-panel">
                     <p class="invite-description">Share this link so your friends can join the same server.</p>
@@ -2729,6 +2850,13 @@ $(document).on('keyup', function(input) {
                 <div id="indexXpLevel" class="xp-star">1</div>
             </div>
         </div>
+        <div id="escapingLEVEL">
+            <div class="exp-text"><span id="levelText">0/0 XP</span></div>
+            <div class="exp-bar">
+                <div class="progress-bar" style="width:0%;"></div>
+                <div class="progress-bar-star"></div>
+            </div>
+        </div>
         </div>
         <div id="dialogFooter" style="margin-left: 6px;">
             <center>
@@ -2742,6 +2870,32 @@ $(document).on('keyup', function(input) {
             </center>
         </div>
 
+    </div>
+    </div>
+    </div>
+    <div class="side-container" id="friendsSideContainer">
+        <div class="modal-content friends-online" id="friendsOnlinePanel">
+            <div class="modal-header">
+                <h4 class="modal-title">Invite friends to <span class="friends-modal-mode">FFA - Hardcore</span></h4>
+            </div>
+            <div class="modal-body">
+                <div class="bub-table-list m-t-10" id="friends-view-modal-data">
+                    <h2 class="center friends-empty-text">0 friends online</h2>
+                    <table class="table table-striped table-hover">
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td colspan="4" style="text-align:center;">
+                                <a href="#friends" class="friends-panel-open"><i class="fa fa-users"></i> Friends</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
     <div id="bubbleNotifications" class="bubble-notifications" aria-live="polite"></div>
     <div id="friendInviteModal" class="friend-invite-modal">
@@ -3133,9 +3287,9 @@ $(document).on('keyup', function(input) {
         </div>
     </div>
 </div>
-<div id="connecting"
+<div id="connecting" class="connecting-overlay"
      style="display:none;position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 700; background-color: rgba(0,0,0,0.5);">
-    <div style="width: 350px; background-color: #FFFFFF; margin: 100px auto; border-radius: 15px; padding: 5px 15px 5px 15px;">
+    <div class="connecting-box" style="width: 350px; background-color: #FFFFFF; margin: 100px auto; border-radius: 15px; padding: 5px 15px 5px 15px;">
         <h2>Connecting</h2>
         <p> If you cannot connect to the servers, check if you have some anti virus or firewall blocking the connection.</p>
     </div>
@@ -4059,6 +4213,7 @@ $(function () {
 
         closeCommunityDropup();
         closeFriendInviteModal();
+        $('#friendsSideContainer').removeClass('is-open');
         closeBattleLiveDialog();
         closeBattleLobbyDialog();
         $('#overlays').show();
@@ -4163,6 +4318,7 @@ $(function () {
     function openGuildDialog() {
         closeCommunityDropup();
         closeFriendInviteModal();
+        $('#friendsSideContainer').removeClass('is-open');
         closeBattleLiveDialog();
         closeBattleLobbyDialog();
         $('#overlays').show();
@@ -4985,6 +5141,7 @@ $(function () {
     function renderFriendInviteList(items) {
         var $list = $('#friendInviteModal .friend-invite-list');
         items = items || [];
+        renderFriendsSidePanel(items);
 
         items = items.filter(function(friend) {
             var status = friend.relationStatus || friend.status || 'none';
@@ -5031,6 +5188,44 @@ $(function () {
                 '</div>'
             ].join('');
         }).join(''));
+    }
+
+    function renderFriendsSidePanel(items) {
+        var $panel = $('#friends-view-modal-data');
+        var $tbody = $('#friends-view-modal-data table tbody');
+        var rows = items || [];
+        if (!$panel.length || !$tbody.length) return;
+
+        $tbody.empty();
+
+        if (!rows.length) {
+            $panel.find('.friends-empty-text').show().text('0 friends online');
+            return;
+        }
+
+        $panel.find('.friends-empty-text').hide();
+        rows.forEach(function(friend, index) {
+            var status = friend.relationStatus || friend.status || 'none';
+            if (status === 'accepted') status = 'friend';
+            var color = index % 2 ? '#ef8f95' : '#8ec8e4';
+            var statusText = status === 'friend' ? (friend.online ? 'Online' : 'Offline') : status === 'incoming' ? 'Request' : status === 'outgoing' ? 'Pending' : 'Add';
+            var action = status === 'incoming'
+                ? '<button type="button" class="friend-action-btn friend-request-accept" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-check"></i></button> <button type="button" class="friend-action-btn friend-request-decline" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-times"></i></button>'
+                : status === 'friend'
+                    ? '<button type="button" class="friend-action-btn friend-invite-action" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-paper-plane"></i></button>'
+                    : status === 'outgoing'
+                        ? '<span class="friend-status-text">Menunggu Acc</span>'
+                        : '<button type="button" class="friend-action-btn friend-add-action" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-user-plus"></i></button>';
+
+            $tbody.append([
+                '<tr class="' + (status === 'outgoing' ? 'friend-row-pending' : '') + '" data-player="' + escapeHtml(friend.id) + '">',
+                '<td style="width:15%;"><span class="img-circle friends-circle" style="display:inline-block;width:28px;height:28px;line-height:28px;text-align:center;background:' + color + ';color:#fff;">' + escapeHtml(String(friend.username || 'P').charAt(0).toUpperCase()) + '</span></td>',
+                '<td style="width:50%;">' + escapeHtml(friend.username || 'Player') + '</td>',
+                '<td style="width:15%;text-align:center;">' + escapeHtml(statusText) + '</td>',
+                '<td style="width:20%;text-align:right;">' + action + '</td>',
+                '</tr>'
+            ].join(''));
+        });
     }
 
     function renderBattleFriends(items) {
@@ -5287,6 +5482,119 @@ $(function () {
                 setting.apply(isChecked);
             });
         });
+    }
+
+    function getCookieConfig() {
+        try {
+            return JSON.parse(localStorage.getItem('bubble_config') || '{}');
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function setCookieConfig(key, value) {
+        var config = getCookieConfig();
+        config[key] = value;
+        localStorage.setItem('bubble_config', JSON.stringify(config));
+    }
+
+    function applyLegacySetting(key, value) {
+        switch (key) {
+            case 'Skins':
+                $('#noSkinsCheckbox').prop('checked', !!value).triggerHandler('change');
+                callGameSetter('setSkins', !value);
+                break;
+            case 'Names':
+                $('#noNamesCheckbox').prop('checked', !!value).triggerHandler('change');
+                callGameSetter('setNames', !value);
+                break;
+            case 'DarkTheme':
+                $('#darkThemeCheckbox').prop('checked', !!value).triggerHandler('change');
+                callGameSetter('setDarkTheme', !!value);
+                break;
+            case 'Colors':
+                $('#noColorsCheckbox').prop('checked', !!value).triggerHandler('change');
+                callGameSetter('setColors', !value);
+                break;
+            case 'enableChat':
+                $('#chat_textbox').toggle(!!value);
+                if (typeof window.setChat === 'function') window.setChat(!!value);
+                break;
+            case 'ShowMass':
+                $('#showMassCheckbox').prop('checked', !!value).triggerHandler('change');
+                callGameSetter('setShowMass', !!value);
+                break;
+            case 'ShowOthersMass':
+                callGameSetter('setShowOthersMass', !!value);
+                break;
+            case 'setShowBorders':
+                callGameSetter('setShowBorders', !!value);
+                break;
+            case 'Notify':
+                $('#bubbleNotifications').toggle(!!value);
+                break;
+            case 'Notify11':
+                if (typeof loadFriendInviteList === 'function') loadFriendInviteList();
+                break;
+        }
+    }
+
+    function bindSettingCheckboxes() {
+        var checkboxMap = {
+            check_Skins: 'Skins',
+            check_Names: 'Names',
+            check_DarkTheme: 'DarkTheme',
+            check_Colors: 'Colors',
+            check_enableChat: 'enableChat',
+            check_ShowMass: 'ShowMass',
+            check_ShowOthersMass: 'ShowOthersMass',
+            check_setShowBorders: 'setShowBorders',
+            check_Notify: 'Notify',
+            check_Notify11: 'Notify11'
+        };
+        var aliasMap = {
+            noSkinsCheckbox: 'check_Skins',
+            noNamesCheckbox: 'check_Names',
+            darkThemeCheckbox: 'check_DarkTheme',
+            noColorsCheckbox: 'check_Colors',
+            showMassCheckbox: 'check_ShowMass'
+        };
+        var config = getCookieConfig();
+
+        Object.keys(checkboxMap).forEach(function(id) {
+            var key = checkboxMap[id];
+            var $checkbox = $('#' + id);
+            if (!$checkbox.length) return;
+
+            if (typeof config[key] !== 'undefined') {
+                $checkbox.prop('checked', !!config[key]);
+                applyLegacySetting(key, !!config[key]);
+            }
+
+            $checkbox.off('change.legacySetting').on('change.legacySetting', function() {
+                var checked = $(this).is(':checked');
+                setCookieConfig(key, checked);
+                applyLegacySetting(key, checked);
+            });
+        });
+
+        Object.keys(aliasMap).forEach(function(sourceId) {
+            $('#' + sourceId).off('change.legacyAlias').on('change.legacyAlias', function() {
+                $('#' + aliasMap[sourceId]).prop('checked', $(this).is(':checked'));
+            });
+        });
+    }
+
+    function syncLegacyXpBar() {
+        var text = $('#indexXpText').text() || '0/0 XP';
+        var width = $('#indexXpBar').css('width');
+        var percent = 0;
+        var bar = $('#indexXpBar')[0];
+        if (bar && bar.parentNode && bar.parentNode.offsetWidth) {
+            percent = Math.max(0, Math.min(100, (bar.offsetWidth / bar.parentNode.offsetWidth) * 100));
+        }
+        $('#levelText').text(text);
+        $('#escapingLEVEL .progress-bar').css('width', percent + '%');
     }
 
     function updatePlayerExpHud() {
@@ -5965,12 +6273,9 @@ $(function () {
         event.preventDefault();
         event.stopPropagation();
         closeCommunityDropup();
-
-        if ($('#friendInviteModal').hasClass('is-open')) {
-            closeFriendInviteModal();
-        } else {
-            openFriendInviteModal();
-        }
+        $('.friends-modal-mode').text(getFriendInviteModeText());
+        $('#friendsSideContainer').toggleClass('is-open');
+        loadFriendInviteList();
     });
 
     $('.mode-button').on('click', function () {
@@ -6025,6 +6330,10 @@ $(function () {
         event.stopPropagation();
     });
 
+    $('#friendsSideContainer').on('click', function (event) {
+        event.stopPropagation();
+    });
+
     $('#friendInviteFriendsLink').on('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -6072,6 +6381,36 @@ $(function () {
     });
 
     $('#friendInviteModal').on('click', '.friend-invite-action', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        inviteFriend($(this).data('friend-id'));
+    });
+
+    $('#friendsSideContainer').on('click', '.friends-panel-open', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openFriendInviteModal();
+    });
+
+    $('#friendsSideContainer').on('click', '.friend-add-action', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        friendAction('/api/friends/add', $(this).data('friend-id'));
+    });
+
+    $('#friendsSideContainer').on('click', '.friend-request-accept', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        friendAction('/api/friends/accept', $(this).data('friend-id'));
+    });
+
+    $('#friendsSideContainer').on('click', '.friend-request-decline', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        friendAction('/api/friends/decline', $(this).data('friend-id'));
+    });
+
+    $('#friendsSideContainer').on('click', '.friend-invite-action', function (event) {
         event.preventDefault();
         event.stopPropagation();
         inviteFriend($(this).data('friend-id'));
@@ -6393,6 +6732,9 @@ $(function () {
     renderModeButtons();
     updateFriendInviteTitle();
     initPersistedCheckboxes();
+    bindSettingCheckboxes();
+    syncLegacyXpBar();
+    setInterval(syncLegacyXpBar, 1000);
     applyAuthState();
     setTimeout(refreshInitialHomeXp, 0);
 });
