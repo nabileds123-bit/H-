@@ -20,7 +20,7 @@ Once everything is set up, open index.html in your browser. If everything is wor
 Replace the CONNECTION_URL with your own ip and port in main_out.js
 
 ### Upload Custom Skins
-The upload module does two things. The first is to upload a skin onto skins folder. The second is that the client request the server to run checkdir.php every 15 seconds to check what skins are uploaded and add them into knownNameDict. Then the skins can be loaded. 
+The upload module does two things. The first is to upload a skin onto skins folder. The second is that the client requests the Node server's `/checkdir.php` compatibility endpoint every 15 seconds to check what skins are uploaded and add them into knownNameDict. Then the skins can be loaded.
 
 To make this feature work, you need to give upload.php priviliage to read skins folder. 
 

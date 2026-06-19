@@ -1,5 +1,6 @@
 var http = require('http');
 
+// Legacy optional master endpoint. Production PM2 starts only `src/index.js --game`.
 function MasterServer(port) {
     this.port = port;
 }

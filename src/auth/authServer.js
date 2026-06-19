@@ -939,6 +939,10 @@ function handleFriendsList(req, res, query) {
     sendJson(res, 200, buildFriendsPayload(user));
 }
 
+function buildFreshFriendsPayload(user) {
+    return buildFriendsPayload(users.findByIdOrUsernameOrEmail(user.id) || user);
+}
+
 function handleFriendAdd(req, res) {
     readBody(req, function(err, body) {
         if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
@@ -972,7 +976,7 @@ function handleFriendAdd(req, res) {
             friendRequestsReceived: addId(target.friendRequestsReceived, user.id)
         });
 
-        sendJson(res, 200, Object.assign({ message: 'Friend request sent.' }, buildFriendsPayload(user)));
+        sendJson(res, 200, Object.assign({ message: 'Friend request sent.' }, buildFreshFriendsPayload(user)));
     });
 }
 
@@ -1015,7 +1019,7 @@ function handleFriendAddWithBody(res, body) {
         friendRequestsReceived: addId(target.friendRequestsReceived, user.id)
     });
 
-    sendJson(res, 200, Object.assign({ message: 'Friend request sent.' }, buildFriendsPayload(user)));
+    sendJson(res, 200, Object.assign({ message: 'Friend request sent.' }, buildFreshFriendsPayload(user)));
 }
 
 function acceptFriendRequest(res, user, requester) {
@@ -1037,7 +1041,7 @@ function acceptFriendRequest(res, user, requester) {
         friendRequestsReceived: removeId(requester.friendRequestsReceived, user.id)
     });
 
-    sendJson(res, 200, Object.assign({ message: 'Friend request accepted.' }, buildFriendsPayload(user)));
+    sendJson(res, 200, Object.assign({ message: 'Friend request accepted.' }, buildFreshFriendsPayload(user)));
 }
 
 function handleFriendAccept(req, res) {
@@ -1097,7 +1101,7 @@ function declineFriendRequestWithBody(res, body) {
             friendRequestsSent: removeId(requester.friendRequestsSent, user.id)
         });
 
-        sendJson(res, 200, Object.assign({ message: 'Friend request declined.' }, buildFriendsPayload(user)));
+        sendJson(res, 200, Object.assign({ message: 'Friend request declined.' }, buildFreshFriendsPayload(user)));
 }
 
 function handleGuildInvite(req, res) {
