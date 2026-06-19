@@ -2501,6 +2501,13 @@ $(document).on('keyup', function(input) {
         font-size: 12px;
     }
 
+    .friend-presence {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+    }
+
     .battle-friends-list {
         min-height: 96px;
         max-height: 130px;
@@ -2570,12 +2577,32 @@ $(document).on('keyup', function(input) {
         cursor: default;
     }
 
+    .tournament-invite .battle-friend-row.is-pending {
+        cursor: not-allowed;
+        background: #e9e9e9;
+        color: #999;
+        opacity: 0.65;
+    }
+
+    .tournament-invite .battle-friend-row.is-pending .battle-avatar {
+        background: #b6b6b6;
+    }
+
+    .tournament-invite .battle-friend-row.is-pending .tournament-player-name,
+    .tournament-invite .battle-friend-row.is-pending td:last-child {
+        color: #999;
+    }
+
     .friend-online-dot {
         display: inline-block;
         width: 9px;
         height: 9px;
         border-radius: 50%;
         background: #72cf00;
+    }
+
+    .friend-online-dot.is-offline {
+        background: #aaa;
     }
 
     .friend-invite-footer {
@@ -3312,6 +3339,7 @@ $(function () {
     var battleLobbyPlayerCount = 1;
     var battleLobbyPollTimer = null;
     var battleLobbyClientId = localStorage.getItem('battleLobbyClientId');
+    var battleInvitePending = {};
     var activeFriendTab = 'friends';
     var notificationPopupSeen = {};
     var guildViewerRole = 'guest';
@@ -3580,7 +3608,7 @@ $(function () {
                     callback('Upload file terlalu besar. Player skin maksimal 500KB, guild skin maksimal 200KB.');
                     return;
                 }
-                callback(response.message || 'Request failed.');
+                callback(response.message || 'Request failed.', null, xhr);
             }
         });
     }
@@ -5334,7 +5362,9 @@ $(function () {
             var actions = '';
 
             if (status === 'friend') {
-                actions = '<span class="friend-status-text">' + (canInvite ? 'Online' : 'Offline') + '</span>';
+                actions = '<span class="friend-presence ' + (canInvite ? 'is-online' : 'is-offline') + '">' +
+                    '<span class="friend-online-dot ' + (canInvite ? '' : 'is-offline') + '"></span>' +
+                    '</span>';
             } else if (status === 'incoming') {
                 actions =
                     '<button type="button" class="friend-action-btn friend-request-accept" title="Accept" data-friend-id="' + escapeHtml(friend.id) + '"><i class="fa fa-check"></i></button> ' +
@@ -5375,12 +5405,15 @@ $(function () {
         }
 
         $list.html(items.map(function(friend) {
-            var disabled = !friend.online || friend.inBattle;
-            var statusText = friend.inBattle ? 'Battle' : (friend.online ? 'Online' : 'Offline');
+            var pendingKey = getBattleInvitePendingKey(friend.id);
+            var pendingInvite = !!battleInvitePending[pendingKey];
+            var disabled = !friend.online || friend.inBattle || pendingInvite;
+            var statusText = pendingInvite ? 'Pending' : (friend.inBattle ? 'Battle' : (friend.online ? 'Online' : 'Offline'));
             var name = friend.username || friend.name || 'Player';
             var initial = String(name || 'P').charAt(0).toUpperCase() || 'P';
+            var rowClass = (disabled ? ' is-disabled' : '') + (pendingInvite ? ' is-pending' : '');
             return [
-                '<tr class="battle-friend-row' + (disabled ? ' is-disabled' : '') + '" data-friend-id="' + escapeHtml(friend.id) + '">',
+                '<tr class="battle-friend-row' + rowClass + '" data-friend-id="' + escapeHtml(friend.id) + '">',
                 '<td class="friend-name"><div class="tournament-player-info"><span class="battle-avatar">' + escapeHtml(initial) + '</span><strong class="tournament-player-name">' + escapeHtml(name) + '</strong></div></td>',
                 '<td>' + escapeHtml(statusText) + '</td>',
                 '</tr>'
@@ -5510,17 +5543,37 @@ $(function () {
         }
     }
 
+    function getBattleInvitePendingKey(friendId) {
+        return String(friendId || '') + '|' + String(battleLobbyModeValue || '');
+    }
+
     function sendBattleInvite(friendId) {
         if (!friendId) return;
+
+        var pendingKey = getBattleInvitePendingKey(friendId);
+        if (battleInvitePending[pendingKey]) {
+            return;
+        }
+
+        battleInvitePending[pendingKey] = true;
+        $('.battle-friend-row').filter(function() {
+            return String($(this).data('friend-id')) === String(friendId);
+        }).addClass('is-disabled is-pending').find('td:last').text('Pending');
 
         postAuth('/api/battle/invite', {
             token: getAuthToken(),
             targetUserId: friendId,
             battleId: battleLobbyModeValue,
             mode: battleLobbyModeValue
-        }, function(err, response) {
+        }, function(err, response, xhr) {
             if (err) {
-                if (window.console && console.warn) console.warn(err);
+                if (xhr && xhr.status === 409) {
+                    loadFriendInviteList();
+                    return;
+                }
+
+                delete battleInvitePending[pendingKey];
+                loadFriendInviteList();
                 return;
             }
 
