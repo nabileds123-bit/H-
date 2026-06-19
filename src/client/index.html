@@ -5292,11 +5292,22 @@ $(function () {
                 return status === 'incoming' || status === 'outgoing';
             }
 
-            return status === 'friend';
+            return status === 'friend' || status === 'incoming' || status === 'outgoing';
         }).sort(function(left, right) {
+            var order = {
+                incoming: 0,
+                outgoing: 1,
+                friend: 2,
+                accepted: 2
+            };
+            var leftStatus = left && (left.relationStatus || left.status || 'none');
+            var rightStatus = right && (right.relationStatus || right.status || 'none');
+            var leftOrder = order.hasOwnProperty(leftStatus) ? order[leftStatus] : 9;
+            var rightOrder = order.hasOwnProperty(rightStatus) ? order[rightStatus] : 9;
             var leftOnline = left && left.online && !left.inBattle ? 1 : 0;
             var rightOnline = right && right.online && !right.inBattle ? 1 : 0;
 
+            if (leftOrder !== rightOrder) return leftOrder - rightOrder;
             if (leftOnline !== rightOnline) return rightOnline - leftOnline;
 
             return String(left.username || left.name || '').localeCompare(String(right.username || right.name || ''));
