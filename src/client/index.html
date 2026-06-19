@@ -2234,8 +2234,9 @@ $(document).on('keyup', function(input) {
         position: fixed;
         right: 0;
         bottom: 10px;
-        width: 455px;
-        max-width: calc(100vw - 24px);
+        width: auto;
+        min-width: 300px;
+        max-width: min(455px, calc(100vw - 24px));
         z-index: 9999;
         pointer-events: none;
     }
@@ -2292,9 +2293,8 @@ $(document).on('keyup', function(input) {
         cursor: pointer;
         flex: 1 1 auto;
         min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        font-weight: 400;
+        white-space: normal;
     }
 
     .bubble_invite .invite-accept:hover {
@@ -2304,6 +2304,7 @@ $(document).on('keyup', function(input) {
 
     .bubble_invite strong {
         color: #6b4200;
+        font-weight: 900;
     }
 
     @media (max-width: 760px) {
@@ -2312,8 +2313,8 @@ $(document).on('keyup', function(input) {
             left: 10px;
             right: 0;
             bottom: 10px;
-            width: auto;
-            max-width: none;
+            min-width: 0;
+            max-width: calc(100vw - 20px);
         }
     }
 
@@ -2978,7 +2979,6 @@ $(document).on('keyup', function(input) {
             </div>
         </div>
     </div>
-    <div id="bubbleNotifications" class="bubble-notifications" aria-live="polite"></div>
     <div id="guildDialog">
         <div class="form-group">
             <a href="#home" class="dialog-brand guild-home-link" style="font-size:14px;">Bubble.am</a>
@@ -3292,6 +3292,7 @@ $(document).on('keyup', function(input) {
         </div>
     </div>
 </div>
+<div id="bubbleNotifications" class="bubble-notifications" aria-live="polite"></div>
     <div id="connecting" class="connecting-overlay"
      style="display:none;position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 700; background-color: rgba(0,0,0,0.5);">
     <div class="connecting-box" style="width: 350px; background-color: #FFFFFF; margin: 100px auto; border-radius: 15px; padding: 5px 15px 5px 15px;">
@@ -3817,7 +3818,7 @@ $(function () {
         if (canAction) {
             html += '<button type="button" class="invite-reject" data-type="' + escapeHtml(inviteType) + '" data-id="' + escapeHtml(entityId) + '">&times;</button>';
             if (inviteType === 'battle' && item.invite) {
-                html += '<span class="invite-accept" data-type="battle" data-id="' + escapeHtml(entityId) + '"><strong>' + escapeHtml(item.invite.fromUsername || 'Player') + '</strong> invited you to play ' + escapeHtml(getModeName(item.invite.mode || 'Battle').replace('Battle ', '').replace('vs', ' vs ')) + '.</span>';
+                html += '<span class="invite-accept battle-invite-popup-text" data-type="battle" data-id="' + escapeHtml(entityId) + '"><strong>' + escapeHtml(item.invite.fromUsername || 'Player') + '</strong> <span>invited you to play ' + escapeHtml(getModeName(item.invite.mode || 'Battle').replace('Battle ', '').replace('vs', ' vs ')) + '.</span></span>';
             } else {
                 html += '<span class="invite-accept" data-type="' + escapeHtml(inviteType) + '" data-id="' + escapeHtml(entityId) + '"><strong>' + escapeHtml(item.title || 'Notification') + '</strong> ' + escapeHtml(item.message || '') + '</span>';
             }
