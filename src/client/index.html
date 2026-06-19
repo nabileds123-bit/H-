@@ -123,31 +123,6 @@ $(document).on('keyup', function(input) {
         padding: 5px 15px;
     }
 
-    #escapingLEVEL {
-        margin: 10px 6px 0;
-    }
-
-    #escapingLEVEL .exp-text {
-        color: #fff;
-        font-size: 12px;
-        text-align: center;
-        text-shadow: 0 1px 2px #000;
-    }
-
-    #escapingLEVEL .exp-bar {
-        position: relative;
-        height: 12px;
-        border: 1px solid #154865;
-        background: #f5f5f5;
-        border-radius: 4px;
-        overflow: hidden;
-    }
-
-    #escapingLEVEL .progress-bar {
-        height: 100%;
-        background: #5b9ebe;
-    }
-
     .btn-row {
         display: flex;
         width: 100%;
@@ -2137,15 +2112,32 @@ $(document).on('keyup', function(input) {
         width: 0%;
         max-width: 100%;
         border-radius: 3px;
-        background: repeating-linear-gradient(
-            -45deg,
-            rgb(91, 158, 190),
-            rgb(91, 158, 190) 10px,
-            rgb(116, 171, 208) 10px,
-            rgb(116, 171, 208) 20px
-        );
+        background:
+            linear-gradient(
+                to bottom,
+                rgba(255,255,255,.28),
+                rgba(255,255,255,0) 45%,
+                rgba(0,0,0,.12)
+            ),
+            repeating-linear-gradient(
+                -45deg,
+                rgb(91, 158, 190) 0 10px,
+                rgb(116, 171, 208) 10px 20px
+            );
+        background-size: 100% 100%, 28px 28px;
         transition: width .25s ease;
+        animation: xpFillMove .85s linear infinite;
         z-index: 0;
+    }
+
+    @keyframes xpFillMove {
+        from {
+            background-position: 0 0, 0 0;
+        }
+
+        to {
+            background-position: 0 0, 28px 0;
+        }
     }
 
     #indexXpText {
@@ -2863,13 +2855,6 @@ $(document).on('keyup', function(input) {
                 <div id="indexXpBar"></div>
                 <span id="indexXpText">0/0 XP</span>
                 <div id="indexXpLevel" class="xp-star">1</div>
-            </div>
-        </div>
-        <div id="escapingLEVEL">
-            <div class="exp-text"><span id="levelText">0/0 XP</span></div>
-            <div class="exp-bar">
-                <div class="progress-bar" style="width:0%;"></div>
-                <div class="progress-bar-star"></div>
             </div>
         </div>
         </div>
@@ -5670,18 +5655,6 @@ $(function () {
         });
     }
 
-    function syncLegacyXpBar() {
-        var text = $('#indexXpText').text() || '0/0 XP';
-        var width = $('#indexXpBar').css('width');
-        var percent = 0;
-        var bar = $('#indexXpBar')[0];
-        if (bar && bar.parentNode && bar.parentNode.offsetWidth) {
-            percent = Math.max(0, Math.min(100, (bar.offsetWidth / bar.parentNode.offsetWidth) * 100));
-        }
-        $('#levelText').text(text);
-        $('#escapingLEVEL .progress-bar').css('width', percent + '%');
-    }
-
     function updatePlayerExpHud() {
         var xp = Math.max(0, getStoredNumber('authXp', 0));
         var xpMax = Math.max(0, getStoredNumber('authXpMax', 0));
@@ -6792,8 +6765,6 @@ $(function () {
     updateFriendInviteTitle();
     initPersistedCheckboxes();
     bindSettingCheckboxes();
-    syncLegacyXpBar();
-    setInterval(syncLegacyXpBar, 1000);
     applyAuthState();
     setTimeout(refreshInitialHomeXp, 0);
 });
