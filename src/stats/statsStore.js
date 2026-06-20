@@ -187,13 +187,17 @@ function getUserInfo(identifier) {
     var user = users.findByIdOrUsernameOrEmail(identifier);
     if (!user) return null;
 
+    var tierInfo = battleTier.progressInfo(user);
+
     return {
         userId: user.id,
         username: user.username || '',
         email: user.email || '',
         guildId: getUserGuildId(user),
         guildTag: user.guildTag || '',
-        battleTier: battleTier.forUser(user),
+        battleTier: tierInfo.tier,
+        battleProgress: tierInfo.progress,
+        battleTierInfo: tierInfo,
         country_code: normalizeCountryCode(user.country_code || user.countryCode)
     };
 }
@@ -302,7 +306,15 @@ function getTop1SummaryForUser(identifier, period) {
 function getBattleSummaryForUser(identifier, mode, period) {
     var user = getUserInfo(identifier);
     var battleMode = normalizeBattleMode(mode);
-    var summary = { win: 0, lose: 0, totalMatch: 0, winRate: 0, tier: user ? user.battleTier : 'UNRANKED' };
+    var summary = {
+        win: 0,
+        lose: 0,
+        totalMatch: 0,
+        winRate: 0,
+        tier: user ? user.battleTier : 'UNRANKED',
+        progress: user ? user.battleProgress : 0,
+        tierInfo: user ? user.battleTierInfo : battleTier.progressInfo(0)
+    };
     if (!user || !battleMode) return summary;
 
     var range = getPeriodRange(period);

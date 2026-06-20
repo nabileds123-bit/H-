@@ -24,6 +24,21 @@ function fromProgress(progress) {
     return 'STAR5';
 }
 
+var RANKS = [
+    { tier: 'UNRANKED', min: 0 },
+    { tier: 'I', min: 10 },
+    { tier: 'II', min: 30 },
+    { tier: 'III', min: 60 },
+    { tier: 'IV', min: 90 },
+    { tier: 'V', min: 250 },
+    { tier: 'VI', min: 500 },
+    { tier: 'VII', min: 800 },
+    { tier: 'STAR2', min: 1500 },
+    { tier: 'STAR3', min: 3000 },
+    { tier: 'STAR4', min: 5000 },
+    { tier: 'STAR5', min: 8000 }
+];
+
 function normalize(value) {
     value = String(value || '').trim().toUpperCase();
     if (value === 'UNRANKED' || value === 'UNRANK') return 'UNRANKED';
@@ -51,10 +66,36 @@ function label(value) {
     return value === 'UNRANKED' ? 'Unranked' : value;
 }
 
+function progressInfo(value) {
+    var progress = getProgress(value);
+    var tier = fromProgress(progress);
+    var index = 0;
+
+    for (var i = 0; i < RANKS.length; i++) {
+        if (RANKS[i].tier === tier) {
+            index = i;
+            break;
+        }
+    }
+
+    var next = RANKS[index + 1] || null;
+    return {
+        progress: progress,
+        tier: tier,
+        tierLabel: label(tier),
+        nextTier: next ? next.tier : '',
+        nextTierLabel: next ? label(next.tier) : '',
+        nextAt: next ? next.min : 0,
+        remaining: next ? Math.max(0, next.min - progress) : 0,
+        isMaxRank: !next
+    };
+}
+
 module.exports = {
     forUser: forUser,
     fromProgress: fromProgress,
     getProgress: getProgress,
     label: label,
-    normalize: normalize
+    normalize: normalize,
+    progressInfo: progressInfo
 };

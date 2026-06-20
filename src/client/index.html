@@ -5163,10 +5163,39 @@ $(function () {
         return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'UNRANKED';
     }
 
-    function renderBattleTierBadge(tier) {
+    function getBattleTierDisplayLabel(tier) {
         tier = normalizeBattleTier(tier);
+        if (tier === 'UNRANKED') return 'Unranked';
+        if (/^STAR/.test(tier)) return '★' + tier.replace('STAR', '');
+        return tier;
+    }
+
+    function formatBattleTierTooltip(tier, tierInfo) {
+        tier = normalizeBattleTier(tier);
+        tierInfo = tierInfo || {};
+
+        var label = getBattleTierDisplayLabel(tier);
+
+        if (tierInfo.isMaxRank) {
+            return 'Tier ' + label + ' - Max rank';
+        }
+
+        var nextRank = String(tierInfo.nextTier || tierInfo.nextTierLabel || '').trim();
+        var nextLabel = nextRank ? getBattleTierDisplayLabel(nextRank) : '';
+        if (!nextLabel) return 'Tier ' + label;
+
+        return [
+            'Tier ' + label,
+            'Next ' + nextLabel + ': ' + (tierInfo.progress || 0) + '/' + tierInfo.nextAt,
+            'Kurang ' + (tierInfo.remaining || 0)
+        ].join(' - ');
+    }
+
+    function renderBattleTierBadge(tier, tierInfo) {
+        tier = normalizeBattleTier(tier);
+        var tooltip = escapeHtml(formatBattleTierTooltip(tier, tierInfo));
         if (tier === 'UNRANKED') {
-            return '<span class="battle-tier" title="Unranked">Unranked</span>';
+            return '<span class="battle-tier" title="' + tooltip + '">Unranked</span>';
         }
         var tierImage = {
             I: 'I.png',
@@ -5181,7 +5210,7 @@ $(function () {
             STAR4: 'IV.png',
             STAR5: 'V.png'
         }[tier] || 'I.png';
-        return '<span class="battle-tier"><img src="/img/' + tierImage + '" alt="Tier ' + tier + '" title="Tier ' + tier + '"></span>';
+        return '<span class="battle-tier" title="' + tooltip + '"><img src="/img/' + tierImage + '" alt="Tier ' + tier + '" title="' + tooltip + '"></span>';
     }
 
     function renderBattleAccountDetail(target, response) {
@@ -5225,7 +5254,7 @@ $(function () {
 
         var summary = total > 0 ? [
             '<div class="account-battle-summary">',
-            renderBattleTierBadge(stats.tier || 'UNRANKED'),
+            renderBattleTierBadge(stats.tier || 'UNRANKED', stats.tierInfo),
             ' <span class="battle-separator">/</span> <span class="battle-win">' + escapeHtml(win) + '</span>',
             ' <span class="battle-separator">/</span> <span class="battle-lose">' + escapeHtml(lose) + '</span>',
             ' <span class="battle-separator">/</span> <span class="battle-best-streak">' + escapeHtml(bestWinStreak) + '</span>',
