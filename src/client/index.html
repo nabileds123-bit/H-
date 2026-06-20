@@ -721,18 +721,26 @@ $(document).on('keyup', function(input) {
         object-fit: contain;
     }
 
+    .account-battle-summary .battle-tier.battle-tier-star {
+        width: auto;
+        height: auto;
+    }
+
     .account-battle-summary .battle-tier-star .battle-tier-stars {
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 0;
-        width: 38px;
-        height: 38px;
+        width: auto;
+        height: auto;
     }
 
     .account-battle-summary .battle-tier-star .battle-tier-stars img {
         width: var(--battle-tier-star-size, 11px);
         height: var(--battle-tier-star-size, 11px);
+    }
+
+    .account-battle-summary .battle-tier-star .battle-tier-stars img + img {
+        margin-left: var(--battle-tier-star-gap, -3px);
     }
 
     .account-battle-summary .battle-win,
@@ -5229,14 +5237,15 @@ $(function () {
         }
         if (/^VII_STAR_/.test(tier)) {
             var starCount = parseInt(tier.replace('VII_STAR_', ''), 10) || 2;
-            var starSize = starCount > 4 ? 8 : (starCount > 3 ? 9 : (starCount > 2 ? 12 : 16));
+            var starSize = starCount > 4 ? 11 : (starCount > 3 ? 13 : (starCount > 2 ? 17 : 22));
+            var starGap = starCount > 3 ? -4 : -5;
             var stars = [];
             for (var i = 0; i < starCount; i++) {
                 stars.push('<img src="/img/OSTAR.png" alt="" aria-hidden="true">');
             }
             return [
                 '<span class="battle-tier battle-tier-star" title="' + tooltip + '" aria-label="' + tooltip + '">',
-                '<span class="battle-tier-stars" style="--battle-tier-star-size:' + starSize + 'px">',
+                '<span class="battle-tier-stars" style="--battle-tier-star-size:' + starSize + 'px;--battle-tier-star-gap:' + starGap + 'px">',
                 stars.join(''),
                 '</span>',
                 '</span>'
