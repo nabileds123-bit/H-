@@ -187,8 +187,6 @@ function syncLiveUserPoints(gameServer, userId, points) {
         var player = client && client.playerTracker;
         if (!player || !player.authUser || String(player.authUser.id || '') !== String(userId || '')) return;
         player.authUser.points = points;
-        player.authUser.battleTier = battleTier.forUser({ points: points });
-        player.battleTier = player.authUser.battleTier;
         sendCommandMessage(gameServer, player, 'Points kamu sekarang: ' + points);
     });
 }
@@ -463,6 +461,7 @@ function applyAuthUserToClient(client, user) {
         guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
         activeSkinType: user.activeSkinType || 'player',
         battleTier: battleTier.forUser(user),
+        rankedTier: battleTier.forUser(user),
         country_code: user.country_code || user.countryCode || '',
         commandRole: normalizeCommandRole(user.commandRole),
         commandPermissions: user.commandPermissions || ''
@@ -470,7 +469,10 @@ function applyAuthUserToClient(client, user) {
     client.authUser.xp = parseInt(user.xp, 10) || 0;
     client.authUser.xpMax = parseInt(user.xpMax, 10) || 0;
     client.authUser.level = parseInt(user.level, 10) || 1;
-    client.battleTier = client.authUser.battleTier;
+    client.authUser.rankedWins = parseInt(user.rankedWins, 10) || 0;
+    client.authUser.rankedLosses = parseInt(user.rankedLosses, 10) || 0;
+    client.authUser.rankedProgress = parseInt(user.rankedProgress, 10) || 0;
+    client.battleTier = client.authUser.rankedTier;
     client.skinKey = getActiveSkinKey(user);
     client.setGuildTag(client.authUser.guildTag);
 }

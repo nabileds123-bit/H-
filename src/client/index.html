@@ -28,7 +28,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="Vector2.js"></script>
-    <script src="main_out.js?579"></script>
+    <script src="main_out.js?580"></script>
     <script src="invite-system.js"></script>
 	<script>/ jshint -W097 /
 'use strict';
@@ -3211,6 +3211,18 @@ $(document).on('keyup', function(input) {
                             <span id="accountDetailPoints" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
+                            <span class="account-detail-label">Rank:</span>
+                            <span id="accountDetailRankedTier" class="account-detail-value"></span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Ranked:</span>
+                            <span id="accountDetailRankedStats" class="account-detail-value"></span>
+                        </div>
+                        <div class="account-detail-row">
+                            <span class="account-detail-label">Modes:</span>
+                            <span id="accountDetailRankedModes" class="account-detail-value"></span>
+                        </div>
+                        <div class="account-detail-row">
                             <span class="account-detail-label">Clan:</span>
                             <span class="account-detail-value"><a id="accountDetailGuild" href="#guild-detail"></a></span>
                         </div>
@@ -3731,6 +3743,10 @@ $(function () {
         localStorage.setItem('authPremiumChatEffect', user.premiumChatEffect || '');
         localStorage.setItem('authPremiumUntil', user.premiumUntil || '');
         localStorage.setItem('authPoints', user.points || 0);
+        localStorage.setItem('authRankedWins', user.rankedWins || 0);
+        localStorage.setItem('authRankedLosses', user.rankedLosses || 0);
+        localStorage.setItem('authRankedProgress', user.rankedProgress || 0);
+        localStorage.setItem('authRankedTier', user.rankedTier || user.battleTier || 'UNRANKED');
         localStorage.setItem('authXp', user.xp || localStorage.getItem('authXp') || 0);
         localStorage.setItem('authXpMax', user.xpMax || localStorage.getItem('authXpMax') || 0);
         localStorage.setItem('authLevel', user.level || localStorage.getItem('authLevel') || 1);
@@ -5125,6 +5141,19 @@ $(function () {
         $('#accountDetailTitle, #accountDetailName').text(user.username || '-');
         $('#accountDetailLevel').text(parseInt(user.level, 10) || 1);
         $('#accountDetailPoints').text(parseInt(user.points, 10) || 0);
+        $('#accountDetailRankedTier').text(getBattleTierDisplayLabel(user.rankedTier || user.battleTier || 'UNRANKED'));
+        $('#accountDetailRankedStats').text(
+            (parseInt(user.rankedWins, 10) || 0) + 'W / ' +
+            (parseInt(user.rankedLosses, 10) || 0) + 'L / Progress ' +
+            (parseInt(user.rankedProgress, 10) || 0)
+        );
+        var rankedModes = user.rankedModeStats || {};
+        var ranked1v1 = rankedModes['1v1'] || {};
+        var ranked2v2 = rankedModes['2v2'] || {};
+        $('#accountDetailRankedModes').text(
+            '1v1: ' + (parseInt(ranked1v1.wins, 10) || 0) + 'W/' + (parseInt(ranked1v1.losses, 10) || 0) + 'L' +
+            ' | 2v2: ' + (parseInt(ranked2v2.wins, 10) || 0) + 'W/' + (parseInt(ranked2v2.losses, 10) || 0) + 'L'
+        );
         $('#accountDetailGame').text(formatAccountDetailLastGame(user.lastLoginAt));
         $('#accountDetailStatus')
             .toggleClass('account-detail-premium', hasActivePremiumForUser(user))
@@ -5156,17 +5185,17 @@ $(function () {
     function normalizeBattleTier(value) {
         value = String(value || 'UNRANKED').toUpperCase();
         if (value === 'UNRANKED' || value === 'UNRANK') return 'UNRANKED';
-        if (value === '★2' || value === '*2' || value === 'S2' || value === 'STAR2') return 'STAR2';
-        if (value === '★3' || value === '*3' || value === 'S3' || value === 'STAR3') return 'STAR3';
-        if (value === '★4' || value === '*4' || value === 'S4' || value === 'STAR4') return 'STAR4';
-        if (value === '★5' || value === '*5' || value === 'S5' || value === 'STAR5') return 'STAR5';
+        if (value === '★2' || value === '*2' || value === 'S2' || value === 'STAR2' || value === 'VII_STAR_2') return 'VII_STAR_2';
+        if (value === '★3' || value === '*3' || value === 'S3' || value === 'STAR3' || value === 'VII_STAR_3') return 'VII_STAR_3';
+        if (value === '★4' || value === '*4' || value === 'S4' || value === 'STAR4' || value === 'VII_STAR_4') return 'VII_STAR_4';
+        if (value === '★5' || value === '*5' || value === 'S5' || value === 'STAR5' || value === 'VII_STAR_5') return 'VII_STAR_5';
         return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'UNRANKED';
     }
 
     function getBattleTierDisplayLabel(tier) {
         tier = normalizeBattleTier(tier);
         if (tier === 'UNRANKED') return 'Unranked';
-        if (/^STAR/.test(tier)) return '★' + tier.replace('STAR', '');
+        if (/^VII_STAR_/.test(tier)) return 'VII ★' + tier.replace('VII_STAR_', '');
         return tier;
     }
 
@@ -5205,10 +5234,10 @@ $(function () {
             V: 'V.png',
             VI: 'VI.png',
             VII: 'VII.png',
-            STAR2: 'II.png',
-            STAR3: 'III.png',
-            STAR4: 'IV.png',
-            STAR5: 'V.png'
+            VII_STAR_2: 'II.png',
+            VII_STAR_3: 'III.png',
+            VII_STAR_4: 'IV.png',
+            VII_STAR_5: 'V.png'
         }[tier] || 'I.png';
         return '<span class="battle-tier" title="' + tooltip + '"><img src="/img/' + tierImage + '" alt="Tier ' + tier + '" title="' + tooltip + '"></span>';
     }

@@ -187,7 +187,7 @@ function getUserInfo(identifier) {
     var user = users.findByIdOrUsernameOrEmail(identifier);
     if (!user) return null;
 
-    var tierInfo = battleTier.progressInfo(user);
+    var tierInfo = battleTier.getNextTierInfo(user.rankedProgress);
 
     return {
         userId: user.id,
@@ -196,8 +196,13 @@ function getUserInfo(identifier) {
         guildId: getUserGuildId(user),
         guildTag: user.guildTag || '',
         battleTier: tierInfo.tier,
+        rankedTier: tierInfo.tier,
+        rankedWins: parseInt(user.rankedWins, 10) || 0,
+        rankedLosses: parseInt(user.rankedLosses, 10) || 0,
         battleProgress: tierInfo.progress,
+        rankedProgress: tierInfo.progress,
         battleTierInfo: tierInfo,
+        rankedModeStats: user.rankedModeStats || {},
         country_code: normalizeCountryCode(user.country_code || user.countryCode)
     };
 }
@@ -278,6 +283,10 @@ function addBattleRecord(data) {
         opponent_username: String(data.opponentUsername || data.opponent || '').trim(),
         score_for: result === 'win' ? 1 : 0,
         score_against: result === 'win' ? 0 : 1,
+        ranked: data.ranked !== false,
+        winner_user_ids: Array.isArray(data.winnerUserIds) ? data.winnerUserIds : [],
+        loser_user_ids: Array.isArray(data.loserUserIds) ? data.loserUserIds : [],
+        result_saved: data.resultSaved !== false,
         match_date: data.matchDate || getJakartaDate(),
         created_at: Date.now()
     };
@@ -312,8 +321,12 @@ function getBattleSummaryForUser(identifier, mode, period) {
         totalMatch: 0,
         winRate: 0,
         tier: user ? user.battleTier : 'UNRANKED',
-        progress: user ? user.battleProgress : 0,
-        tierInfo: user ? user.battleTierInfo : battleTier.progressInfo(0)
+        rankedWins: user ? user.rankedWins : 0,
+        rankedLosses: user ? user.rankedLosses : 0,
+        rankedProgress: user ? user.rankedProgress : 0,
+        rankedModeStats: user ? user.rankedModeStats : {},
+        progress: user ? user.rankedProgress : 0,
+        tierInfo: user ? user.battleTierInfo : battleTier.getNextTierInfo(0)
     };
     if (!user || !battleMode) return summary;
 

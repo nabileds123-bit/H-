@@ -100,6 +100,22 @@ function normalizeBattleTier(value) {
     return battleTier.normalize(value);
 }
 
+function publicRankedFields(user) {
+    var info = battleTier.getNextTierInfo(user && user.rankedProgress);
+    return {
+        rankedWins: parseInt(user && user.rankedWins, 10) || 0,
+        rankedLosses: parseInt(user && user.rankedLosses, 10) || 0,
+        rankedProgress: parseInt(user && user.rankedProgress, 10) || 0,
+        rankedTier: battleTier.forUser(user),
+        rankedTierLabel: battleTier.label(battleTier.forUser(user)),
+        rankedTierInfo: info,
+        rankedModeStats: user && user.rankedModeStats || {
+            '1v1': { wins: 0, losses: 0 },
+            '2v2': { wins: 0, losses: 0 }
+        }
+    };
+}
+
 function getRequestCountryCode(req) {
     return normalizeCountryCode(req && req.headers && req.headers['cf-ipcountry']);
 }
@@ -119,7 +135,7 @@ function isPremiumActive(user) {
 }
 
 function publicAuthUser(user, lastLoginAt) {
-    return {
+    return Object.assign({
         username: user.username,
         email: user.email,
         lastLoginAt: lastLoginAt || user.lastLoginAt || Date.now(),
@@ -142,11 +158,11 @@ function publicAuthUser(user, lastLoginAt) {
         guildSkinUrl: user.guildSkinUrl || '',
         guildSkinPath: user.guildSkinPath || '',
         country_code: normalizeCountryCode(user.country_code || user.countryCode)
-    };
+    }, publicRankedFields(user));
 }
 
 function publicPlayerProfile(user) {
-    return {
+    return Object.assign({
         username: user.username || '',
         lastLoginAt: user.lastLoginAt || user.updatedAt || user.createdAt || Date.now(),
         cellColor: user.cellColor || '#000000',
@@ -166,7 +182,7 @@ function publicPlayerProfile(user) {
         guildTag: user.guildTag || '',
         guildSkinUrl: user.guildSkinUrl || '',
         country_code: normalizeCountryCode(user.country_code || user.countryCode)
-    };
+    }, publicRankedFields(user));
 }
 
 function safeSkinSegment(value, fallback) {

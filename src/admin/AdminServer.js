@@ -235,6 +235,11 @@ function normalizeUserChanges(body) {
         'premiumChatEffect',
         'premiumUntil',
         'points',
+        'rankedWins',
+        'rankedLosses',
+        'rankedProgress',
+        'rankedTier',
+        'rankedModeStats',
         'xp',
         'xpMax',
         'level',
@@ -261,6 +266,24 @@ function normalizeUserChanges(body) {
         changes.passwordHash = passwords.hashPassword(String(body.password));
     }
 
+    if (typeof changes.rankedModeStats === 'string') {
+        try {
+            changes.rankedModeStats = JSON.parse(changes.rankedModeStats);
+        } catch (e) {
+            delete changes.rankedModeStats;
+        }
+    }
+
+    ['rankedWins', 'rankedLosses', 'rankedProgress'].forEach(function(key) {
+        if (Object.prototype.hasOwnProperty.call(changes, key)) {
+            changes[key] = Math.max(0, parseInt(changes[key], 10) || 0);
+        }
+    });
+
+    if (Object.prototype.hasOwnProperty.call(changes, 'rankedTier')) {
+        changes.rankedTier = normalizeBattleTier(changes.rankedTier);
+    }
+
     if (Object.prototype.hasOwnProperty.call(changes, 'battleTier')) {
         changes.battleTier = normalizeBattleTier(changes.battleTier);
     }
@@ -269,7 +292,7 @@ function normalizeUserChanges(body) {
 }
 
 function normalizeBattleTier(value) {
-    return battleTier.normalize(value);
+    return battleTier.normalizeTierName(value);
 }
 
 function handleLogin(req, res) {

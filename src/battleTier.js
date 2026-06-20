@@ -1,78 +1,88 @@
-function getProgress(value) {
-    if (value && typeof value === 'object') {
-        value = value.progress != null ? value.progress : value.points;
-    }
-
-    value = parseFloat(value);
-    return isNaN(value) ? 0 : Math.max(0, value);
-}
-
-function fromProgress(progress) {
-    progress = getProgress(progress);
-
-    if (progress < 10) return 'UNRANKED';
-    if (progress < 30) return 'I';
-    if (progress < 60) return 'II';
-    if (progress < 90) return 'III';
-    if (progress < 250) return 'IV';
-    if (progress < 500) return 'V';
-    if (progress < 800) return 'VI';
-    if (progress < 1500) return 'VII';
-    if (progress < 3000) return 'STAR2';
-    if (progress < 5000) return 'STAR3';
-    if (progress < 8000) return 'STAR4';
-    return 'STAR5';
-}
-
 var RANKS = [
-    { tier: 'UNRANKED', min: 0 },
-    { tier: 'I', min: 10 },
-    { tier: 'II', min: 30 },
-    { tier: 'III', min: 60 },
-    { tier: 'IV', min: 90 },
-    { tier: 'V', min: 250 },
-    { tier: 'VI', min: 500 },
-    { tier: 'VII', min: 800 },
-    { tier: 'STAR2', min: 1500 },
-    { tier: 'STAR3', min: 3000 },
-    { tier: 'STAR4', min: 5000 },
-    { tier: 'STAR5', min: 8000 }
+    { key: 'UNRANKED', label: 'Unranked', min: 0 },
+    { key: 'I', label: 'I', min: 10 },
+    { key: 'II', label: 'II', min: 30 },
+    { key: 'III', label: 'III', min: 60 },
+    { key: 'IV', label: 'IV', min: 90 },
+    { key: 'V', label: 'V', min: 250 },
+    { key: 'VI', label: 'VI', min: 500 },
+    { key: 'VII', label: 'VII', min: 800 },
+    { key: 'VII_STAR_2', label: 'VII *2', min: 1500 },
+    { key: 'VII_STAR_3', label: 'VII *3', min: 2500 },
+    { key: 'VII_STAR_4', label: 'VII *4', min: 4000 },
+    { key: 'VII_STAR_5', label: 'VII *5', min: 6000 }
 ];
 
-function normalize(value) {
-    value = String(value || '').trim().toUpperCase();
-    if (value === 'UNRANKED' || value === 'UNRANK') return 'UNRANKED';
-    if (value === '★2' || value === '*2' || value === 'S2' || value === 'STAR2') return 'STAR2';
-    if (value === '★3' || value === '*3' || value === 'S3' || value === 'STAR3') return 'STAR3';
-    if (value === '★4' || value === '*4' || value === 'S4' || value === 'STAR4') return 'STAR4';
-    if (value === '★5' || value === '*5' || value === 'S5' || value === 'STAR5') return 'STAR5';
-    return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'UNRANKED';
+function toNumber(value) {
+    value = parseInt(value, 10);
+    return isNaN(value) || value < 0 ? 0 : value;
+}
+
+function getTierFromProgress(progress) {
+    progress = toNumber(progress);
+
+    var tier = RANKS[0];
+    for (var i = 0; i < RANKS.length; i++) {
+        if (progress >= RANKS[i].min) {
+            tier = RANKS[i];
+        } else {
+            break;
+        }
+    }
+
+    return {
+        key: tier.key,
+        label: tier.label,
+        min: tier.min
+    };
+}
+
+function normalizeTierName(tier) {
+    tier = String(tier || '').trim().toUpperCase();
+    tier = tier.replace(/\s+/g, '_').replace(/-/g, '_');
+
+    if (tier === 'UNRANK' || tier === 'UNRANKED') return 'UNRANKED';
+    if (tier === 'STAR2' || tier === 'S2' || tier === '*2' || tier === 'VII_STAR2' || tier === 'VII_*2') return 'VII_STAR_2';
+    if (tier === 'STAR3' || tier === 'S3' || tier === '*3' || tier === 'VII_STAR3' || tier === 'VII_*3') return 'VII_STAR_3';
+    if (tier === 'STAR4' || tier === 'S4' || tier === '*4' || tier === 'VII_STAR4' || tier === 'VII_*4') return 'VII_STAR_4';
+    if (tier === 'STAR5' || tier === 'S5' || tier === '*5' || tier === 'VII_STAR5' || tier === 'VII_*5') return 'VII_STAR_5';
+
+    for (var i = 0; i < RANKS.length; i++) {
+        if (RANKS[i].key === tier) return RANKS[i].key;
+    }
+
+    return 'UNRANKED';
+}
+
+function getProgress(userOrProgress) {
+    if (userOrProgress && typeof userOrProgress === 'object') {
+        if (userOrProgress.rankedProgress != null) return toNumber(userOrProgress.rankedProgress);
+        if (userOrProgress.rankedWins != null) return toNumber(userOrProgress.rankedWins);
+        return 0;
+    }
+
+    return toNumber(userOrProgress);
 }
 
 function forUser(user) {
-    if (user && (user.progress != null || user.points != null)) {
-        return fromProgress(getProgress(user));
+    return getTierFromProgress(getProgress(user)).key;
+}
+
+function label(tier) {
+    tier = normalizeTierName(tier);
+    for (var i = 0; i < RANKS.length; i++) {
+        if (RANKS[i].key === tier) return RANKS[i].label;
     }
-
-    return normalize(user && user.battleTier);
+    return 'Unranked';
 }
 
-function label(value) {
-    value = normalize(value);
-    if (value === 'STAR2') return '★2';
-    if (value === 'STAR3') return '★3';
-    if (value === 'STAR4') return '★4';
-    if (value === 'STAR5') return '★5';
-    return value === 'UNRANKED' ? 'Unranked' : value;
-}
-
-function progressInfo(value) {
-    var progress = getProgress(value);
-    var tier = fromProgress(progress);
+function getNextTierInfo(progress) {
+    progress = getProgress(progress);
+    var current = getTierFromProgress(progress);
     var index = 0;
 
     for (var i = 0; i < RANKS.length; i++) {
-        if (RANKS[i].tier === tier) {
+        if (RANKS[i].key === current.key) {
             index = i;
             break;
         }
@@ -81,10 +91,10 @@ function progressInfo(value) {
     var next = RANKS[index + 1] || null;
     return {
         progress: progress,
-        tier: tier,
-        tierLabel: label(tier),
-        nextTier: next ? next.tier : '',
-        nextTierLabel: next ? label(next.tier) : '',
+        tier: current.key,
+        tierLabel: current.label,
+        nextTier: next ? next.key : '',
+        nextTierLabel: next ? next.label : '',
         nextAt: next ? next.min : 0,
         remaining: next ? Math.max(0, next.min - progress) : 0,
         isMaxRank: !next
@@ -93,9 +103,12 @@ function progressInfo(value) {
 
 module.exports = {
     forUser: forUser,
-    fromProgress: fromProgress,
+    getNextTierInfo: getNextTierInfo,
     getProgress: getProgress,
+    getTierFromProgress: getTierFromProgress,
     label: label,
-    normalize: normalize,
-    progressInfo: progressInfo
+    normalize: normalizeTierName,
+    normalizeTierName: normalizeTierName,
+    progressInfo: getNextTierInfo,
+    toNumber: toNumber
 };

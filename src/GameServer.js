@@ -1517,8 +1517,12 @@ GameServer.prototype.recordBattleResult = function(player, result) {
     var leaderboard = world && world.leaderboard ? world.leaderboard : [];
     var winner = null;
     result = String(result || 'lose').toLowerCase();
-    if (!mode || !userId) return;
+    if (!mode) return;
     if (result !== 'win' && result !== 'lose') return;
+
+    this.recordRankedBattleResult(player, result);
+
+    if (!userId) return;
 
     if (result === 'lose') {
         for (var w = 0; w < leaderboard.length; w++) {
@@ -1591,14 +1595,94 @@ GameServer.prototype.applyBattlePoints = function(player, result) {
 
     if (updatedUser && player.authUser) {
         player.authUser.points = points;
-        player.authUser.battleTier = battleTier.forUser(updatedUser);
-        player.battleTier = player.authUser.battleTier;
     }
 
     return {
         points: points,
         delta: delta
     };
+}
+
+GameServer.prototype.applyRankedUserUpdate = function(player, updatedUser) {
+    if (!player || !updatedUser) return;
+
+    player.battleTier = battleTier.forUser(updatedUser);
+    if (player.authUser) {
+        player.authUser.rankedWins = parseInt(updatedUser.rankedWins, 10) || 0;
+        player.authUser.rankedLosses = parseInt(updatedUser.rankedLosses, 10) || 0;
+        player.authUser.rankedProgress = parseInt(updatedUser.rankedProgress, 10) || 0;
+        player.authUser.rankedTier = player.battleTier;
+        player.authUser.battleTier = player.battleTier;
+    }
+}
+
+GameServer.prototype.recordRankedPlayerResult = function(player, mode, result) {
+    var userId = this.getPlayerStatsUserId(player);
+    if (!userId) return null;
+
+    var updatedUser = userStore.recordRankedResult(userId, mode, result);
+    this.applyRankedUserUpdate(player, updatedUser);
+    return updatedUser;
+}
+
+GameServer.prototype.recordRankedBattleResult = function(player, result) {
+    var world = player && (player.world || this.activeWorld);
+    var mode = statsStore.normalizeBattleMode(world && world.id);
+    var clients = world && world.clients ? world.clients : [];
+    result = String(result || 'lose').toLowerCase();
+
+    if (!world || !mode || result !== 'lose' || world.rankedResultSaved) return;
+
+    if (mode === '1vs1') {
+        var winner = null;
+        for (var i = 0; i < clients.length; i++) {
+            var other = clients[i] && clients[i].playerTracker;
+            if (other && other !== player && other.cells && other.cells.length > 0) {
+                winner = other;
+                break;
+            }
+        }
+
+        if (!winner) return;
+
+        world.rankedResultSaved = true;
+        this.recordRankedPlayerResult(winner, '1v1', 'win');
+        this.recordRankedPlayerResult(player, '1v1', 'lose');
+        return;
+    }
+
+    if (mode === '2vs2') {
+        var loserTeam = player.battleTeam;
+        if (!loserTeam) return;
+
+        var loserTeamAlive = false;
+        var winners = [];
+        var losers = [];
+
+        for (var c = 0; c < clients.length; c++) {
+            var tracker = clients[c] && clients[c].playerTracker;
+            if (!tracker || !tracker.battleTeam) continue;
+
+            if (tracker.battleTeam === loserTeam) {
+                losers.push(tracker);
+                if (tracker.cells && tracker.cells.length > 0) {
+                    loserTeamAlive = true;
+                }
+            } else {
+                winners.push(tracker);
+            }
+        }
+
+        if (loserTeamAlive || winners.length <= 0 || losers.length <= 0) return;
+
+        world.rankedResultSaved = true;
+        for (var w = 0; w < winners.length; w++) {
+            this.recordRankedPlayerResult(winners[w], '2v2', 'win');
+        }
+        for (var l = 0; l < losers.length; l++) {
+            this.recordRankedPlayerResult(losers[l], '2v2', 'lose');
+        }
+    }
 }
 
 GameServer.prototype.updateMatchLeaderboardStats = function(world) {
@@ -1678,7 +1762,11 @@ GameServer.prototype.sendMatchResult = function(player, result) {
         level: xpResult.level || 1,
         leveledUp: xpResult.leveledUp || 0,
         points: pointResult ? pointResult.points : undefined,
-        pointsDelta: pointResult ? pointResult.delta : 0
+        pointsDelta: pointResult ? pointResult.delta : 0,
+        rankedWins: player.authUser ? player.authUser.rankedWins : undefined,
+        rankedLosses: player.authUser ? player.authUser.rankedLosses : undefined,
+        rankedProgress: player.authUser ? player.authUser.rankedProgress : undefined,
+        rankedTier: player.authUser ? player.authUser.rankedTier : undefined
     });
 
     var buf = new ArrayBuffer(1 + payload.length * 2 + 2);

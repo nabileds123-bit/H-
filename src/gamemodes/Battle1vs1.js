@@ -25,6 +25,10 @@ Battle1vs1.prototype.onPlayerSpawn = function(gameServer, player) {
     }
 
     if (alive >= this.maxPlayers) return;
+    if (alive === 0) {
+        var world = player.world || gameServer.activeWorld;
+        if (world) world.rankedResultSaved = false;
+    }
 
     player.color = gameServer.getRandomColor();
     gameServer.spawnPlayer(player);

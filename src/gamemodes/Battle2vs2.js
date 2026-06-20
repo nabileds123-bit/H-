@@ -25,7 +25,12 @@ Battle2vs2.prototype.onPlayerSpawn = function(gameServer, player) {
     }
 
     if (alive >= this.maxPlayers) return;
+    if (alive === 0) {
+        var world = player.world || gameServer.activeWorld;
+        if (world) world.rankedResultSaved = false;
+    }
 
+    player.battleTeam = alive < 2 ? 'A' : 'B';
     player.color = gameServer.getRandomColor();
     gameServer.spawnPlayer(player);
 };

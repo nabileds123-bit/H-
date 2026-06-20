@@ -582,15 +582,15 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     function normalizeBattleTier(value) {
         value = String(value || "").trim().toUpperCase();
         if (value === "UNRANKED" || value === "UNRANK") return "UNRANKED";
-        if (value === "★2" || value === "*2" || value === "S2" || value === "STAR2") return "STAR2";
-        if (value === "★3" || value === "*3" || value === "S3" || value === "STAR3") return "STAR3";
-        if (value === "★4" || value === "*4" || value === "S4" || value === "STAR4") return "STAR4";
-        if (value === "★5" || value === "*5" || value === "S5" || value === "STAR5") return "STAR5";
+        if (value === "★2" || value === "*2" || value === "S2" || value === "STAR2" || value === "VII_STAR_2") return "VII_STAR_2";
+        if (value === "★3" || value === "*3" || value === "S3" || value === "STAR3" || value === "VII_STAR_3") return "VII_STAR_3";
+        if (value === "★4" || value === "*4" || value === "S4" || value === "STAR4" || value === "VII_STAR_4") return "VII_STAR_4";
+        if (value === "★5" || value === "*5" || value === "S5" || value === "STAR5" || value === "VII_STAR_5") return "VII_STAR_5";
         return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : "";
     }
 
     function shouldDrawBattleTierOverlay(tier) {
-        return /^(IV|V|VI|VII|STAR2|STAR3|STAR4|STAR5)$/.test(normalizeBattleTier(tier));
+        return /^(IV|V|VI|VII|VII_STAR_2|VII_STAR_3|VII_STAR_4|VII_STAR_5)$/.test(normalizeBattleTier(tier));
     }
 
     function getBattleTierStarCount(tier) {
@@ -598,19 +598,19 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         if (tier === "V") return 1;
         if (tier === "VI") return 2;
         if (tier === "VII") return 3;
-        if (tier === "STAR2") return 2;
-        if (tier === "STAR3") return 3;
-        if (tier === "STAR4") return 4;
-        if (tier === "STAR5") return 5;
+        if (tier === "VII_STAR_2") return 2;
+        if (tier === "VII_STAR_3") return 3;
+        if (tier === "VII_STAR_4") return 4;
+        if (tier === "VII_STAR_5") return 5;
         return 0;
     }
 
     function getBattleTierLabel(tier) {
         tier = normalizeBattleTier(tier);
-        if (tier === "STAR2") return "★2";
-        if (tier === "STAR3") return "★3";
-        if (tier === "STAR4") return "★4";
-        if (tier === "STAR5") return "★5";
+        if (tier === "VII_STAR_2") return "VII ★2";
+        if (tier === "VII_STAR_3") return "VII ★3";
+        if (tier === "VII_STAR_4") return "VII ★4";
+        if (tier === "VII_STAR_5") return "VII ★5";
         return tier;
     }
 
@@ -620,7 +620,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         var tier = normalizeBattleTier(cell && cell.battleTier);
         if (!shouldDrawBattleTierOverlay(tier) || cell.size < 42) return;
 
-        var isStarTier = /^STAR/.test(tier);
+        var isStarTier = /^VII_STAR_/.test(tier);
         var ringImage = isStarTier ? battleTierOrangeRingImage : battleTierRingImage;
         var starImage = isStarTier ? battleTierOrangeStarImage : battleTierStarImage;
 
@@ -845,6 +845,18 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                         }
                         if (typeof resultData.points !== "undefined") {
                             wHandle.localStorage.authPoints = resultData.points || 0;
+                        }
+                        if (typeof resultData.rankedWins !== "undefined") {
+                            wHandle.localStorage.authRankedWins = resultData.rankedWins || 0;
+                        }
+                        if (typeof resultData.rankedLosses !== "undefined") {
+                            wHandle.localStorage.authRankedLosses = resultData.rankedLosses || 0;
+                        }
+                        if (typeof resultData.rankedProgress !== "undefined") {
+                            wHandle.localStorage.authRankedProgress = resultData.rankedProgress || 0;
+                        }
+                        if (typeof resultData.rankedTier !== "undefined") {
+                            wHandle.localStorage.authRankedTier = resultData.rankedTier || "UNRANKED";
                         }
                     }
                     if (typeof wHandle.updatePlayerExpVisibility === "function") {

@@ -41,6 +41,41 @@ function createUserId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
+function toRankedNumber(value) {
+    value = parseInt(value, 10);
+    return isNaN(value) || value < 0 ? 0 : value;
+}
+
+function defaultRankedModeStats() {
+    return {
+        '1v1': { wins: 0, losses: 0 },
+        '2v2': { wins: 0, losses: 0 }
+    };
+}
+
+function normalizeRankedModeStats(stats) {
+    var normalized = defaultRankedModeStats();
+    stats = stats && typeof stats === 'object' ? stats : {};
+
+    ['1v1', '2v2'].forEach(function(mode) {
+        var source = stats[mode] || stats[mode.replace('v', 'vs')] || {};
+        normalized[mode].wins = toRankedNumber(source.wins);
+        normalized[mode].losses = toRankedNumber(source.losses);
+    });
+
+    return normalized;
+}
+
+function normalizeRankedUser(user) {
+    user.rankedWins = toRankedNumber(user.rankedWins);
+    user.rankedLosses = toRankedNumber(user.rankedLosses);
+    user.rankedProgress = user.rankedProgress == null ? user.rankedWins : toRankedNumber(user.rankedProgress);
+    user.rankedModeStats = normalizeRankedModeStats(user.rankedModeStats);
+    user.rankedTier = battleTier.forUser(user);
+    user.battleTier = user.rankedTier;
+    return user;
+}
+
 function normalizeStore(store) {
     var changed = false;
 
@@ -85,9 +120,23 @@ function normalizeStore(store) {
             changed = true;
         }
 
-        var normalizedTier = battleTier.normalize(user.battleTier);
-        if (user.battleTier !== normalizedTier) {
-            user.battleTier = normalizedTier;
+        var beforeRanked = JSON.stringify({
+            rankedWins: user.rankedWins,
+            rankedLosses: user.rankedLosses,
+            rankedProgress: user.rankedProgress,
+            rankedTier: user.rankedTier,
+            rankedModeStats: user.rankedModeStats,
+            battleTier: user.battleTier
+        });
+        user = normalizeRankedUser(user);
+        if (JSON.stringify({
+            rankedWins: user.rankedWins,
+            rankedLosses: user.rankedLosses,
+            rankedProgress: user.rankedProgress,
+            rankedTier: user.rankedTier,
+            rankedModeStats: user.rankedModeStats,
+            battleTier: user.battleTier
+        }) !== beforeRanked) {
             changed = true;
         }
 
@@ -221,6 +270,11 @@ function createUser(data) {
         xpMax: 0,
         level: 1,
         battleTier: 'UNRANKED',
+        rankedWins: 0,
+        rankedLosses: 0,
+        rankedProgress: 0,
+        rankedTier: 'UNRANKED',
+        rankedModeStats: defaultRankedModeStats(),
         cellColor: '#000000',
         skin: '',
         skinUrl: '',
@@ -253,12 +307,52 @@ function updateUser(userId, changes) {
     store.users = store.users.map(function(item) {
         if (!matchesUserId(item, userId)) return item;
 
-        user = Object.assign({}, item, changes, { updatedAt: Date.now() });
+        user = normalizeRankedUser(Object.assign({}, item, changes, { updatedAt: Date.now() }));
         return user;
     });
 
     writeStore(store);
     return user;
+}
+
+function recordRankedResult(userId, mode, result) {
+    mode = String(mode || '').toLowerCase();
+    mode = mode === '1vs1' ? '1v1' : mode === '2vs2' ? '2v2' : mode;
+    result = String(result || '').toLowerCase();
+
+    if ((mode !== '1v1' && mode !== '2v2') || (result !== 'win' && result !== 'lose')) {
+        return null;
+    }
+
+    var store = readStore();
+    var updated = null;
+
+    store.users = store.users.map(function(item) {
+        if (!matchesUserId(item, userId)) return item;
+
+        var user = normalizeRankedUser(Object.assign({}, item));
+        user.rankedModeStats = normalizeRankedModeStats(user.rankedModeStats);
+
+        if (result === 'win') {
+            user.rankedWins += 1;
+            user.rankedProgress += 1;
+            user.rankedModeStats[mode].wins += 1;
+        } else {
+            user.rankedLosses += 1;
+            user.rankedModeStats[mode].losses += 1;
+        }
+
+        user.rankedTier = battleTier.forUser(user);
+        user.battleTier = user.rankedTier;
+        user.updatedAt = Date.now();
+        updated = user;
+        return user;
+    });
+
+    if (!updated) return null;
+
+    writeStore(store);
+    return updated;
 }
 
 function deleteUser(userId) {
@@ -295,5 +389,6 @@ module.exports = {
     findByToken: findByToken,
     findByUsernameOrEmail: findByUsernameOrEmail,
     listUsers: listUsers,
+    recordRankedResult: recordRankedResult,
     updateUser: updateUser
 };
