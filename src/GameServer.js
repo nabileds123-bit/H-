@@ -15,6 +15,7 @@ var AdminServer = require('./admin/AdminServer');
 var StatsServer = require('./stats/StatsServer');
 var statsStore = require('./stats/statsStore');
 var userStore = require('./auth/userStore');
+var battleTier = require('./battleTier');
 var configPath = path.join(__dirname, '..', 'gameserver.ini');
 var adminConfigPath = path.join(__dirname, '..', 'data', 'adminConfig.json');
 
@@ -74,7 +75,7 @@ function GameServer(mult, prt) {
         ejectSpawnPlayer: 50, // Chance for a player to spawn from ejected mass
         playerStartMass: 10, // Starting mass of the player cell.
         playerMaxMass: 22500, // Maximum mass a player can have
-        playerSpeed: 745.28, // Base player movement speed
+        playerSpeed: 820, // Base player movement speed
         playerMinMassEject: 32, // Mass required to eject a cell
         playerMinMassSplit: 36, // Mass required to split
         playerMaxCells: 16, // Max cells the player is allowed to have
@@ -1590,6 +1591,8 @@ GameServer.prototype.applyBattlePoints = function(player, result) {
 
     if (updatedUser && player.authUser) {
         player.authUser.points = points;
+        player.authUser.battleTier = battleTier.forUser(updatedUser);
+        player.battleTier = player.authUser.battleTier;
     }
 
     return {

@@ -6,6 +6,7 @@ function PlayerTracker(gameServer, socket) {
     this.name = "";
     this.guildTag = "";
     this.skinKey = "";
+    this.battleTier = "UNRANKED";
     this.gameServer = gameServer;
     this.socket = socket;
     this.nodeDestroyQueue = [];
@@ -89,6 +90,10 @@ PlayerTracker.prototype.getDisplayName = function() {
 
 PlayerTracker.prototype.getSkinName = function() {
     return this.skinKey || "";
+}
+
+PlayerTracker.prototype.getBattleTier = function() {
+    return this.battleTier || "";
 }
 
 PlayerTracker.prototype.getScore = function(reCalcScore) {

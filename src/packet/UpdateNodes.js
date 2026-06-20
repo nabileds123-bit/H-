@@ -6,15 +6,24 @@ function UpdateNodes(destroyQueue, nodes, nonVisibleNodes) {
 
 module.exports = UpdateNodes;
 
+var battleTier = require('../battleTier');
+
 var SKIN_META_START = '\uE120';
 var SKIN_META_END = '\uE121';
+var SKIN_META_SEPARATOR = '\uE122';
+
+function normalizeBattleTier(value) {
+    var tier = battleTier.normalize(value);
+    return tier === 'UNRANKED' ? '' : tier;
+}
 
 function getNodeName(node) {
     var name = node.getName();
     var skinName = node.getSkinName ? node.getSkinName() : '';
+    var battleTier = normalizeBattleTier(node.getBattleTier ? node.getBattleTier() : '');
 
-    if (name && skinName) {
-        return SKIN_META_START + skinName + SKIN_META_END + name;
+    if (name && (skinName || battleTier)) {
+        return SKIN_META_START + skinName + SKIN_META_SEPARATOR + battleTier + SKIN_META_END + name;
     }
 
     return name;

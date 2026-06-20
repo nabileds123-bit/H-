@@ -546,13 +546,15 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     var SKIN_META_START = "\uE120";
     var SKIN_META_END = "\uE121";
+    var SKIN_META_SEPARATOR = "\uE122";
 
     function parseCellName(name) {
         name = String(name || "");
         if (name.charAt(0) !== SKIN_META_START) {
             return {
                 name: name,
-                skinName: ""
+                skinName: "",
+                battleTier: ""
             };
         }
 
@@ -560,14 +562,99 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         if (endIndex < 0) {
             return {
                 name: name,
-                skinName: ""
+                skinName: "",
+                battleTier: ""
             };
         }
 
+        var meta = name.slice(1, endIndex);
+        var separatorIndex = meta.indexOf(SKIN_META_SEPARATOR);
+        var skinName = separatorIndex >= 0 ? meta.slice(0, separatorIndex) : meta;
+        var battleTier = separatorIndex >= 0 ? meta.slice(separatorIndex + 1) : "";
+
         return {
             name: name.slice(endIndex + 1),
-            skinName: name.slice(1, endIndex).toLowerCase()
+            skinName: skinName.toLowerCase(),
+            battleTier: normalizeBattleTier(battleTier)
         };
+    }
+
+    function normalizeBattleTier(value) {
+        value = String(value || "").trim().toUpperCase();
+        if (value === "UNRANKED" || value === "UNRANK") return "UNRANKED";
+        if (value === "★2" || value === "*2" || value === "S2" || value === "STAR2") return "STAR2";
+        if (value === "★3" || value === "*3" || value === "S3" || value === "STAR3") return "STAR3";
+        if (value === "★4" || value === "*4" || value === "S4" || value === "STAR4") return "STAR4";
+        if (value === "★5" || value === "*5" || value === "S5" || value === "STAR5") return "STAR5";
+        return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : "";
+    }
+
+    function shouldDrawBattleTierOverlay(tier) {
+        return /^(IV|V|VI|VII|STAR2|STAR3|STAR4|STAR5)$/.test(normalizeBattleTier(tier));
+    }
+
+    function getBattleTierStarCount(tier) {
+        tier = normalizeBattleTier(tier);
+        if (tier === "V") return 1;
+        if (tier === "VI") return 2;
+        if (tier === "VII") return 3;
+        if (tier === "STAR2") return 2;
+        if (tier === "STAR3") return 3;
+        if (tier === "STAR4") return 4;
+        if (tier === "STAR5") return 5;
+        return 0;
+    }
+
+    function getBattleTierLabel(tier) {
+        tier = normalizeBattleTier(tier);
+        if (tier === "STAR2") return "★2";
+        if (tier === "STAR3") return "★3";
+        if (tier === "STAR4") return "★4";
+        if (tier === "STAR5") return "★5";
+        return tier;
+    }
+
+    function drawBattleTierOverlay(ctx, cell) {
+        if (String(gameMode || "").indexOf(":battle") !== 0) return;
+
+        var tier = normalizeBattleTier(cell && cell.battleTier);
+        if (!shouldDrawBattleTierOverlay(tier) || cell.size < 42) return;
+
+        var isStarTier = /^STAR/.test(tier);
+        var ringImage = isStarTier ? battleTierOrangeRingImage : battleTierRingImage;
+        var starImage = isStarTier ? battleTierOrangeStarImage : battleTierStarImage;
+
+        if (ringImage && ringImage.complete && ringImage.width) {
+            var ringSize = cell.size * 2.22;
+            ctx.drawImage(ringImage, cell.x - ringSize / 2, cell.y - ringSize / 2, ringSize, ringSize);
+        }
+
+        var romanSize = Math.max(18, cell.size * 0.34);
+        var label = getBattleTierLabel(tier);
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "900 " + romanSize + "px Georgia, 'Times New Roman', serif";
+        ctx.lineWidth = Math.max(3, romanSize * 0.09);
+        ctx.strokeStyle = isStarTier ? "#3a235f" : "#7b4d11";
+        ctx.fillStyle = isStarTier ? "#f06d22" : "#f9c45b";
+        ctx.shadowColor = "rgba(0,0,0,.35)";
+        ctx.shadowBlur = Math.max(2, romanSize * 0.08);
+        ctx.strokeText(label, cell.x, cell.y - cell.size * 0.55);
+        ctx.fillText(label, cell.x, cell.y - cell.size * 0.55);
+        ctx.restore();
+
+        var starCount = getBattleTierStarCount(tier);
+        if (!starCount || !starImage || !starImage.complete || !starImage.width) return;
+
+        var starSize = Math.max(18, cell.size * (starCount > 3 ? 0.22 : 0.28));
+        var gap = starSize * 0.12;
+        var totalWidth = starCount * starSize + (starCount - 1) * gap;
+        var startX = cell.x - totalWidth / 2;
+        var y = cell.y + cell.size * 0.40;
+        for (var i = 0; i < starCount; i++) {
+            ctx.drawImage(starImage, startX + i * (starSize + gap), y, starSize, starSize);
+        }
     }
 
     function isPrivateSkinKey(skinName) {
@@ -1437,6 +1524,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 node.la = posY;
             }
             node.skinName = parsedName.skinName;
+            node.battleTier = parsedName.battleTier;
             node.isVirus = flagVirus;
             node.isAgitated = flagAgitated;
             node.nx = posX;
@@ -2366,9 +2454,17 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         isTouchStart = "ontouchstart" in wHandle && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
         splitIcon = new Image,
         ejectIcon = new Image,
+        battleTierRingImage = new Image,
+        battleTierStarImage = new Image,
+        battleTierOrangeRingImage = new Image,
+        battleTierOrangeStarImage = new Image,
         noRanking = false;
     splitIcon.src = "split.png";
     ejectIcon.src = "feed.png";
+    battleTierRingImage.src = "/img/RING.png";
+    battleTierStarImage.src = "/img/STAR-V-VII.png";
+    battleTierOrangeRingImage.src = "/img/ORING.png";
+    battleTierOrangeStarImage.src = "/img/OSTAR.png";
     var wCanvas = document.createElement("canvas");
     var playerStat = null;
     wHandle.currentGameMode = gameMode;
@@ -2582,6 +2678,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         destroyed: false,
         isVirus: false,
         isAgitated: false,
+        battleTier: "",
         wasSimpleDrawing: true,
         destroy: function () {
             var tmp;
@@ -2849,6 +2946,10 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                         m = ~~(e.width / ratio);
                         h = ~~(e.height / ratio);
                         ctx.drawImage(e, ~~this.x - ~~(m / 2), b - ~~(h / 2), m, h);
+                    }
+
+                    if (!this.isVirus && !this.isAgitated) {
+                        drawBattleTierOverlay(ctx, this);
                     }
                 }
                 ctx.restore()

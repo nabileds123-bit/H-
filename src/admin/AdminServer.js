@@ -6,6 +6,7 @@ var users = require('../auth/userStore');
 var adminStore = require('./adminStore');
 var StatsServer = require('../stats/StatsServer');
 var ini = require('../modules/ini');
+var battleTier = require('../battleTier');
 
 var sessions = {};
 var SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
@@ -268,8 +269,7 @@ function normalizeUserChanges(body) {
 }
 
 function normalizeBattleTier(value) {
-    value = String(value || 'I').trim().toUpperCase();
-    return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'I';
+    return battleTier.normalize(value);
 }
 
 function handleLogin(req, res) {

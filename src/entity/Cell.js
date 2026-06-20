@@ -41,6 +41,14 @@ Cell.prototype.getSkinName = function() {
     return "";
 }
 
+Cell.prototype.getBattleTier = function() {
+    if (this.owner && this.owner.getBattleTier) {
+        return this.owner.getBattleTier();
+    }
+
+    return "";
+}
+
 Cell.prototype.setColor = function(color) {
     this.color.r = color.r;
     this.color.b = color.b;
@@ -71,7 +79,7 @@ Cell.prototype.getSpeed = function() {
 	// (should possibly have a config value for this?)
     var gameServer = this.owner && this.owner.gameServer;
     var config = gameServer && gameServer.getWorldConfig ? gameServer.getWorldConfig(this.owner.world) : (gameServer ? gameServer.config : {});
-	return (config.playerSpeed || 745.28) * Math.pow(this.mass, -0.222) * 50 / 1000;
+	return (config.playerSpeed || 820) * Math.pow(this.mass, -0.222) * 50 / 1000;
 }
 
 Cell.prototype.setAngle = function(radians) {

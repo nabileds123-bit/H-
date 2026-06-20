@@ -4,6 +4,7 @@ var users = require('./userStore');
 var email = require('./email');
 var skinStorage = require('./skinStorage');
 var adminStore = require('../admin/adminStore');
+var battleTier = require('../battleTier');
 
 var VERIFY_EXPIRES = 24 * 60 * 60 * 1000;
 var RESET_EXPIRES = 60 * 60 * 1000;
@@ -96,8 +97,7 @@ function normalizeCountryCode(value) {
 }
 
 function normalizeBattleTier(value) {
-    value = String(value || 'I').trim().toUpperCase();
-    return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'I';
+    return battleTier.normalize(value);
 }
 
 function getRequestCountryCode(req) {
@@ -133,7 +133,7 @@ function publicAuthUser(user, lastLoginAt) {
         xp: parseInt(user.xp, 10) || 0,
         xpMax: parseInt(user.xpMax, 10) || 0,
         level: parseInt(user.level, 10) || 1,
-        battleTier: normalizeBattleTier(user.battleTier),
+        battleTier: battleTier.forUser(user),
         skin: user.skin || '',
         skinUrl: user.skinUrl || '',
         skinPath: user.skinPath || '',
@@ -159,7 +159,7 @@ function publicPlayerProfile(user) {
         xp: parseInt(user.xp, 10) || 0,
         xpMax: parseInt(user.xpMax, 10) || 0,
         level: parseInt(user.level, 10) || 1,
-        battleTier: normalizeBattleTier(user.battleTier),
+        battleTier: battleTier.forUser(user),
         skin: user.skin || '',
         skinUrl: user.skinUrl || '',
         activeSkinType: user.activeSkinType || 'player',

@@ -1,6 +1,7 @@
 var fs = require('fs');
 var path = require('path');
 var users = require('../auth/userStore');
+var battleTier = require('../battleTier');
 var adminStore = require('../admin/adminStore');
 
 var dataDir = path.join(__dirname, '..', '..', 'data');
@@ -192,14 +193,13 @@ function getUserInfo(identifier) {
         email: user.email || '',
         guildId: getUserGuildId(user),
         guildTag: user.guildTag || '',
-        battleTier: normalizeBattleTier(user.battleTier),
+        battleTier: battleTier.forUser(user),
         country_code: normalizeCountryCode(user.country_code || user.countryCode)
     };
 }
 
 function normalizeBattleTier(value) {
-    value = String(value || 'I').trim().toUpperCase();
-    return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'I';
+    return battleTier.normalize(value);
 }
 
 function upsertTop1Time(data) {
@@ -302,7 +302,7 @@ function getTop1SummaryForUser(identifier, period) {
 function getBattleSummaryForUser(identifier, mode, period) {
     var user = getUserInfo(identifier);
     var battleMode = normalizeBattleMode(mode);
-    var summary = { win: 0, lose: 0, totalMatch: 0, winRate: 0, tier: user ? user.battleTier : 'I' };
+    var summary = { win: 0, lose: 0, totalMatch: 0, winRate: 0, tier: user ? user.battleTier : 'UNRANKED' };
     if (!user || !battleMode) return summary;
 
     var range = getPeriodRange(period);

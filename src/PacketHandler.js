@@ -1,5 +1,6 @@
 var Packet = require('./packet');
 var userStore = require('./auth/userStore');
+var battleTier = require('./battleTier');
 
 function hexToColor(hex) {
     var match = /^#?([a-f0-9]{6})$/i.exec(hex || '');
@@ -186,6 +187,8 @@ function syncLiveUserPoints(gameServer, userId, points) {
         var player = client && client.playerTracker;
         if (!player || !player.authUser || String(player.authUser.id || '') !== String(userId || '')) return;
         player.authUser.points = points;
+        player.authUser.battleTier = battleTier.forUser({ points: points });
+        player.battleTier = player.authUser.battleTier;
         sendCommandMessage(gameServer, player, 'Points kamu sekarang: ' + points);
     });
 }
@@ -459,6 +462,7 @@ function applyAuthUserToClient(client, user) {
         premiumChatEffect: user.premiumChatEffect || '',
         guildTag: user.guildTag || user.guildPrefix || (user.guild && (user.guild.tag || user.guild.prefix)) || '',
         activeSkinType: user.activeSkinType || 'player',
+        battleTier: battleTier.forUser(user),
         country_code: user.country_code || user.countryCode || '',
         commandRole: normalizeCommandRole(user.commandRole),
         commandPermissions: user.commandPermissions || ''
@@ -466,6 +470,7 @@ function applyAuthUserToClient(client, user) {
     client.authUser.xp = parseInt(user.xp, 10) || 0;
     client.authUser.xpMax = parseInt(user.xpMax, 10) || 0;
     client.authUser.level = parseInt(user.level, 10) || 1;
+    client.battleTier = client.authUser.battleTier;
     client.skinKey = getActiveSkinKey(user);
     client.setGuildTag(client.authUser.guildTag);
 }
@@ -744,6 +749,7 @@ PacketHandler.prototype.setNickname = function(newNick) {
     } else {
         client.setGuildTag("");
         client.skinKey = "";
+        client.battleTier = "UNRANKED";
     }
 
     if (client.cells.length < 1) {

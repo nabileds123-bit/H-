@@ -28,7 +28,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="Vector2.js"></script>
-    <script src="main_out.js?576"></script>
+    <script src="main_out.js?579"></script>
     <script src="invite-system.js"></script>
 	<script>/ jshint -W097 /
 'use strict';
@@ -464,6 +464,11 @@ $(document).on('keyup', function(input) {
         color: #333;
     }
 
+    #accountDetailDialog .spa-page-body {
+        padding-bottom: 48px;
+        overflow: hidden;
+    }
+
     #guildDialog .dialog-footer,
     #notificationDialog .dialog-footer,
     #highScoreDialog .dialog-footer,
@@ -567,7 +572,7 @@ $(document).on('keyup', function(input) {
     }
 
     #accountDetailView {
-        height: 452px;
+        height: 100%;
         min-height: 0;
         display: flex;
         flex-direction: column;
@@ -606,7 +611,8 @@ $(document).on('keyup', function(input) {
     }
 
     .account-detail-pane.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
     }
 
     .account-detail-table {
@@ -691,8 +697,9 @@ $(document).on('keyup', function(input) {
     }
 
     .account-battle-summary {
-        margin: 14px 0 12px 0;
-        color: #8d2c2c;
+        flex: 0 0 auto;
+        margin: 12px 0 10px 0;
+        color: #111;
         font-size: 18px;
         font-weight: 700;
         text-align: center;
@@ -715,15 +722,28 @@ $(document).on('keyup', function(input) {
     }
 
     .account-battle-summary .battle-win {
-        color: #8d2c2c;
+        color: #168a34;
     }
 
     .account-battle-summary .battle-lose {
+        color: #c92a2a;
+    }
+
+    .account-battle-summary .battle-best-streak {
         color: #3157a3;
     }
 
+    .account-battle-summary .battle-current-streak {
+        color: #c49102;
+    }
+
+    .account-battle-summary .battle-separator {
+        color: #111;
+    }
+
     .account-battle-list {
-        height: 386px;
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
         border: 1px solid #ddd;
         border-radius: 3px;
@@ -5134,13 +5154,34 @@ $(function () {
     }
 
     function normalizeBattleTier(value) {
-        value = String(value || 'VII').toUpperCase();
-        return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'I';
+        value = String(value || 'UNRANKED').toUpperCase();
+        if (value === 'UNRANKED' || value === 'UNRANK') return 'UNRANKED';
+        if (value === '★2' || value === '*2' || value === 'S2' || value === 'STAR2') return 'STAR2';
+        if (value === '★3' || value === '*3' || value === 'S3' || value === 'STAR3') return 'STAR3';
+        if (value === '★4' || value === '*4' || value === 'S4' || value === 'STAR4') return 'STAR4';
+        if (value === '★5' || value === '*5' || value === 'S5' || value === 'STAR5') return 'STAR5';
+        return /^(I|II|III|IV|V|VI|VII)$/.test(value) ? value : 'UNRANKED';
     }
 
     function renderBattleTierBadge(tier) {
         tier = normalizeBattleTier(tier);
-        return '<span class="battle-tier"><img src="/img/tier-' + tier + '.svg" alt="Tier ' + tier + '" title="Tier ' + tier + '"></span>';
+        if (tier === 'UNRANKED') {
+            return '<span class="battle-tier" title="Unranked">Unranked</span>';
+        }
+        if (/^STAR/.test(tier)) {
+            var starLabel = '★' + tier.replace('STAR', '');
+            return '<span class="battle-tier" title="' + starLabel + '">' + starLabel + '</span>';
+        }
+        var tierImage = {
+            I: '1baru.png',
+            II: '2baru.png',
+            III: '3baru.png',
+            IV: '4baru.png',
+            V: '5baru.png',
+            VI: '6baru.png',
+            VII: '7baru.png'
+        }[tier] || '1baru.png';
+        return '<span class="battle-tier"><img src="/img/' + tierImage + '" alt="Tier ' + tier + '" title="Tier ' + tier + '"></span>';
     }
 
     function renderBattleAccountDetail(target, response) {
@@ -5184,11 +5225,11 @@ $(function () {
 
         var summary = total > 0 ? [
             '<div class="account-battle-summary">',
-            renderBattleTierBadge(stats.tier || 'VII'),
-            ' / <span class="battle-win">' + escapeHtml(win) + '</span>',
-            ' / <span class="battle-lose">' + escapeHtml(lose) + '</span>',
-            ' / ' + escapeHtml(bestWinStreak),
-            ' / ' + escapeHtml(currentWinStreak),
+            renderBattleTierBadge(stats.tier || 'UNRANKED'),
+            ' <span class="battle-separator">/</span> <span class="battle-win">' + escapeHtml(win) + '</span>',
+            ' <span class="battle-separator">/</span> <span class="battle-lose">' + escapeHtml(lose) + '</span>',
+            ' <span class="battle-separator">/</span> <span class="battle-best-streak">' + escapeHtml(bestWinStreak) + '</span>',
+            ' <span class="battle-separator">/</span> <span class="battle-current-streak">' + escapeHtml(currentWinStreak) + '</span>',
             '</div>'
         ].join('') : '';
 
