@@ -721,6 +721,20 @@ $(document).on('keyup', function(input) {
         object-fit: contain;
     }
 
+    .account-battle-summary .battle-tier-star .battle-tier-stars {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1px;
+        width: 38px;
+        height: 38px;
+    }
+
+    .account-battle-summary .battle-tier-star .battle-tier-stars img {
+        width: var(--battle-tier-star-size, 11px);
+        height: var(--battle-tier-star-size, 11px);
+    }
+
     .account-battle-summary .battle-win {
         color: #168a34;
     }
@@ -5201,6 +5215,21 @@ $(function () {
         if (tier === 'UNRANKED') {
             return '<span class="battle-tier" title="' + tooltip + '">Unranked</span>';
         }
+        if (/^VII_STAR_/.test(tier)) {
+            var starCount = parseInt(tier.replace('VII_STAR_', ''), 10) || 2;
+            var starSize = starCount > 4 ? 6 : (starCount > 3 ? 8 : 11);
+            var stars = [];
+            for (var i = 0; i < starCount; i++) {
+                stars.push('<img src="/img/OSTAR.png" alt="" aria-hidden="true">');
+            }
+            return [
+                '<span class="battle-tier battle-tier-star" title="' + tooltip + '" aria-label="' + tooltip + '">',
+                '<span class="battle-tier-stars" style="--battle-tier-star-size:' + starSize + 'px">',
+                stars.join(''),
+                '</span>',
+                '</span>'
+            ].join('');
+        }
         var tierImage = {
             I: 'I.png',
             II: 'II.png',
@@ -5208,11 +5237,7 @@ $(function () {
             IV: 'IV.png',
             V: 'V.png',
             VI: 'VI.png',
-            VII: 'VII.png',
-            VII_STAR_2: 'II.png',
-            VII_STAR_3: 'III.png',
-            VII_STAR_4: 'IV.png',
-            VII_STAR_5: 'V.png'
+            VII: 'VII.png'
         }[tier] || 'I.png';
         return '<span class="battle-tier" title="' + tooltip + '"><img src="/img/' + tierImage + '" alt="Tier ' + tier + '" title="' + tooltip + '"></span>';
     }
