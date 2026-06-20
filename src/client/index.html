@@ -5168,10 +5168,6 @@ $(function () {
         if (tier === 'UNRANKED') {
             return '<span class="battle-tier" title="Unranked">Unranked</span>';
         }
-        if (/^STAR/.test(tier)) {
-            var starLabel = '★' + tier.replace('STAR', '');
-            return '<span class="battle-tier" title="' + starLabel + '">' + starLabel + '</span>';
-        }
         var tierImage = {
             I: '1baru.png',
             II: '2baru.png',
@@ -5179,7 +5175,11 @@ $(function () {
             IV: '4baru.png',
             V: '5baru.png',
             VI: '6baru.png',
-            VII: '7baru.png'
+            VII: '7baru.png',
+            STAR2: '2baru.png',
+            STAR3: '3baru.png',
+            STAR4: '4baru.png',
+            STAR5: '5baru.png'
         }[tier] || '1baru.png';
         return '<span class="battle-tier"><img src="/img/' + tierImage + '" alt="Tier ' + tier + '" title="Tier ' + tier + '"></span>';
     }
