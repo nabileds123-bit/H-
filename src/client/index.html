@@ -727,20 +727,17 @@ $(document).on('keyup', function(input) {
     }
 
     .account-battle-summary .battle-tier-star .battle-tier-stars {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: auto;
-        height: auto;
+        position: relative;
+        display: inline-block;
+        width: var(--battle-tier-star-width, auto);
+        height: var(--battle-tier-star-height, var(--battle-tier-star-size, 11px));
+        vertical-align: middle;
     }
 
     .account-battle-summary .battle-tier-star .battle-tier-stars img {
+        position: absolute;
         width: var(--battle-tier-star-size, 11px);
         height: var(--battle-tier-star-size, 11px);
-    }
-
-    .account-battle-summary .battle-tier-star .battle-tier-stars img + img {
-        margin-left: var(--battle-tier-star-gap, -3px);
     }
 
     .account-battle-summary .battle-win,
@@ -5229,6 +5226,61 @@ $(function () {
         ].join(' - ');
     }
 
+    function getBattleTierStarLayout(starCount, starSize) {
+        var overlap = Math.round(starSize * 0.36);
+        var step = starSize - overlap;
+        var lift = Math.round(starSize * 0.34);
+        var row = Math.round(starSize * 0.58);
+
+        if (starCount === 2) {
+            return {
+                width: starSize + step,
+                height: starSize,
+                points: [
+                    { x: 0, y: 0 },
+                    { x: step, y: 0 }
+                ]
+            };
+        }
+
+        if (starCount === 3) {
+            return {
+                width: starSize + step * 2,
+                height: starSize + lift,
+                points: [
+                    { x: 0, y: 0 },
+                    { x: step, y: lift },
+                    { x: step * 2, y: 0 }
+                ]
+            };
+        }
+
+        if (starCount === 4) {
+            return {
+                width: starSize + step,
+                height: starSize + row,
+                points: [
+                    { x: 0, y: 0 },
+                    { x: step, y: 0 },
+                    { x: 0, y: row },
+                    { x: step, y: row }
+                ]
+            };
+        }
+
+        return {
+            width: starSize + step * 2,
+            height: starSize + row,
+            points: [
+                { x: 0, y: 0 },
+                { x: step, y: 0 },
+                { x: step * 2, y: 0 },
+                { x: Math.round(step * 0.5), y: row },
+                { x: Math.round(step * 1.5), y: row }
+            ]
+        };
+    }
+
     function renderBattleTierBadge(tier, tierInfo) {
         tier = normalizeBattleTier(tier);
         var tooltip = escapeHtml(formatBattleTierTooltip(tier, tierInfo));
@@ -5237,15 +5289,16 @@ $(function () {
         }
         if (/^VII_STAR_/.test(tier)) {
             var starCount = parseInt(tier.replace('VII_STAR_', ''), 10) || 2;
-            var starSize = starCount > 4 ? 20 : (starCount > 3 ? 24 : (starCount > 2 ? 29 : 36));
-            var starGap = starCount > 3 ? -8 : -11;
+            var starSize = starCount > 4 ? 24 : (starCount > 3 ? 29 : (starCount > 2 ? 34 : 43));
+            var starLayout = getBattleTierStarLayout(starCount, starSize);
             var stars = [];
             for (var i = 0; i < starCount; i++) {
-                stars.push('<img src="/img/OSTAR.png" alt="" aria-hidden="true">');
+                var point = starLayout.points[i] || { x: 0, y: 0 };
+                stars.push('<img src="/img/OSTAR.png" alt="" aria-hidden="true" style="left:' + point.x + 'px;top:' + point.y + 'px">');
             }
             return [
                 '<span class="battle-tier battle-tier-star" title="' + tooltip + '" aria-label="' + tooltip + '">',
-                '<span class="battle-tier-stars" style="--battle-tier-star-size:' + starSize + 'px;--battle-tier-star-gap:' + starGap + 'px">',
+                '<span class="battle-tier-stars is-star-' + starCount + '" style="--battle-tier-star-size:' + starSize + 'px;--battle-tier-star-width:' + starLayout.width + 'px;--battle-tier-star-height:' + starLayout.height + 'px">',
                 stars.join(''),
                 '</span>',
                 '</span>'
