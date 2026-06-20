@@ -698,9 +698,9 @@ $(document).on('keyup', function(input) {
 
     .account-battle-summary {
         flex: 0 0 auto;
-        margin: 12px 0 10px 0;
+        margin: 14px 0 12px 0;
         color: #111;
-        font-size: 18px;
+        font-size: 27px;
         font-weight: 700;
         text-align: center;
     }
@@ -750,8 +750,8 @@ $(document).on('keyup', function(input) {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 18px;
-        height: 38px;
+        min-width: 24px;
+        height: 42px;
         vertical-align: middle;
     }
 
@@ -5237,8 +5237,8 @@ $(function () {
         }
         if (/^VII_STAR_/.test(tier)) {
             var starCount = parseInt(tier.replace('VII_STAR_', ''), 10) || 2;
-            var starSize = starCount > 4 ? 11 : (starCount > 3 ? 13 : (starCount > 2 ? 17 : 22));
-            var starGap = starCount > 3 ? -4 : -5;
+            var starSize = starCount > 4 ? 18 : (starCount > 3 ? 21 : (starCount > 2 ? 25 : 31));
+            var starGap = starCount > 3 ? -6 : -8;
             var stars = [];
             for (var i = 0; i < starCount; i++) {
                 stars.push('<img src="/img/OSTAR.png" alt="" aria-hidden="true">');
