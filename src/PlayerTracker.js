@@ -7,6 +7,7 @@ function PlayerTracker(gameServer, socket) {
     this.guildTag = "";
     this.skinKey = "";
     this.battleTier = "UNRANKED";
+    this.battleTeam = '';
     this.gameServer = gameServer;
     this.socket = socket;
     this.nodeDestroyQueue = [];
@@ -21,11 +22,14 @@ function PlayerTracker(gameServer, socket) {
     this.matchFoodEaten = 0;
     this.matchCellsEaten = 0;
     this.matchResultSent = false;
+    this.matchResultKey = '';
     this.matchStartTime = 0;
     this.matchHighestMass = 0;
     this.matchLeaderboardTimeMs = 0;
     this.matchTopPosition = 0;
     this.matchLastLeaderboardCheck = 0;
+    this.battleStatsRecorded = false;
+    this.battleStatsKey = '';
     this.top1TotalMs = 0;
     this.top1StartMs = 0;
     this.top1Counting = false;

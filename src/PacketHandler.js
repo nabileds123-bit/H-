@@ -542,6 +542,12 @@ PacketHandler.prototype.handleMessage = function(message) {
 
                 mode += String.fromCharCode(charCode);
             }
+            var modeParts = String(mode || '').split('|');
+            mode = modeParts[0];
+            if (modeParts[1]) {
+                this.socket.battleLobbyClientId = modeParts[1];
+                this.socket.playerTracker.battleLobbyClientId = modeParts[1];
+            }
             this.gameServer.setClientWorld(this.socket, mode);
             break;
         case 16:

@@ -401,6 +401,11 @@ GameServer.prototype.start = function() {
     	
         function close(error) {
             console.log("[Game] Disconnect: %s:%d", this.socket.remoteAddress, this.socket.remotePort);
+            this.server.clearBattleLobbyClient(
+                this.socket.battleLobbyClientId,
+                true,
+                this.socket.playerTracker && this.socket.playerTracker.authUser && this.socket.playerTracker.authUser.id
+            );
             this.server.pauseTop1Stats(this.socket.playerTracker, this.socket.world, true);
             this.server.removeClientCells(this.socket.playerTracker);
 
@@ -479,6 +484,38 @@ GameServer.prototype.pruneBattleLobby = function(mode) {
     }
 }
 
+GameServer.prototype.refreshBattleLobbyMember = function(mode, clientId, name, userId) {
+    var lobby = this.getBattleLobby(mode);
+    var now = Date.now();
+    var refreshed = false;
+
+    clientId = String(clientId || '').trim();
+    userId = String(userId || '').trim();
+    if (!clientId && !userId) return false;
+
+    for (var i = 0; i < lobby.members.length; i++) {
+        if ((clientId && lobby.members[i].clientId === clientId) || (userId && lobby.members[i].userId === userId)) {
+            if (name) lobby.members[i].name = String(name).trim().slice(0, 32) || lobby.members[i].name;
+            lobby.members[i].expiresAt = now + 45000;
+            refreshed = true;
+            break;
+        }
+    }
+
+    if (lobby.activeMatch) {
+        for (var m = 0; m < lobby.activeMatch.members.length; m++) {
+            if ((clientId && lobby.activeMatch.members[m].clientId === clientId) || (userId && lobby.activeMatch.members[m].userId === userId)) {
+                if (name) lobby.activeMatch.members[m].name = String(name).trim().slice(0, 32) || lobby.activeMatch.members[m].name;
+                lobby.activeMatch.expiresAt = now + 30000;
+                refreshed = true;
+                break;
+            }
+        }
+    }
+
+    return refreshed;
+}
+
 GameServer.prototype.releaseBattleLobbyIfReady = function(mode) {
     var lobby = this.getBattleLobby(mode);
     var size = this.getBattleLobbySize(mode);
@@ -488,13 +525,160 @@ GameServer.prototype.releaseBattleLobbyIfReady = function(mode) {
         return;
     }
 
+    this.createBattleActiveMatch(mode, lobby.members.slice(0, size));
+    lobby.members = lobby.members.slice(size);
+}
+
+GameServer.prototype.createBattleActiveMatch = function(mode, members) {
+    var lobby = this.getBattleLobby(mode);
+    var now = Date.now();
+
     lobby.activeMatch = {
         id: now.toString(36) + Math.random().toString(36).slice(2),
         mode: mode,
-        members: lobby.members.slice(0, size),
+        members: (members || []).map(function(member) {
+            return Object.assign({}, member, {
+                entered: false,
+                connected: false
+            });
+        }),
         expiresAt: now + 30000
     };
-    lobby.members = lobby.members.slice(size);
+    console.log('[Battle] activeMatch ready mode=%s match=%s members=%d', mode, lobby.activeMatch.id, lobby.activeMatch.members.length);
+    return lobby.activeMatch;
+}
+
+GameServer.prototype.getBattleClientId = function(socket) {
+    return String(
+        socket && (socket.battleLobbyClientId ||
+        (socket.playerTracker && socket.playerTracker.battleLobbyClientId)) ||
+        ''
+    ).trim();
+}
+
+GameServer.prototype.getBattleUserId = function(socket) {
+    return String(
+        socket && socket.playerTracker && socket.playerTracker.authUser && socket.playerTracker.authUser.id ||
+        ''
+    ).trim();
+}
+
+GameServer.prototype.getBattleMatchMember = function(match, clientId, userId) {
+    clientId = String(clientId || '').trim();
+    userId = String(userId || '').trim();
+    if (!match || !match.members || (!clientId && !userId)) return null;
+
+    for (var i = 0; i < match.members.length; i++) {
+        if ((clientId && match.members[i].clientId === clientId) || (userId && match.members[i].userId === userId)) {
+            return match.members[i];
+        }
+    }
+
+    return null;
+}
+
+GameServer.prototype.getActiveBattleMatchForClient = function(mode, clientId, userId) {
+    var lobby = this.getBattleLobby(mode);
+    var now = Date.now();
+
+    clientId = String(clientId || '').trim();
+    userId = String(userId || '').trim();
+    if ((!clientId && !userId) || !lobby.activeMatch || lobby.activeMatch.expiresAt <= now) {
+        return null;
+    }
+
+    return this.getBattleMatchMember(lobby.activeMatch, clientId, userId) ? lobby.activeMatch : null;
+}
+
+GameServer.prototype.markBattleMatchEntered = function(mode, clientId, userId) {
+    var match = this.getActiveBattleMatchForClient(mode, clientId, userId);
+    var member = this.getBattleMatchMember(match, clientId, userId);
+    if (!member) return false;
+
+    member.entered = true;
+    member.connected = true;
+    match.expiresAt = Date.now() + 30000;
+    return true;
+}
+
+GameServer.prototype.findSocketByBattleMember = function(member) {
+    if (!member) return null;
+
+    for (var i = 0; i < this.allClients.length; i++) {
+        var socket = this.allClients[i];
+        if (!socket) continue;
+        if (member.clientId && this.getBattleClientId(socket) === member.clientId) return socket;
+        if (member.userId && this.getBattleUserId(socket) === member.userId) return socket;
+    }
+
+    return null;
+}
+
+GameServer.prototype.findSocketByBattleLobbyClientId = function(clientId) {
+    clientId = String(clientId || '').trim();
+    if (!clientId) return null;
+
+    for (var i = 0; i < this.allClients.length; i++) {
+        var socket = this.allClients[i];
+        if (socket && this.getBattleClientId(socket) === clientId) {
+            return socket;
+        }
+    }
+
+    return null;
+}
+
+GameServer.prototype.returnBattleMatchMembersToDefault = function(match) {
+    if (!match || !match.members) return;
+
+    var fallbackMode = this.getNonBattleDefaultWorldId();
+    if (!fallbackMode || this.isBattleModeRequest(fallbackMode)) return;
+
+    for (var i = 0; i < match.members.length; i++) {
+        var socket = this.findSocketByBattleMember(match.members[i]);
+        if (!socket || socket.readyState !== WebSocket.OPEN || !socket.world || socket.world.id !== match.mode) continue;
+        this.setClientWorld(socket, fallbackMode, true);
+    }
+}
+
+GameServer.prototype.clearBattleActiveMatch = function(mode, reason) {
+    var lobby = this.getBattleLobby(mode);
+    if (!lobby || !lobby.activeMatch) return;
+
+    console.log('[Battle] activeMatch cleared mode=%s match=%s reason=%s', mode, lobby.activeMatch.id || '-', reason || '-');
+    lobby.activeMatch = null;
+}
+
+GameServer.prototype.clearBattleLobbyClient = function(clientId, cancelReadyMatch, userId) {
+    clientId = String(clientId || '').trim();
+    userId = String(userId || '').trim();
+    if (!clientId && !userId) return;
+
+    for (var mode in this.battleLobbies) {
+        var lobby = this.battleLobbies[mode];
+        if (!lobby) continue;
+
+        lobby.members = (lobby.members || []).filter(function(member) {
+            return !(clientId && member.clientId === clientId) && !(userId && member.userId === userId);
+        });
+
+        if (cancelReadyMatch && lobby.activeMatch) {
+            var inMatch = false;
+            var allEntered = true;
+            for (var i = 0; i < lobby.activeMatch.members.length; i++) {
+                if ((clientId && lobby.activeMatch.members[i].clientId === clientId) || (userId && lobby.activeMatch.members[i].userId === userId)) {
+                    inMatch = true;
+                }
+                if (!lobby.activeMatch.members[i].entered) {
+                    allEntered = false;
+                }
+            }
+            if (inMatch && !allEntered) {
+                this.returnBattleMatchMembersToDefault(lobby.activeMatch);
+                lobby.activeMatch = null;
+            }
+        }
+    }
 }
 
 GameServer.prototype.getBattleLobbyQueueCount = function(mode) {
@@ -542,7 +726,7 @@ GameServer.prototype.getBattleMatchEstimate = function(mode) {
     return '-10 menit';
 }
 
-GameServer.prototype.getBattleLobbyPayload = function(mode, clientId) {
+GameServer.prototype.getBattleLobbyPayload = function(mode, clientId, userId) {
     this.pruneBattleLobby(mode);
     this.releaseBattleLobbyIfReady(mode);
 
@@ -552,14 +736,9 @@ GameServer.prototype.getBattleLobbyPayload = function(mode, clientId) {
     var ready = false;
     var players = lobby.members;
 
-    if (activeMatch) {
-        for (var i = 0; i < activeMatch.members.length; i++) {
-            if (activeMatch.members[i].clientId === clientId) {
-                ready = true;
-                players = activeMatch.members;
-                break;
-            }
-        }
+    if (activeMatch && this.getBattleMatchMember(activeMatch, clientId, userId)) {
+        ready = true;
+        players = activeMatch.members;
     }
 
     return {
@@ -583,6 +762,8 @@ GameServer.prototype.joinBattleLobby = function(data) {
     var mode = this.normalizeBattleLobbyMode(data && data.mode);
     var clientId = String(data && data.clientId || '').trim();
     var name = String(data && data.name || 'Player').trim().slice(0, 32) || 'Player';
+    var authUser = this.getAuthUserFromToken(data && data.token);
+    var userId = authUser && authUser.id || '';
     var lobby;
     var now = Date.now();
     var found = false;
@@ -595,11 +776,14 @@ GameServer.prototype.joinBattleLobby = function(data) {
     }
 
     this.pruneBattleLobby(mode);
+    this.clearBattleLobbyClient(clientId, false, userId);
     lobby = this.getBattleLobby(mode);
 
     for (var i = 0; i < lobby.members.length; i++) {
-        if (lobby.members[i].clientId === clientId) {
+        if (lobby.members[i].clientId === clientId || (userId && lobby.members[i].userId === userId)) {
             lobby.members[i].name = name;
+            lobby.members[i].clientId = clientId;
+            lobby.members[i].userId = userId;
             lobby.members[i].expiresAt = now + 45000;
             found = true;
             break;
@@ -609,41 +793,44 @@ GameServer.prototype.joinBattleLobby = function(data) {
     if (!found) {
         lobby.members.push({
             clientId: clientId,
+            userId: userId,
             name: name,
             joinedAt: now,
             expiresAt: now + 45000
         });
     }
 
-    return this.getBattleLobbyPayload(mode, clientId);
+    return this.getBattleLobbyPayload(mode, clientId, userId);
 }
 
 GameServer.prototype.getBattleLobbyStatus = function(data) {
     var mode = this.normalizeBattleLobbyMode(data && data.mode);
     var clientId = String(data && data.clientId || '').trim();
+    var name = String(data && data.name || '').trim();
+    var authUser = this.getAuthUserFromToken(data && data.token);
+    var userId = authUser && authUser.id || '';
 
     if (!mode || !this.worlds[mode]) {
         return { ok: false, message: 'Battle mode is inactive.' };
     }
 
-    return this.getBattleLobbyPayload(mode, clientId);
+    this.refreshBattleLobbyMember(mode, clientId, name, userId);
+    return this.getBattleLobbyPayload(mode, clientId, userId);
 }
 
 GameServer.prototype.leaveBattleLobby = function(data) {
     var mode = this.normalizeBattleLobbyMode(data && data.mode);
     var clientId = String(data && data.clientId || '').trim();
-    var lobby;
+    var authUser = this.getAuthUserFromToken(data && data.token);
+    var userId = authUser && authUser.id || '';
 
     if (!mode || !this.worlds[mode]) {
         return { ok: true };
     }
 
-    lobby = this.getBattleLobby(mode);
-    lobby.members = lobby.members.filter(function(member) {
-        return member.clientId !== clientId;
-    });
+    this.clearBattleLobbyClient(clientId, true, userId);
 
-    return this.getBattleLobbyPayload(mode, clientId);
+    return this.getBattleLobbyPayload(mode, clientId, userId);
 }
 
 GameServer.prototype.makeBattleInviteId = function() {
@@ -768,6 +955,7 @@ GameServer.prototype.respondBattleInvite = function(data) {
 
     var inviteId = String(data && (data.id || data.inviteId) || '').trim();
     var accepted = !!(data && data.accepted);
+    var acceptedClientId = String(data && data.clientId || '').trim();
     user = userStore.findByIdOrUsernameOrEmail(user.id) || user;
 
     var invite = this.normalizeUserInviteList(user.battleInvitesReceived).filter(function(item) {
@@ -803,10 +991,50 @@ GameServer.prototype.respondBattleInvite = function(data) {
         return { ok: false, status: 400, message: 'Battle is no longer active.', error: 'Battle is no longer active.' };
     }
 
+    var mode = this.normalizeBattleLobbyMode(invite.mode);
+    var senderTracker = sender && this.findOnlineClientByUserId(sender.id);
+    var senderSocket = senderTracker && senderTracker.socket;
+    if (!mode || !senderSocket) {
+        invite.status = 'expired';
+        invite.updatedAt = Date.now();
+        this.upsertBattleInviteForUser(user, 'battleInvitesReceived', invite);
+        if (sender) this.upsertBattleInviteForUser(sender, 'battleInvitesSent', invite);
+        return { ok: false, status: 400, message: 'Battle invitation is no longer available.', error: 'Battle invitation is no longer available.' };
+    }
+    // TODO: push a client-side ready event to the inviter; for now the inviter reaches the same activeMatch through lobby polling/status.
+    var size = this.getBattleLobbySize(mode);
+    var members = [
+        {
+            clientId: senderSocket ? this.getBattleClientId(senderSocket) : '',
+            userId: sender && sender.id || invite.fromUserId,
+            name: sender && sender.username || invite.fromUsername || 'Player',
+            joinedAt: Date.now(),
+            expiresAt: Date.now() + 45000
+        },
+        {
+            clientId: acceptedClientId,
+            userId: user.id || invite.toUserId,
+            name: user.username || invite.toUsername || 'Player',
+            joinedAt: Date.now(),
+            expiresAt: Date.now() + 45000
+        }
+    ];
+    this.clearBattleLobbyClient(members[0].clientId, false, members[0].userId);
+    this.clearBattleLobbyClient(members[1].clientId, false, members[1].userId);
+
+    if (size <= members.length) {
+        this.createBattleActiveMatch(mode, members.slice(0, size));
+    } else {
+        var lobby = this.getBattleLobby(mode);
+        lobby.members = lobby.members.concat(members);
+        this.releaseBattleLobbyIfReady(mode);
+    }
+
     return {
         ok: true,
         battleId: invite.battleId,
-        mode: invite.mode,
+        mode: mode,
+        ready: !!(this.getBattleLobby(mode).activeMatch && this.getActiveBattleMatchForClient(mode, acceptedClientId, user.id)),
         message: 'Battle invitation accepted.'
     };
 }
@@ -920,6 +1148,21 @@ GameServer.prototype.getDefaultWorldId = function() {
     }
 
     throw new Error('No enabled game world is available.');
+}
+
+GameServer.prototype.getNonBattleDefaultWorldId = function() {
+    var preferred = this.getDefaultWorldId();
+    if (preferred && !this.isBattleModeRequest(preferred)) {
+        return preferred;
+    }
+
+    for (var worldId in this.worlds) {
+        if (!this.isBattleModeRequest(worldId)) {
+            return worldId;
+        }
+    }
+
+    return preferred;
 }
 
 GameServer.prototype.getModeConfig = function(prefix) {
@@ -1046,6 +1289,27 @@ GameServer.prototype.resolveWorldId = function(mode, allowFallback) {
 }
 
 GameServer.prototype.setClientWorld = function(socket, mode, allowFallback) {
+    if (this.isBattleModeRequest(mode)) {
+        var battleMode = this.normalizeBattleLobbyMode(mode);
+        var battleClientId = this.getBattleClientId(socket);
+        var battleUserId = this.getBattleUserId(socket);
+
+        if (!battleMode || !this.getActiveBattleMatchForClient(battleMode, battleClientId, battleUserId)) {
+            var fallbackMode = this.getNonBattleDefaultWorldId();
+            if (this.isBattleModeRequest(fallbackMode)) {
+                if (socket && typeof socket.close === 'function') {
+                    socket.close(4001, 'invalid_battle_session');
+                }
+                return false;
+            }
+            mode = fallbackMode;
+            allowFallback = true;
+        } else {
+            this.markBattleMatchEntered(battleMode, battleClientId, battleUserId);
+            mode = battleMode;
+        }
+    }
+
     var worldId = this.resolveWorldId(mode, allowFallback);
     var world = this.worlds[worldId];
     if (!world) {
@@ -1071,6 +1335,9 @@ GameServer.prototype.setClientWorld = function(socket, mode, allowFallback) {
 
     if (socket.world) {
         this.removeClientCells(socket.playerTracker);
+        if (this.isBattleModeRequest(socket.world.id) && !this.isBattleModeRequest(world.id)) {
+            socket.playerTracker.battleTeam = '';
+        }
         var oldIndex = socket.world.clients.indexOf(socket);
         if (oldIndex != -1) {
             socket.world.clients.splice(oldIndex, 1);
@@ -1508,17 +1775,36 @@ GameServer.prototype.sendTopTimePopup = function(player, totalMs) {
     });
 }
 
+GameServer.prototype.logBattleResultDebug = function(world, player, result, action) {
+    var mode = statsStore.normalizeBattleMode(world && world.id);
+    if (mode !== '1vs1') return;
+
+    console.log('[BattleResult] mode=%s player=%s user=%s result=%s action=%s key=%s',
+        mode,
+        player && player.getName ? player.getName() : '-',
+        this.getPlayerStatsUserId(player) || '-',
+        result || '-',
+        action || '-',
+        world && world.matchResultKey || player && player.matchResultKey || '-'
+    );
+}
+
 GameServer.prototype.recordBattleResult = function(player, result) {
-    if (!player || player.battleStatsRecorded) return;
+    if (!player) return;
 
     var world = player.world || this.activeWorld;
     var mode = statsStore.normalizeBattleMode(world && world.id);
     var userId = this.getPlayerStatsUserId(player);
     var leaderboard = world && world.leaderboard ? world.leaderboard : [];
     var winner = null;
+    var resultKey = world && world.matchResultKey || player.matchResultKey || player.matchStartTime || '';
     result = String(result || 'lose').toLowerCase();
     if (!mode) return;
     if (result !== 'win' && result !== 'lose') return;
+    if (player.battleStatsRecorded && (!resultKey || player.battleStatsKey === resultKey)) {
+        this.logBattleResultDebug(world, player, result, 'skip_stats_duplicate');
+        return;
+    }
 
     this.recordRankedBattleResult(player, result);
 
@@ -1534,6 +1820,7 @@ GameServer.prototype.recordBattleResult = function(player, result) {
     }
 
     player.battleStatsRecorded = true;
+    player.battleStatsKey = resultKey;
     statsStore.addBattleRecord({
         userId: userId,
         mode: mode,
@@ -1542,13 +1829,16 @@ GameServer.prototype.recordBattleResult = function(player, result) {
         country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode),
         opponentUsername: winner ? winner.getName() : ''
     });
+    this.logBattleResultDebug(world, player, result, 'stats_written');
 
     if (result !== 'lose') return;
 
     for (var i = 0; i < leaderboard.length; i++) {
         winner = leaderboard[i];
-        if (!winner || winner === player || winner.battleStatsRecorded || !this.getPlayerStatsUserId(winner) || winner.cells.length <= 0) continue;
+        if (!winner || winner === player || !this.getPlayerStatsUserId(winner) || winner.cells.length <= 0) continue;
+        if (winner.battleStatsRecorded && (!resultKey || winner.battleStatsKey === resultKey)) continue;
         winner.battleStatsRecorded = true;
+        winner.battleStatsKey = resultKey;
         statsStore.addBattleRecord({
             userId: this.getPlayerStatsUserId(winner),
             mode: mode,
@@ -1557,6 +1847,7 @@ GameServer.prototype.recordBattleResult = function(player, result) {
             country_code: winner.authUser && (winner.authUser.country_code || winner.authUser.countryCode),
             opponentUsername: player.getName()
         });
+        this.logBattleResultDebug(world, winner, 'win', 'stats_written');
         break;
     }
 }
@@ -1631,7 +1922,11 @@ GameServer.prototype.recordRankedBattleResult = function(player, result) {
     var clients = world && world.clients ? world.clients : [];
     result = String(result || 'lose').toLowerCase();
 
-    if (!world || !mode || result !== 'lose' || world.rankedResultSaved) return;
+    if (!world || !mode || result !== 'lose') return;
+    if (world.rankedResultSaved) {
+        this.logBattleResultDebug(world, player, result, 'skip_ranked_duplicate');
+        return;
+    }
 
     if (mode === '1vs1') {
         var winner = null;
@@ -1643,11 +1938,16 @@ GameServer.prototype.recordRankedBattleResult = function(player, result) {
             }
         }
 
-        if (!winner) return;
+        if (!winner) {
+            this.logBattleResultDebug(world, player, result, 'skip_ranked_no_winner');
+            return;
+        }
 
         world.rankedResultSaved = true;
         this.recordRankedPlayerResult(winner, '1v1', 'win');
         this.recordRankedPlayerResult(player, '1v1', 'lose');
+        this.logBattleResultDebug(world, winner, 'win', 'ranked_written');
+        this.logBattleResultDebug(world, player, 'lose', 'ranked_written');
         return;
     }
 
@@ -1747,7 +2047,7 @@ GameServer.prototype.updateMatchLeaderboardStats = function(world) {
 }
 
 GameServer.prototype.sendMatchResult = function(player, result) {
-    if (!player || !player.socket) return;
+    if (!player) return;
     this.recordBattleResult(player, result);
     var xpResult = this.applyMatchXp(player);
     var pointResult = this.applyBattlePoints(player, result);
@@ -1781,6 +2081,11 @@ GameServer.prototype.sendMatchResult = function(player, result) {
     }
 
     view.setUint16(offset, 0, true);
+
+    if (!player.socket || typeof player.socket.sendPacket !== 'function') {
+        this.logBattleResultDebug(player.world || this.activeWorld, player, result, 'no_socket_packet_skipped');
+        return;
+    }
 
     player.socket.sendPacket({
         build: function() {
@@ -1822,12 +2127,14 @@ GameServer.prototype.spawnPlayer = function(client) {
    client.matchFoodEaten = 0;
    client.matchCellsEaten = 0;
    client.matchResultSent = false;
+   client.matchResultKey = "";
    client.matchStartTime = Date.now();
    client.matchHighestMass = 0;
    client.matchLeaderboardTimeMs = 0;
    client.matchTopPosition = 0;
    client.matchLastLeaderboardCheck = Date.now();
    client.battleStatsRecorded = false;
+   client.battleStatsKey = "";
    this.resetTop1Session(client);
    if(config.serverGamemode == 2) {
    var pos = this.getCertainPosition(0,0);
@@ -2198,6 +2505,9 @@ GameServer.prototype.getCellsInRange = function(cell) {
                         continue;
                     }
                     multiplier = 1.00;
+                }
+                if (this.activeWorld && this.activeWorld.id === ':battle:2v2' && check.owner && check.owner !== cell.owner && check.owner.battleTeam && check.owner.battleTeam === cell.owner.battleTeam) {
+                    continue;
                 }
                 // Can't eat team members
                 if (this.gameMode.haveTeams) {

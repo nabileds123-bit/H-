@@ -28,7 +28,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="Vector2.js"></script>
-    <script src="main_out.js?580"></script>
+    <script src="main_out.js?581"></script>
     <script src="invite-system.js"></script>
 	<script>/ jshint -W097 /
 'use strict';
@@ -2801,7 +2801,6 @@ $(document).on('keyup', function(input) {
                     <label class="radio-ffa"><input type="radio" name="mode_type" value="7" checked> Hardcore</label>
                     <label class="radio-battle"><input type="radio" name="mode_type" value="12"> Battle 1v1</label>
                     <label class="radio-battle"><input type="radio" name="mode_type" value="11"> Battle 2v2</label>
-                    <label class="radio-battle"><input type="radio" name="mode_type" value="13"> Battle 3v3</label>
                 </div>
                 <br clear="both"/>
             </div>
@@ -4284,7 +4283,6 @@ $(function () {
     function getBattleInviteModeFromValue(modeValue) {
         modeValue = String(modeValue || '');
         if (modeValue.indexOf('2v2') !== -1) return '2vs2';
-        if (modeValue.indexOf('3v3') !== -1) return '3vs3';
         return '1vs1';
     }
 
@@ -4379,7 +4377,8 @@ $(function () {
             data: JSON.stringify({
                 clientId: battleLobbyClientId,
                 mode: battleLobbyModeValue,
-                name: getBattleLobbyPlayerName()
+                name: getBattleLobbyPlayerName(),
+                token: getAuthToken()
             }),
             success: function(response) {
                 callback(null, response || {});
@@ -5491,7 +5490,6 @@ $(function () {
         var value = String(id || getSelectedModeValue() || '').toLowerCase();
         if (value.indexOf('1v1') !== -1 || value === '12') return 'Battle 1v1';
         if (value.indexOf('2v2') !== -1 || value === '11') return 'Battle 2v2';
-        if (value.indexOf('3v3') !== -1 || value === '13') return 'Battle 3v3';
         if (value.indexOf('hardcore') !== -1 || value === '7') return 'FFA - Hardcore';
         if (value.indexOf('x5') !== -1 || value === '5') return 'FFA - X5';
         if (value.indexOf('teams') !== -1 || value === '3') return 'Teams';
@@ -5523,8 +5521,7 @@ $(function () {
     function createBattleServer(mode) {
         var modeMap = {
             '12': { value: ':battle:1v1', invite: '1vs1' },
-            '11': { value: ':battle:2v2', invite: '2vs2' },
-            '13': { value: ':battle:3v3', invite: '3vs3' }
+            '11': { value: ':battle:2v2', invite: '2vs2' }
         };
         var selected = modeMap[String(mode || '')] || { value: getSelectedModeValue(), invite: inviteSubMode };
         openBattleLobby(selected.value, selected.invite);
@@ -6008,6 +6005,7 @@ $(function () {
     function respondBattleInvite(inviteId, accepted) {
         postAuth('/api/battle/invite/respond', {
             token: getAuthToken(),
+            clientId: battleLobbyClientId,
             id: inviteId,
             accepted: !!accepted
         }, function(err, response) {
@@ -6022,7 +6020,13 @@ $(function () {
                 closeFriendInviteModal();
                 closeBattleLiveDialog();
                 closeBattleLobbyDialog(true);
-                openBattleLobby(response.mode, getBattleInviteModeFromValue(response.mode));
+                battleLobbyModeValue = response.mode;
+                battleLobbyInviteMode = getBattleInviteModeFromValue(response.mode);
+                if (response.ready) {
+                    startBattleFromLobby();
+                } else {
+                    openBattleLobby(response.mode, battleLobbyInviteMode);
+                }
             }
         });
     }

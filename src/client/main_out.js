@@ -862,15 +862,11 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     if (typeof wHandle.updatePlayerExpVisibility === "function") {
                         wHandle.updatePlayerExpVisibility();
                     }
-                    if (resultData.result !== "win") {
-                        if (!matchStats.endTime) {
-                            matchStats.endTime = Date.now();
-                        }
-                        hideTopTimePopup();
-                        showMatchResult();
-                    } else if (matchResultVisible) {
-                        showMatchResult();
+                    if (!matchStats.endTime) {
+                        matchStats.endTime = Date.now();
                     }
+                    hideTopTimePopup();
+                    showMatchResult();
                 } catch (e) {}
 
                 break;
@@ -1597,9 +1593,16 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
     function sendGameMode() {
         if (wsIsOpen()) {
-            var msg = prepareData(1 + 2 * gameMode.length);
+            var modePayload = gameMode;
+            if (null != wHandle.localStorage) {
+                var battleClientId = wHandle.localStorage.battleLobbyClientId || "";
+                if (battleClientId) {
+                    modePayload += "|" + battleClientId;
+                }
+            }
+            var msg = prepareData(1 + 2 * modePayload.length);
             msg.setUint8(0, 10);
-            for (var i = 0; i < gameMode.length; ++i) msg.setUint16(1 + 2 * i, gameMode.charCodeAt(i), true);
+            for (var i = 0; i < modePayload.length; ++i) msg.setUint16(1 + 2 * i, modePayload.charCodeAt(i), true);
             wsSend(msg)
         }
     }
