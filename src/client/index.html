@@ -725,7 +725,7 @@ $(document).on('keyup', function(input) {
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 1px;
+        gap: 0;
         width: 38px;
         height: 38px;
     }
@@ -733,6 +733,18 @@ $(document).on('keyup', function(input) {
     .account-battle-summary .battle-tier-star .battle-tier-stars img {
         width: var(--battle-tier-star-size, 11px);
         height: var(--battle-tier-star-size, 11px);
+    }
+
+    .account-battle-summary .battle-win,
+    .account-battle-summary .battle-lose,
+    .account-battle-summary .battle-best-streak,
+    .account-battle-summary .battle-current-streak {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 38px;
+        vertical-align: middle;
     }
 
     .account-battle-summary .battle-win {
@@ -5217,7 +5229,7 @@ $(function () {
         }
         if (/^VII_STAR_/.test(tier)) {
             var starCount = parseInt(tier.replace('VII_STAR_', ''), 10) || 2;
-            var starSize = starCount > 4 ? 6 : (starCount > 3 ? 8 : 11);
+            var starSize = starCount > 4 ? 8 : (starCount > 3 ? 9 : (starCount > 2 ? 12 : 16));
             var stars = [];
             for (var i = 0; i < starCount; i++) {
                 stars.push('<img src="/img/OSTAR.png" alt="" aria-hidden="true">');
