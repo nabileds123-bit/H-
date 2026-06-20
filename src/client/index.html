@@ -3191,12 +3191,12 @@ $(document).on('keyup', function(input) {
         <div class="spa-page-body">
             <div id="accountDetailView">
                 <div class="account-detail-tabs">
-                    <button type="button" class="account-detail-tab active" data-account-detail-tab="profile">Profile</button>
+                    <button type="button" class="account-detail-tab" data-account-detail-tab="profile">Profile</button>
                     <button type="button" class="account-detail-tab" data-account-detail-tab="top1">Top 1</button>
                     <button type="button" class="account-detail-tab" data-account-detail-tab="2vs2">2 vs 2</button>
-                    <button type="button" class="account-detail-tab" data-account-detail-tab="1vs1">1 vs 1</button>
+                    <button type="button" class="account-detail-tab active" data-account-detail-tab="1vs1">1 vs 1</button>
                 </div>
-                <div id="accountDetailProfile" class="account-detail-pane active">
+                <div id="accountDetailProfile" class="account-detail-pane">
                     <div class="account-detail-table">
                         <div class="account-detail-row">
                             <span class="account-detail-label">Name:</span>
@@ -3209,18 +3209,6 @@ $(document).on('keyup', function(input) {
                         <div class="account-detail-row">
                             <span class="account-detail-label">Points:</span>
                             <span id="accountDetailPoints" class="account-detail-value"></span>
-                        </div>
-                        <div class="account-detail-row">
-                            <span class="account-detail-label">Rank:</span>
-                            <span id="accountDetailRankedTier" class="account-detail-value"></span>
-                        </div>
-                        <div class="account-detail-row">
-                            <span class="account-detail-label">Ranked:</span>
-                            <span id="accountDetailRankedStats" class="account-detail-value"></span>
-                        </div>
-                        <div class="account-detail-row">
-                            <span class="account-detail-label">Modes:</span>
-                            <span id="accountDetailRankedModes" class="account-detail-value"></span>
                         </div>
                         <div class="account-detail-row">
                             <span class="account-detail-label">Clan:</span>
@@ -3251,7 +3239,7 @@ $(document).on('keyup', function(input) {
                 <div id="accountDetail2vs2" class="account-detail-pane">
                     <div class="account-detail-empty">Belum ada data 2 vs 2.</div>
                 </div>
-                <div id="accountDetail1vs1" class="account-detail-pane">
+                <div id="accountDetail1vs1" class="account-detail-pane active">
                     <div class="account-detail-empty">Belum ada data 1 vs 1.</div>
                 </div>
             </div>
@@ -5141,19 +5129,6 @@ $(function () {
         $('#accountDetailTitle, #accountDetailName').text(user.username || '-');
         $('#accountDetailLevel').text(parseInt(user.level, 10) || 1);
         $('#accountDetailPoints').text(parseInt(user.points, 10) || 0);
-        $('#accountDetailRankedTier').text(getBattleTierDisplayLabel(user.rankedTier || user.battleTier || 'UNRANKED'));
-        $('#accountDetailRankedStats').text(
-            (parseInt(user.rankedWins, 10) || 0) + 'W / ' +
-            (parseInt(user.rankedLosses, 10) || 0) + 'L / Progress ' +
-            (parseInt(user.rankedProgress, 10) || 0)
-        );
-        var rankedModes = user.rankedModeStats || {};
-        var ranked1v1 = rankedModes['1v1'] || {};
-        var ranked2v2 = rankedModes['2v2'] || {};
-        $('#accountDetailRankedModes').text(
-            '1v1: ' + (parseInt(ranked1v1.wins, 10) || 0) + 'W/' + (parseInt(ranked1v1.losses, 10) || 0) + 'L' +
-            ' | 2v2: ' + (parseInt(ranked2v2.wins, 10) || 0) + 'W/' + (parseInt(ranked2v2.losses, 10) || 0) + 'L'
-        );
         $('#accountDetailGame').text(formatAccountDetailLastGame(user.lastLoginAt));
         $('#accountDetailStatus')
             .toggleClass('account-detail-premium', hasActivePremiumForUser(user))
@@ -5359,6 +5334,7 @@ $(function () {
 
     function openAccountDetailDialog(name) {
         var playerName = String(name || '').trim();
+        var activeTab = getAccountDetailActiveTab();
 
         closeCommunityDropup();
         closeFriendInviteModal();
@@ -5373,6 +5349,7 @@ $(function () {
         $('#accountDetailSearchInput').val('');
         $('#accountDetailDialog').addClass('is-open');
         resetAccountDetailProfile('', false);
+        setAccountDetailTab(activeTab);
         searchAccountDetailPlayer(playerName);
         updatePlayerExpVisibility();
     }
@@ -6320,19 +6297,27 @@ $(function () {
         showHomeView();
     });
 
-    $('.account-detail-tab').on('click', function () {
-        var tab = $(this).data('account-detail-tab');
-        var target = {
+    function getAccountDetailActiveTab() {
+        return $('.account-detail-tab.active').data('account-detail-tab') || '1vs1';
+    }
+
+    function setAccountDetailTab(tab) {
+        var tabs = {
             profile: '#accountDetailProfile',
             top1: '#accountDetailTop1',
             '2vs2': '#accountDetail2vs2',
             '1vs1': '#accountDetail1vs1'
-        }[tab];
+        };
+        tab = tabs[tab] ? tab : '1vs1';
 
         $('.account-detail-tab').removeClass('active');
-        $(this).addClass('active');
+        $('.account-detail-tab[data-account-detail-tab="' + tab + '"]').addClass('active');
         $('.account-detail-pane').removeClass('active');
-        $(target || '#accountDetailProfile').addClass('active');
+        $(tabs[tab]).addClass('active');
+    }
+
+    $('.account-detail-tab').on('click', function () {
+        setAccountDetailTab($(this).data('account-detail-tab'));
     });
 
     $('#accountDetailSearchForm').on('submit', function (event) {
