@@ -700,7 +700,7 @@ $(document).on('keyup', function(input) {
         flex: 0 0 auto;
         margin: 14px 0 12px 0;
         color: #111;
-        font-size: 27px;
+        font-size: 20px;
         font-weight: 700;
         text-align: center;
     }
@@ -5237,8 +5237,8 @@ $(function () {
         }
         if (/^VII_STAR_/.test(tier)) {
             var starCount = parseInt(tier.replace('VII_STAR_', ''), 10) || 2;
-            var starSize = starCount > 4 ? 18 : (starCount > 3 ? 21 : (starCount > 2 ? 25 : 31));
-            var starGap = starCount > 3 ? -6 : -8;
+            var starSize = starCount > 4 ? 20 : (starCount > 3 ? 24 : (starCount > 2 ? 29 : 36));
+            var starGap = starCount > 3 ? -8 : -11;
             var stars = [];
             for (var i = 0; i < starCount; i++) {
                 stars.push('<img src="/img/OSTAR.png" alt="" aria-hidden="true">');
