@@ -193,7 +193,7 @@ GameServer.prototype.start = function() {
     var hserver = http.createServer(function(req, res){
       var pathname = req.url.split('?')[0];
 
-      if (AuthServer.handle(req, res)) {
+      if (AuthServer.handle(req, res, self)) {
         return;
       }
 

@@ -940,8 +940,29 @@ function hasId(list, id) {
     return normalizeIdList(list).indexOf(String(id || '').trim()) !== -1;
 }
 
-function publicFriendProfile(user, status) {
+function getLiveFriendPresence(gameServer, user) {
+    var userId = String(user && user.id || '');
+    var presence = { online: false, inBattle: false };
+    var clients = gameServer && gameServer.clients ? gameServer.clients : [];
+
+    if (!userId) return presence;
+
+    for (var i = 0; i < clients.length; i++) {
+        var tracker = clients[i] && clients[i].playerTracker;
+        var authUser = tracker && tracker.authUser;
+        if (!authUser || String(authUser.id || '') !== userId) continue;
+
+        presence.online = true;
+        presence.inBattle = !!(tracker.world && gameServer.isBattleModeRequest && gameServer.isBattleModeRequest(tracker.world.id));
+        return presence;
+    }
+
+    return presence;
+}
+
+function publicFriendProfile(user, status, gameServer) {
     var accepted = status === 'friend';
+    var presence = getLiveFriendPresence(gameServer, user);
     return {
         id: user.id,
         username: user.username || 'Player',
@@ -949,12 +970,13 @@ function publicFriendProfile(user, status) {
         nick: user.username || 'Player',
         status: accepted ? 'accepted' : (status || 'none'),
         relationStatus: status || 'none',
-        online: !!user.sessionToken,
-        inBattle: false,
+        online: presence.online,
+        inBattle: presence.inBattle,
         invitePending: false,
         level: parseInt(user.level, 10) || 1,
         accountType: user.accountType || 'Free',
         guildTag: user.guildTag || '',
+        cellColor: user.cellColor || '#6f9ee7',
         country_code: normalizeCountryCode(user.country_code || user.countryCode),
         lastLoginAt: user.lastLoginAt || user.updatedAt || user.createdAt || Date.now()
     };
@@ -981,14 +1003,14 @@ function getFriendStatus(user, other) {
     return 'none';
 }
 
-function buildFriendsPayload(user) {
+function buildFriendsPayload(user, gameServer) {
     var current = users.findByIdOrUsernameOrEmail(user.id) || user;
     var items = users.listUsers()
         .filter(function(item) {
             return item && String(item.id || '') !== String(current.id || '');
         })
         .map(function(item) {
-            return publicFriendProfile(item, getFriendStatus(current, item));
+            return publicFriendProfile(item, getFriendStatus(current, item), gameServer);
         });
 
     items.sort(function(a, b) {
@@ -1007,15 +1029,15 @@ function buildFriendsPayload(user) {
     };
 }
 
-function handleFriendsList(req, res, query) {
+function handleFriendsList(req, res, query, gameServer) {
     var user = users.findBySessionToken(String(query.token || ''));
     if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
 
-    sendJson(res, 200, buildFriendsPayload(user));
+    sendJson(res, 200, buildFriendsPayload(user, gameServer));
 }
 
-function buildFreshFriendsPayload(user) {
-    return buildFriendsPayload(users.findByIdOrUsernameOrEmail(user.id) || user);
+function buildFreshFriendsPayload(user, gameServer) {
+    return buildFriendsPayload(users.findByIdOrUsernameOrEmail(user.id) || user, gameServer);
 }
 
 function handleFriendAdd(req, res) {
@@ -1472,7 +1494,7 @@ function handleGuildLeave(req, res) {
     });
 }
 
-function handle(req, res) {
+function handle(req, res, gameServer) {
     var parsed = url.parse(req.url, true);
     var pathname = parsed.pathname;
 
@@ -1505,7 +1527,7 @@ function handle(req, res) {
     }
 
     if (req.method === 'GET' && pathname === '/api/friends') {
-        handleFriendsList(req, res, parsed.query || {});
+        handleFriendsList(req, res, parsed.query || {}, gameServer);
         return true;
     }
 

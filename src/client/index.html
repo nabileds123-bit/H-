@@ -1805,6 +1805,7 @@ $(document).on('keyup', function(input) {
     }
 
     .battle-friends-head {
+        display: none;
         float: right;
         font-weight: normal;
         font-size: 14px;
@@ -1827,7 +1828,8 @@ $(document).on('keyup', function(input) {
     }
 
     .battle-friend-game {
-        color: #555;
+        color: #168a34;
+        font-weight: 700;
         text-align: center;
     }
 
@@ -5827,6 +5829,13 @@ $(function () {
         }).join(''));
     }
 
+    function sanitizeCssColor(value) {
+        value = String(value || '').trim();
+        if (/^#[0-9a-f]{6}$/i.test(value) || /^#[0-9a-f]{3}$/i.test(value)) return value;
+        if (/^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/i.test(value)) return value;
+        return '#6f9ee7';
+    }
+
     function renderBattleFriends(items) {
         var $list = $('.tournament-invite');
         if (!$list.length) return;
@@ -5835,12 +5844,11 @@ $(function () {
             var status = friend.relationStatus || friend.status || 'none';
             if (status === 'accepted') status = 'friend';
             if (status !== 'friend') return false;
-            if ($('#check_Notify11').is(':checked')) return true;
             return friend.online && !friend.inBattle;
         });
 
         if (!items.length) {
-            $list.html('<tr><td class="friend-empty" colspan="4">No friends available.</td></tr>');
+            $list.html('<tr><td class="friend-empty" colspan="4">No friends online.</td></tr>');
             return;
         }
 
@@ -5851,11 +5859,15 @@ $(function () {
             var statusText = pendingInvite ? 'Pending' : (friend.inBattle ? 'Battle' : (friend.online ? 'Online' : 'Offline'));
             var name = friend.username || friend.name || 'Player';
             var initial = String(name || 'P').charAt(0).toUpperCase() || 'P';
+            var cellColor = sanitizeCssColor(friend.cellColor || '#6f9ee7');
+            var statusHtml = friend.online && !friend.inBattle ?
+                '<span class="battle-friend-game">' + escapeHtml(statusText) + ' <i class="fa fa-gamepad" aria-hidden="true"></i></span>' :
+                escapeHtml(statusText);
             var rowClass = (disabled ? ' is-disabled' : '') + (pendingInvite ? ' is-pending' : '');
             return [
                 '<tr class="battle-friend-row' + rowClass + '" data-friend-id="' + escapeHtml(friend.id) + '">',
-                '<td class="friend-name"><div class="tournament-player-info"><span class="battle-avatar">' + escapeHtml(initial) + '</span><strong class="tournament-player-name">' + escapeHtml(name) + '</strong></div></td>',
-                '<td>' + escapeHtml(statusText) + '</td>',
+                '<td class="friend-name"><div class="tournament-player-info"><span class="battle-avatar" style="background:' + cellColor + '">' + escapeHtml(initial) + '</span><strong class="tournament-player-name">' + escapeHtml(name) + '</strong></div></td>',
+                '<td>' + statusHtml + '</td>',
                 '</tr>'
             ].join('');
         }).join(''));
