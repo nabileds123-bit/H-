@@ -1526,7 +1526,8 @@ GameServer.prototype.mainLoop = function() {
 
                 // Update cells/leaderboard loop
                 world.tickMain++;
-                if (world.tickMain >= 40) { // 2 seconds
+                var leaderboardTickRate = this.isBattleModeRequest(world.id) ? 10 : 40;
+                if (world.tickMain >= leaderboardTickRate) { // battle: 0.5s, other modes: 2s
                     // Update cells
                     this.updateCells();
 
@@ -2053,6 +2054,7 @@ GameServer.prototype.sendMatchResult = function(player, result) {
     var pointResult = this.applyBattlePoints(player, result);
 
     var payload = JSON.stringify({
+        matchFinal: true,
         result: result === 'win' ? 'win' : 'lose',
         foodEaten: player.matchFoodEaten || 0,
         cellsEaten: player.matchCellsEaten || 0,

@@ -27,6 +27,11 @@ function Tournament() {
     this.timeLimit = 3600; // in seconds
     this.matchResultSeq = 0;
     this.matchResultKey = '';
+    this.battleRound = 1;
+    this.battleScores = {};
+    this.battleWinsToFinish = 2;
+    this.battleMatchFinal = false;
+    this.resettingBattleRound = false;
 }
 
 module.exports = Tournament;
@@ -105,6 +110,10 @@ Tournament.prototype.prepare = function(gameServer) {
     this.winners = [];
     this.winner = null;
     this.matchResultKey = '';
+    this.battleRound = 1;
+    this.battleScores = {};
+    this.battleMatchFinal = false;
+    this.resettingBattleRound = false;
     if (gameServer.activeWorld) {
         gameServer.activeWorld.matchResultKey = '';
         gameServer.activeWorld.rankedResultSaved = false;
@@ -233,6 +242,106 @@ Tournament.prototype.isBattle2v2World = function(gameServer) {
     return gameServer && gameServer.activeWorld && gameServer.activeWorld.id === ':battle:2v2';
 };
 
+Tournament.prototype.getBattleRoundKey = function(player, team) {
+    if (team) return 'team:' + team;
+    if (!player) return '';
+    if (player.authUser && player.authUser.id) return 'user:' + player.authUser.id;
+    if (player.battleLobbyClientId) return 'client:' + player.battleLobbyClientId;
+    if (player.socket && player.socket.battleLobbyClientId) return 'client:' + player.socket.battleLobbyClientId;
+    return 'name:' + (player.getName ? player.getName() : player.name || 'player');
+};
+
+Tournament.prototype.addBattleRoundWin = function(player, team) {
+    var key = this.getBattleRoundKey(player, team);
+    if (!key) return false;
+
+    this.battleScores[key] = (this.battleScores[key] || 0) + 1;
+    return this.battleScores[key] >= this.battleWinsToFinish;
+};
+
+Tournament.prototype.clearBattleArenaNodes = function(gameServer) {
+    this.resettingBattleRound = true;
+    var len = gameServer.nodes.length;
+    for (var i = 0; i < len; i++) {
+        var node = gameServer.nodes[0];
+        if (!node) continue;
+        gameServer.removeNode(node);
+    }
+    this.resettingBattleRound = false;
+};
+
+Tournament.prototype.startNextBattleRound = function(gameServer) {
+    var world = gameServer && gameServer.activeWorld;
+    var sockets = world && world.clients ? world.clients.slice(0) : [];
+    var config = gameServer.getWorldConfig ? gameServer.getWorldConfig(world) : gameServer.config;
+
+    this.clearBattleArenaNodes(gameServer);
+    this.battleRound++;
+    this.gamePhase = 0;
+    this.contenders = [];
+    this.eliminated = [];
+    this.winners = [];
+    this.winner = null;
+    this.battleMatchFinal = false;
+    this.matchResultKey = '';
+    this.timeLimit = config.tourneyTimeLimit * 60;
+    this.prepTime = config.tourneyPrepTime;
+    this.endTime = config.tourneyEndTime;
+    this.maxContenders = config.tourneyMaxPlayers;
+
+    if (world) {
+        world.matchResultKey = '';
+        world.rankedResultSaved = false;
+    }
+
+    if (typeof gameServer.startingFood === 'function') {
+        gameServer.startingFood();
+    }
+
+    for (var i = 0; i < sockets.length; i++) {
+        var player = sockets[i] && sockets[i].playerTracker;
+        if (!player || !player.getStatus || !player.getStatus()) continue;
+        player.battleTeam = '';
+        player.spectate = false;
+        player.spectatedPlayer = null;
+        this.onPlayerSpawn(gameServer, player);
+    }
+};
+
+Tournament.prototype.endBattleRound = function(gameServer, winner) {
+    this.winner = winner || null;
+    this.updateEliminatedSpectators(this.winner);
+    this.battleMatchFinal = this.addBattleRoundWin(winner);
+    this.gamePhase = 3;
+    this.timer = this.endTime;
+
+    if (this.battleMatchFinal) {
+        this.finishDelayedMatchResults(gameServer);
+    }
+};
+
+Tournament.prototype.endBattleTeamRound = function(gameServer, winningTeam) {
+    var clients = gameServer && gameServer.activeWorld && gameServer.activeWorld.clients || [];
+
+    this.winners = [];
+    for (var c = 0; c < clients.length; c++) {
+        var tracker = clients[c] && clients[c].playerTracker;
+        if (tracker && tracker.battleTeam === winningTeam) {
+            this.winners.push(tracker);
+        }
+    }
+
+    this.winner = this.winners[0] || null;
+    this.updateEliminatedSpectators(this.winner);
+    this.battleMatchFinal = this.addBattleRoundWin(this.winner, winningTeam);
+    this.gamePhase = 3;
+    this.timer = this.endTime;
+
+    if (this.battleMatchFinal) {
+        this.finishBattleTeamMatchResults(gameServer, winningTeam);
+    }
+};
+
 Tournament.prototype.cleanupBattleMatch = function(gameServer) {
     var world = gameServer && gameServer.activeWorld;
     var sockets = world && world.clients ? world.clients.slice(0) : [];
@@ -287,21 +396,7 @@ Tournament.prototype.tryEndBattleTeamGame = function(gameServer) {
     var teams = Object.keys(aliveTeams);
     if (teams.length !== 1) return false;
 
-    var winningTeam = teams[0];
-    this.winners = [];
-    var clients = gameServer && gameServer.activeWorld && gameServer.activeWorld.clients || [];
-    for (var c = 0; c < clients.length; c++) {
-        var tracker = clients[c] && clients[c].playerTracker;
-        if (tracker && tracker.battleTeam === winningTeam) {
-            this.winners.push(tracker);
-        }
-    }
-
-    this.winner = this.winners[0] || null;
-    this.updateEliminatedSpectators(this.winner);
-    this.gamePhase = 3;
-    this.timer = this.endTime;
-    this.finishBattleTeamMatchResults(gameServer, winningTeam);
+    this.endBattleTeamRound(gameServer, teams[0]);
     return true;
 };
 
@@ -309,9 +404,11 @@ Tournament.prototype.onCellRemove = function(cell) {
     var owner = cell.owner,
         human_just_died = false;
 
+    if (this.resettingBattleRound) return;
+
     if (owner.cells.length <= 0) {
         this.queueEliminatedPlayer(owner);
-        if (!this.isBattle2v2World(cell.owner.gameServer)) {
+        if (!this.isBattleWorld(cell.owner.gameServer) && !this.isBattle2v2World(cell.owner.gameServer)) {
             this.sendPlayerMatchResult(cell.owner.gameServer, owner, 'lose');
         }
 
@@ -332,7 +429,11 @@ Tournament.prototype.onCellRemove = function(cell) {
         }
 
         if ((this.contenders.length == 1 || humans == 0 || (humans == 1 && human_just_died)) && this.gamePhase == 2) {
-            this.endGame(cell.owner.gameServer);
+            if (this.isBattleWorld(cell.owner.gameServer)) {
+                this.endBattleRound(cell.owner.gameServer, this.contenders[0] || this.rankOne || null);
+            } else {
+                this.endGame(cell.owner.gameServer);
+            }
         } else {
             this.onPlayerDeath(cell.owner.gameServer);
         }
@@ -356,7 +457,7 @@ Tournament.prototype.updateLB = function(gameServer) {
             }
             break;
         case 1:
-            lb[0] = "Game starting in";
+            lb[0] = this.isBattleWorld(gameServer) ? "Round " + this.battleRound : "Game starting in";
             lb[1] = this.timer.toString();
             lb[2] = "Good luck!";
             if (this.timer <= 0) {
@@ -377,12 +478,16 @@ Tournament.prototype.updateLB = function(gameServer) {
             }
             break;
         case 3:
-            lb[0] = "Congratulations";
+            lb[0] = this.battleMatchFinal ? "Congratulations" : "Round " + this.battleRound;
             lb[1] = this.winner ? this.winner.getName() : "Winner";
-            lb[2] = "for winning!";
+            lb[2] = this.battleMatchFinal ? "for winning!" : "winner";
             if (this.timer <= 0) {
                 if (this.isBattleWorld(gameServer)) {
-                    this.cleanupBattleMatch(gameServer);
+                    if (this.battleMatchFinal) {
+                        this.cleanupBattleMatch(gameServer);
+                    } else {
+                        this.startNextBattleRound(gameServer);
+                    }
                 } else {
                     this.onServerInit(gameServer);
                     gameServer.startingFood();

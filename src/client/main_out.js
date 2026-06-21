@@ -866,7 +866,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                         matchStats.endTime = Date.now();
                     }
                     hideTopTimePopup();
-                    showMatchResult();
+                    if (!isTournamentLikeMode() || resultData.matchFinal) {
+                        showMatchResult();
+                    }
                 } catch (e) {}
 
                 break;
@@ -2039,7 +2041,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
 
         document.getElementById("matchResultBackBtn").onclick = function () {
             hideMatchResult();
-            if (typeof showOverlays === "function") {
+            if (!isTournamentLikeMode() && typeof showOverlays === "function") {
                 showOverlays(true);
             }
         };
