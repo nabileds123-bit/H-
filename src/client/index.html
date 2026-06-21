@@ -3467,6 +3467,7 @@ $(function () {
     var battlePlayTimer = null;
     var battleStartLoading = false;
     var battleStartTimer = null;
+    var battleLobbyReadyStarting = false;
     var battleLobbyQueued = false;
     var battleLobbyPlayerCount = 1;
     var battleLobbyPollTimer = null;
@@ -4318,12 +4319,9 @@ $(function () {
         var rows = [];
         players = players || [];
         count = count || players.length || 1;
-        required = required || getBattleLobbyRequiredPlayers();
         battleLobbyPlayerCount = count;
 
-        if (!players.length) {
-            players.push({ name: getBattleLobbyPlayerName() });
-        }
+        players = [{ name: getBattleLobbyPlayerName() }];
 
         for (var i = 0; i < players.length; i++) {
             rows.push(
@@ -4335,7 +4333,7 @@ $(function () {
         }
 
         $('.tournament-players').html(rows.join(''));
-        $('.battle-online').text(count + '/' + required);
+        $('.battle-online').text('1/1');
         updateBattleStartAvailability();
     }
 
@@ -4392,6 +4390,7 @@ $(function () {
 
     function startBattleFromLobby() {
         stopBattleLobbyPolling();
+        battleLobbyReadyStarting = false;
         battleLobbyQueued = false;
         setBattleStartLoading(false);
         setInviteSubMode(battleLobbyInviteMode);
@@ -4423,12 +4422,11 @@ $(function () {
             return;
         }
 
-        renderBattleLobbyStatus(response);
-
         if (response.ready) {
             $('.battle-srvstatus').text('Preparing...');
             $('#button-start-battle').html('<span class="battle-play-spinner"></span><span>Preparing</span>');
             stopBattleLobbyPolling();
+            battleLobbyReadyStarting = true;
 
             if (!battleStartTimer) {
                 battleStartTimer = setTimeout(function () {
@@ -4436,7 +4434,10 @@ $(function () {
                     startBattleFromLobby();
                 }, 1000);
             }
+            return;
         }
+
+        renderBattleLobbyStatus(response);
     }
 
     function pollBattleLobby() {
@@ -4461,6 +4462,7 @@ $(function () {
     }
 
     function leaveBattleLobbyQueue() {
+        if (battleLobbyReadyStarting) return;
         if (!battleLobbyQueued) return;
 
         battleLobbyQueued = false;
@@ -4474,6 +4476,7 @@ $(function () {
     }
 
     function closeBattleLobbyDialog(skipLeave) {
+        if (battleLobbyReadyStarting && !skipLeave) return;
         if (!skipLeave) {
             leaveBattleLobbyQueue();
         }
@@ -4507,7 +4510,7 @@ $(function () {
         updateBattleRegionLabel();
         updateBattleRewardLabels();
         $('.battle-srvstatus').text('Waiting for start');
-        renderBattleLobbyPlayers([{ name: getBattleLobbyPlayerName() }], 1, getBattleLobbyRequiredPlayers());
+        renderBattleLobbyPlayers([{ name: getBattleLobbyPlayerName() }], 1, 1);
         resetBattleLobbyEstimate();
         loadFriendInviteList();
         $('#tournament-modal').addClass('is-open');
@@ -4541,6 +4544,8 @@ $(function () {
     }
 
     function cancelBattleStartLoading() {
+        if (battleLobbyReadyStarting) return;
+
         if (battleStartTimer) {
             clearTimeout(battleStartTimer);
             battleStartTimer = null;
