@@ -12,9 +12,21 @@ jobs:
 
     steps:
       - name: Setup SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KEY_B64: ${{ secrets.VPS_SSH_KEY_B64 }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.VPS_SSH_KEY_B64 }}" | tr -d '\r\n ' | base64 -d > ~/.ssh/deploy_key
+
+          if [ -n "$VPS_SSH_KEY" ]; then
+            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          elif [ -n "$VPS_SSH_KEY_B64" ]; then
+            printf '%s' "$VPS_SSH_KEY_B64" | tr -d '\r\n ' | base64 -d > ~/.ssh/deploy_key
+          else
+            echo "Missing VPS_SSH_KEY or VPS_SSH_KEY_B64 secret"
+            exit 1
+          fi
+
           chmod 600 ~/.ssh/deploy_key
 
           echo "=== Validate SSH key ==="
