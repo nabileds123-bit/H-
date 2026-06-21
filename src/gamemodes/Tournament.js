@@ -203,6 +203,12 @@ Tournament.prototype.sendPlayerMatchResult = function(gameServer, player, result
     if (gameServer.pauseTop1Stats) {
         gameServer.pauseTop1Stats(player, player.world, true);
     }
+    if (this.isBattleWorld(gameServer)) {
+        if (gameServer.recordBattleResult) gameServer.recordBattleResult(player, result, this.getBattleMatchScore(gameServer, player));
+        if (gameServer.applyMatchXp) gameServer.applyMatchXp(player);
+        if (gameServer.applyBattlePoints) gameServer.applyBattlePoints(player, result);
+        return;
+    }
     gameServer.sendMatchResult(player, result);
 };
 
@@ -239,8 +245,33 @@ Tournament.prototype.finishBattleTeamMatchResults = function(gameServer, winning
     this.winners = [];
 };
 
+Tournament.prototype.getBattleMatchScore = function(gameServer, player) {
+    var world = gameServer && gameServer.activeWorld;
+    var clients = world && world.clients ? world.clients : [];
+    var playerKey = this.getBattleRoundKey(player, player && player.battleTeam);
+    var scoreFor = this.battleScores[playerKey] || 0;
+    var scoreAgainst = 0;
+
+    for (var i = 0; i < clients.length; i++) {
+        var opponent = clients[i] && clients[i].playerTracker;
+        if (!opponent || opponent === player) continue;
+
+        var opponentKey = this.getBattleRoundKey(opponent, opponent.battleTeam);
+        if (!opponentKey || opponentKey === playerKey) continue;
+        scoreAgainst = Math.max(scoreAgainst, this.battleScores[opponentKey] || 0);
+    }
+
+    return {
+        scoreFor: scoreFor,
+        scoreAgainst: scoreAgainst
+    };
+};
+
 Tournament.prototype.canPlayerMove = function(player) {
-    return this.gamePhase == 2;
+    if (this.gamePhase == 2) return true;
+    if (this.gamePhase != 3 || !player || !this.isBattleWorld(player.gameServer)) return false;
+    if (player === this.winner) return true;
+    return this.winners && this.winners.indexOf(player) !== -1;
 };
 
 Tournament.prototype.formatTime = function(time) {
@@ -285,11 +316,17 @@ Tournament.prototype.addBattleLeaderboardPlayers = function(lb, startIndex) {
     for (var i = 0; i < this.contenders.length; i++) {
         var player = this.contenders[i];
         if (!player || !player.cells || player.cells.length <= 0) continue;
-        lb[index++] = player.getName ? player.getName() : (player.name || 'player');
+        var key = this.getBattleRoundKey(player, player.battleTeam);
+        var score = this.battleScores[key] || 0;
+        var name = player.getName ? player.getName() : (player.name || 'player');
+        lb[index++] = name + ' - ' + score;
     }
 
     if (index === startIndex) {
-        lb[index] = this.winner && this.winner.getName ? this.winner.getName() : '-';
+        var winnerKey = this.getBattleRoundKey(this.winner, this.winner && this.winner.battleTeam);
+        var winnerScore = this.battleScores[winnerKey] || 0;
+        var winnerName = this.winner && this.winner.getName ? this.winner.getName() : '-';
+        lb[index] = winnerName + ' - ' + winnerScore;
     }
 };
 

@@ -769,6 +769,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                         name: getString()
                     });
                 }
+                handleBattleCountdownSound();
                 drawLeaderBoard();
                 break;
             case 49: // update leaderboard (ffa)
@@ -1919,6 +1920,60 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     function isTournamentLikeMode() {
         var mode = String(wHandle.currentGameMode || gameMode || '');
         return mode === ':tournament' || mode.indexOf(':battle') === 0;
+    }
+
+    function isBattleMode() {
+        var mode = String(wHandle.currentGameMode || gameMode || '');
+        return mode.indexOf(':battle') === 0;
+    }
+
+    function playBattleCountdownTick(value) {
+        var AudioContextClass = wHandle.AudioContext || wHandle.webkitAudioContext;
+        if (!AudioContextClass) return;
+
+        try {
+            var ctx = playBattleCountdownTick.ctx || (playBattleCountdownTick.ctx = new AudioContextClass());
+            if (ctx.state === 'suspended' && ctx.resume) {
+                ctx.resume();
+            }
+
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            var now = ctx.currentTime;
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(value === 0 ? 520 : 840, now);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.14, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.13);
+        } catch (e) {
+            // Browsers may block audio until the player has interacted with the page.
+        }
+    }
+
+    function handleBattleCountdownSound() {
+        if (!isBattleMode() || !leaderBoard || leaderBoard.length < 2) {
+            handleBattleCountdownSound.lastValue = null;
+            return;
+        }
+
+        var label = leaderBoard[0] && String(leaderBoard[0].name || '');
+        if (label !== 'Game Starting in') {
+            handleBattleCountdownSound.lastValue = null;
+            return;
+        }
+
+        var value = parseInt(leaderBoard[1] && leaderBoard[1].name, 10);
+        if (isNaN(value) || value < 0 || value > 5) return;
+        if (handleBattleCountdownSound.lastValue === value) return;
+
+        handleBattleCountdownSound.lastValue = value;
+        playBattleCountdownTick(value);
     }
 
     function getMatchResultFooterHTML() {

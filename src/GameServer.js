@@ -1461,7 +1461,9 @@ GameServer.prototype.removeNode = function(node) {
 	// Special on-remove actions
     node.onRemove(this);
 
-    if (removedPlayer && removedPlayer.cells.length <= 0 && !removedPlayer.matchResultSent && !this.shouldDelayMatchResult(removedPlayer)) {
+    var removedPlayerWorld = removedPlayer && (removedPlayer.world || this.activeWorld);
+    var removedPlayerInBattle = removedPlayerWorld && this.isBattleModeRequest && this.isBattleModeRequest(removedPlayerWorld.id);
+    if (removedPlayer && !removedPlayerInBattle && removedPlayer.cells.length <= 0 && !removedPlayer.matchResultSent && !this.shouldDelayMatchResult(removedPlayer)) {
         removedPlayer.matchResultSent = true;
         this.pauseTop1Stats(removedPlayer, removedPlayer.world, true);
         this.sendMatchResult(removedPlayer);
@@ -1790,14 +1792,34 @@ GameServer.prototype.logBattleResultDebug = function(world, player, result, acti
     );
 }
 
-GameServer.prototype.recordBattleResult = function(player, result) {
+GameServer.prototype.getBattleResultOpponent = function(player, result) {
+    var world = player && (player.world || this.activeWorld);
+    var clients = world && world.clients ? world.clients : [];
+    var fallback = null;
+    result = String(result || '').toLowerCase();
+
+    for (var i = 0; i < clients.length; i++) {
+        var opponent = clients[i] && clients[i].playerTracker;
+        if (!opponent || opponent === player) continue;
+
+        if (!fallback) fallback = opponent;
+        if (result === 'lose' && opponent.cells && opponent.cells.length > 0) return opponent;
+        if (result === 'win' && (!opponent.cells || opponent.cells.length <= 0)) return opponent;
+    }
+
+    return fallback;
+}
+
+GameServer.prototype.recordBattleResult = function(player, result, score) {
     if (!player) return;
 
     var world = player.world || this.activeWorld;
     var mode = statsStore.normalizeBattleMode(world && world.id);
     var userId = this.getPlayerStatsUserId(player);
-    var leaderboard = world && world.leaderboard ? world.leaderboard : [];
     var winner = null;
+    var opponent = null;
+    var scoreFor = score && parseInt(score.scoreFor, 10);
+    var scoreAgainst = score && parseInt(score.scoreAgainst, 10);
     var resultKey = world && world.matchResultKey || player.matchResultKey || player.matchStartTime || '';
     result = String(result || 'lose').toLowerCase();
     if (!mode) return;
@@ -1811,14 +1833,10 @@ GameServer.prototype.recordBattleResult = function(player, result) {
 
     if (!userId) return;
 
-    if (result === 'lose') {
-        for (var w = 0; w < leaderboard.length; w++) {
-            if (leaderboard[w] && leaderboard[w] !== player && this.getPlayerStatsUserId(leaderboard[w]) && leaderboard[w].cells.length > 0) {
-                winner = leaderboard[w];
-                break;
-            }
-        }
-    }
+    opponent = this.getBattleResultOpponent(player, result);
+    if (result === 'lose') winner = opponent;
+    if (isNaN(scoreFor)) scoreFor = result === 'win' ? 1 : 0;
+    if (isNaN(scoreAgainst)) scoreAgainst = result === 'win' ? 0 : 1;
 
     player.battleStatsRecorded = true;
     player.battleStatsKey = resultKey;
@@ -1828,16 +1846,16 @@ GameServer.prototype.recordBattleResult = function(player, result) {
         result: result,
         serverId: this.getStatsServerId(world),
         country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode),
-        opponentUsername: winner ? winner.getName() : ''
+        opponentUsername: opponent && opponent.getName ? opponent.getName() : '',
+        scoreFor: scoreFor,
+        scoreAgainst: scoreAgainst
     });
     this.logBattleResultDebug(world, player, result, 'stats_written');
 
     if (result !== 'lose') return;
 
-    for (var i = 0; i < leaderboard.length; i++) {
-        winner = leaderboard[i];
-        if (!winner || winner === player || !this.getPlayerStatsUserId(winner) || winner.cells.length <= 0) continue;
-        if (winner.battleStatsRecorded && (!resultKey || winner.battleStatsKey === resultKey)) continue;
+    if (winner && winner !== player && this.getPlayerStatsUserId(winner) && winner.cells && winner.cells.length > 0) {
+        if (winner.battleStatsRecorded && (!resultKey || winner.battleStatsKey === resultKey)) return;
         winner.battleStatsRecorded = true;
         winner.battleStatsKey = resultKey;
         statsStore.addBattleRecord({
@@ -1846,10 +1864,11 @@ GameServer.prototype.recordBattleResult = function(player, result) {
             result: 'win',
             serverId: this.getStatsServerId(world),
             country_code: winner.authUser && (winner.authUser.country_code || winner.authUser.countryCode),
-            opponentUsername: player.getName()
+            opponentUsername: player.getName(),
+            scoreFor: scoreAgainst,
+            scoreAgainst: scoreFor
         });
         this.logBattleResultDebug(world, winner, 'win', 'stats_written');
-        break;
     }
 }
 

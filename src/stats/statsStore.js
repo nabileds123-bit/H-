@@ -264,10 +264,15 @@ function addBattleRecord(data) {
     var mode = normalizeBattleMode(data.mode);
     var user = getUserInfo(data.userId || data.username);
     var result = String(data.result || '').toLowerCase();
+    var scoreFor = parseInt(data.scoreFor, 10);
+    var scoreAgainst = parseInt(data.scoreAgainst, 10);
 
     if (!mode || !user || (result !== 'win' && result !== 'lose')) {
         return null;
     }
+
+    if (isNaN(scoreFor)) scoreFor = result === 'win' ? 1 : 0;
+    if (isNaN(scoreAgainst)) scoreAgainst = result === 'win' ? 0 : 1;
 
     var store = readStore();
     var item = {
@@ -280,8 +285,8 @@ function addBattleRecord(data) {
         server_id: String(data.serverId || 'default'),
         result: result,
         opponent_username: String(data.opponentUsername || data.opponent || '').trim(),
-        score_for: result === 'win' ? 1 : 0,
-        score_against: result === 'win' ? 0 : 1,
+        score_for: scoreFor,
+        score_against: scoreAgainst,
         ranked: data.ranked !== false,
         winner_user_ids: Array.isArray(data.winnerUserIds) ? data.winnerUserIds : [],
         loser_user_ids: Array.isArray(data.loserUserIds) ? data.loserUserIds : [],

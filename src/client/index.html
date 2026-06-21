@@ -697,6 +697,10 @@ $(document).on('keyup', function(input) {
     }
 
     .account-battle-summary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
         flex: 0 0 auto;
         margin: 14px 0 12px 0;
         color: #111;
@@ -747,7 +751,7 @@ $(document).on('keyup', function(input) {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 24px;
+        min-width: 12px;
         height: 42px;
         vertical-align: middle;
     }
@@ -770,6 +774,7 @@ $(document).on('keyup', function(input) {
 
     .account-battle-summary .battle-separator {
         color: #111;
+        margin: 0 -1px;
     }
 
     .account-battle-list {
@@ -5289,7 +5294,7 @@ $(function () {
         tier = normalizeBattleTier(tier);
         var tooltip = escapeHtml(formatBattleTierTooltip(tier, tierInfo));
         if (tier === 'UNRANKED') {
-            return '<span class="battle-tier" title="' + tooltip + '">Unranked</span>';
+            return '';
         }
         if (/^VII_STAR_/.test(tier)) {
             var starCount = parseInt(tier.replace('VII_STAR_', ''), 10) || 2;
@@ -5323,7 +5328,6 @@ $(function () {
     function renderBattleAccountDetail(target, response) {
         var stats = response && response.stats || {};
         var records = response && response.records || [];
-        var total = stats.totalMatch || 0;
         var win = stats.win || 0;
         var lose = stats.lose || 0;
         var bestWinStreak = 0;
@@ -5359,15 +5363,18 @@ $(function () {
             currentWinStreak++;
         }
 
-        var summary = total > 0 ? [
+        var summary = [
             '<div class="account-battle-summary">',
             renderBattleTierBadge(stats.tier || 'UNRANKED', stats.tierInfo),
-            ' <span class="battle-separator">/</span> <span class="battle-win">' + escapeHtml(win) + '</span>',
-            ' <span class="battle-separator">/</span> <span class="battle-lose">' + escapeHtml(lose) + '</span>',
-            ' <span class="battle-separator">/</span> <span class="battle-best-streak">' + escapeHtml(bestWinStreak) + '</span>',
-            ' <span class="battle-separator">/</span> <span class="battle-current-streak">' + escapeHtml(currentWinStreak) + '</span>',
+            '<span class="battle-win">' + escapeHtml(win) + '</span>',
+            '<span class="battle-separator">/</span>',
+            '<span class="battle-lose">' + escapeHtml(lose) + '</span>',
+            '<span class="battle-separator">/</span>',
+            '<span class="battle-best-streak">' + escapeHtml(bestWinStreak) + '</span>',
+            '<span class="battle-separator">/</span>',
+            '<span class="battle-current-streak">' + escapeHtml(currentWinStreak) + '</span>',
             '</div>'
-        ].join('') : '';
+        ].join('');
 
         $(target).html([
             summary,
