@@ -19,7 +19,7 @@ jobs:
           mkdir -p ~/.ssh
 
           if [ -n "$VPS_SSH_KEY" ]; then
-            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+            printf '%s\n' "$VPS_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > ~/.ssh/deploy_key
           elif [ -n "$VPS_SSH_KEY_B64" ]; then
             printf '%s' "$VPS_SSH_KEY_B64" | tr -d '\r\n ' | base64 -d > ~/.ssh/deploy_key
           else
