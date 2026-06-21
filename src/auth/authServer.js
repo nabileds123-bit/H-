@@ -12,6 +12,7 @@ var PLAYER_SKIN_COST = 150;
 var GUILD_SKIN_COST = 50;
 var PREMIUM_COST = 2;
 var PREMIUM_DAYS = 7;
+var VERIFY_EMAIL_POINTS = 160;
 var MAX_PLAYER_SKIN_BYTES = 500 * 1024;
 var MAX_GUILD_SKIN_BYTES = 200 * 1024;
 var MAX_SKIN_BODY_BYTES = 1024 * 1024;
@@ -267,6 +268,7 @@ function handleVerifyEmail(req, res, query) {
 
     users.updateUser(user.id, {
         emailVerified: true,
+        points: (parseFloat(user.points) || 0) + VERIFY_EMAIL_POINTS,
         verifyEmail: null
     });
 

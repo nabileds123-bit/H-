@@ -3,15 +3,65 @@
 Target:
 
 - Domain: `bubblev2.site`
-- VPS IP: `141.11.25.59`
+- VPS IP: `103.93.129.69`
 - App directory: `/var/www/bubblev2`
 
 ## DNS
 
 Atur DNS domain:
 
-- `A` record `@` -> `141.11.25.59`
-- `A` record `www` -> `141.11.25.59`
+- `A` record `@` -> `103.93.129.69`
+- `A` record `www` -> `103.93.129.69`
+
+## Setup VPS Baru
+
+Jalankan di VPS sebagai `root`:
+
+```bash
+apt update
+apt install -y git nginx curl
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+npm install -g pm2
+
+mkdir -p /var/www
+cd /var/www
+git clone https://github.com/nabileds123-bit/H-.git bubblev2
+cd /var/www/bubblev2
+npm install --omit=dev
+cp .env.production.example .env
+nano .env
+```
+
+Start aplikasi:
+
+```bash
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup
+```
+
+Ikuti command yang muncul dari `pm2 startup`, lalu jalankan lagi:
+
+```bash
+pm2 save
+```
+
+Setup Nginx:
+
+```bash
+cp /var/www/bubblev2/deploy/nginx-bubblev2.site.conf /etc/nginx/sites-available/bubblev2.site
+ln -sf /etc/nginx/sites-available/bubblev2.site /etc/nginx/sites-enabled/bubblev2.site
+nginx -t
+systemctl reload nginx
+```
+
+Opsional HTTPS:
+
+```bash
+apt install -y certbot python3-certbot-nginx
+certbot --nginx -d bubblev2.site -d www.bubblev2.site
+```
 
 ## Auto Deploy
 
@@ -56,23 +106,22 @@ Buka GitHub repo:
 Settings -> Secrets and variables -> Actions -> New repository secret
 ```
 
-Name:
-
-```text
-MAIN
-```
-
-Secret:
+Secrets:
 
 ```text
 VPS_HOST=103.93.129.69
-VPS_USER=lyncervps
+VPS_USER=root
 VPS_PORT=22
-VPS_SSH_KEY<<EOF
-EOF
+VPS_SSH_KEY_B64=<private-key-yang-sudah-di-base64>
 ```
 
-Klik `Add secret`.
+Untuk membuat isi `VPS_SSH_KEY_B64`, jalankan di VPS:
+
+```bash
+base64 -w 0 ~/.ssh/github_deploy_bubblev2
+```
+
+Buat secret satu per satu, lalu klik `Add secret`.
 
 ## 3. Test Dari VS Code
 
