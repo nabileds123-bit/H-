@@ -848,15 +848,20 @@ function getNotificationItems(user) {
 }
 
 function handleNotifications(req, res, query) {
-    var user = users.findBySessionToken(String(query.token || ''));
-    if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
-    var items = getNotificationItems(user);
+    try {
+        var user = users.findBySessionToken(String(query.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+        var items = getNotificationItems(user);
 
-    sendJson(res, 200, {
-        ok: true,
-        items: items,
-        notifications: items
-    });
+        sendJson(res, 200, {
+            ok: true,
+            items: items,
+            notifications: items
+        });
+    } catch (err) {
+        console.log('[Auth] Notifications failed: %s', err && err.stack || err);
+        sendJson(res, 500, { ok: false, message: 'Notifications failed.' });
+    }
 }
 
 function handleNotificationStream(req, res, query) {
@@ -875,17 +880,31 @@ function handleNotificationStream(req, res, query) {
     var lastPayload = '';
 
     function writeEvent(force) {
-        var freshUser = users.findBySessionToken(token);
-        if (!freshUser) {
-            res.write('event: auth-error\n');
-            res.write('data: {"ok":false,"message":"You must login first."}\n\n');
+        var freshUser;
+        var items;
+        var payload;
+
+        try {
+            freshUser = users.findBySessionToken(token);
+            if (!freshUser) {
+                res.write('event: auth-error\n');
+                res.write('data: {"ok":false,"message":"You must login first."}\n\n');
+                clearInterval(timer);
+                res.end();
+                return;
+            }
+
+            items = getNotificationItems(freshUser);
+            payload = JSON.stringify({ ok: true, items: items, notifications: items });
+        } catch (err) {
+            console.log('[Auth] Notification stream failed: %s', err && err.stack || err);
+            res.write('event: notifications-error\n');
+            res.write('data: {"ok":false,"message":"Notifications failed."}\n\n');
             clearInterval(timer);
             res.end();
             return;
         }
 
-        var items = getNotificationItems(freshUser);
-        var payload = JSON.stringify({ ok: true, items: items, notifications: items });
         if (!force && payload === lastPayload) return;
 
         lastPayload = payload;

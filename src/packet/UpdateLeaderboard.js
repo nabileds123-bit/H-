@@ -5,6 +5,17 @@ function UpdateLeaderboard(leaderboard, packetLB) {
 
 module.exports = UpdateLeaderboard;
 
+function getLeaderboardName(item) {
+    if (!item) return "";
+    if (typeof item.getDisplayName === "function") {
+        return item.getDisplayName() || "";
+    }
+    if (typeof item.getName === "function") {
+        return item.getName() || "";
+    }
+    return "";
+}
+
 UpdateLeaderboard.prototype.build = function() {
     // First, calculate the size
     var lb = this.leaderboard;
@@ -56,8 +67,9 @@ UpdateLeaderboard.prototype.build = function() {
                 }
 
                 var item = lb[i];
+                var name = getLeaderboardName(item);
                 bufferSize += 4; // Element ID
-                bufferSize += item.getName() ? item.getName().length * 2 : 0; // Name
+                bufferSize += name ? name.length * 2 : 0; // Name
                 bufferSize += 2; // Name terminator
 
                 validElements++;
@@ -88,7 +100,7 @@ UpdateLeaderboard.prototype.build = function() {
                 offset += 4;
 
                 // Set name
-                var name = item.getName();
+                var name = getLeaderboardName(item);
                 if (name) {
                     for (var j = 0; j < name.length; j++) {
                         view.setUint16(offset, name.charCodeAt(j), true);
