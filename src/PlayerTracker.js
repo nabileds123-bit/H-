@@ -195,13 +195,21 @@ PlayerTracker.prototype.update = function() {
     this.nodeDestroyQueue = []; // Reset destroy queue
 
     // Update leaderboard
+    var world = this.world || this.gameServer.activeWorld;
+    var config = this.gameServer.getWorldConfig ? this.gameServer.getWorldConfig(world) : this.gameServer.config;
+    var leaderboardUpdateRate = config.leaderboardUpdateClient;
+    if (world && this.gameServer.isBattleModeRequest && this.gameServer.isBattleModeRequest(world.id)) {
+        leaderboardUpdateRate = 10; // 0.5 seconds, keeps battle countdown readable
+    }
+    if (this.tickLeaderboard > leaderboardUpdateRate) {
+        this.tickLeaderboard = leaderboardUpdateRate;
+    }
+
     if (this.tickLeaderboard <= 0) {
-        var world = this.world || this.gameServer.activeWorld;
         var leaderboard = world ? world.leaderboard : this.gameServer.leaderboard;
         var gameMode = world ? world.gameMode : this.gameServer.gameMode;
-        var config = this.gameServer.getWorldConfig ? this.gameServer.getWorldConfig(world) : this.gameServer.config;
         this.socket.sendPacket(new Packet.UpdateLeaderboard(leaderboard,gameMode.packetLB));
-        this.tickLeaderboard = config.leaderboardUpdateClient;
+        this.tickLeaderboard = leaderboardUpdateRate;
     } else {
         this.tickLeaderboard--;
     }

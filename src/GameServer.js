@@ -2322,9 +2322,32 @@ GameServer.prototype.setAsMovingNode = function(node) {
 	this.movingNodes.push(node);
 }
 
+GameServer.prototype.isBattlePreparingWorld = function(client) {
+    var world = client && client.world ? client.world : this.activeWorld;
+    var gameMode = world && world.gameMode ? world.gameMode : this.gameMode;
+    return this.isBattleModeRequest &&
+        world &&
+        this.isBattleModeRequest(world.id) &&
+        gameMode &&
+        gameMode.gamePhase !== 2;
+}
+
+GameServer.prototype.releaseBattlePendingSplitMoves = function() {
+    for (var i = 0; i < this.nodesPlayer.length; i++) {
+        var cell = this.nodesPlayer[i];
+        if (!cell || !cell.battlePendingSplitMove) continue;
+
+        cell.battlePendingSplitMove = false;
+        if (cell.getMoveTicks && cell.getMoveTicks() > 0 && this.movingNodes.indexOf(cell) === -1) {
+            this.setAsMovingNode(cell);
+        }
+    }
+}
+
 GameServer.prototype.splitCells = function(client) {
     var config = this.getWorldConfig();
     var len = client.cells.length;
+    var holdBattleSplit = this.isBattlePreparingWorld(client);
     for (var i = 0; i < len; i++) {
     	
         if (client.cells.length >= config.playerMaxCells) {
@@ -2355,7 +2378,11 @@ GameServer.prototype.splitCells = function(client) {
         split.setMoveEngineData(26 + (cell.getSpeed() * 2), 22);
         split.calcMergeTime(config.playerRecombineTime);
 
-        this.setAsMovingNode(split);
+        if (holdBattleSplit) {
+            split.battlePendingSplitMove = true;
+        } else {
+            this.setAsMovingNode(split);
+        }
         this.addNode(split);
     }
 }

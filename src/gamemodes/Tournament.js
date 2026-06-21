@@ -24,12 +24,16 @@ function Tournament() {
 
     this.winner;
     this.timer;
+    this.timerEndsAt = 0;
+    this.timerZeroShown = false;
     this.timeLimit = 3600; // in seconds
+    this.timeLimitEndsAt = 0;
     this.matchResultSeq = 0;
     this.matchResultKey = '';
     this.battleRound = 1;
     this.battleScores = {};
     this.battleWinsToFinish = 2;
+    this.battleNextRoundTime = 5;
     this.battleMatchFinal = false;
     this.resettingBattleRound = false;
 }
@@ -39,14 +43,45 @@ Tournament.prototype = new Mode();
 
 // Gamemode Specific Functions
 
+Tournament.prototype.setPhaseTimer = function(seconds) {
+    this.timer = Math.max(0, parseInt(seconds, 10) || 0);
+    this.timerEndsAt = Date.now() + (this.timer * 1000);
+    this.timerZeroShown = false;
+};
+
+Tournament.prototype.getPhaseTimer = function() {
+    if (!this.timerEndsAt) return Math.max(0, this.timer || 0);
+    return Math.max(0, Math.ceil((this.timerEndsAt - Date.now()) / 1000));
+};
+
+Tournament.prototype.isPhaseTimerDone = function() {
+    return this.getPhaseTimer() <= 0;
+};
+
+Tournament.prototype.setTimeLimitTimer = function(seconds) {
+    this.timeLimit = Math.max(0, parseInt(seconds, 10) || 0);
+    this.timeLimitEndsAt = Date.now() + (this.timeLimit * 1000);
+};
+
+Tournament.prototype.getTimeLimitTimer = function() {
+    if (!this.timeLimitEndsAt) return Math.max(0, this.timeLimit || 0);
+    return Math.max(0, Math.ceil((this.timeLimitEndsAt - Date.now()) / 1000));
+};
+
 Tournament.prototype.startGamePrep = function(gameServer) {
     this.gamePhase = 1;
-    this.timer = this.prepTime;
+    this.setPhaseTimer(this.prepTime);
 };
 
 Tournament.prototype.startGame = function(gameServer) {
     gameServer.run = true;
     this.gamePhase = 2;
+    this.timerEndsAt = 0;
+    this.timerZeroShown = false;
+    this.setTimeLimitTimer(this.timeLimit);
+    if (this.isBattleWorld(gameServer) && gameServer.releaseBattlePendingSplitMoves) {
+        gameServer.releaseBattlePendingSplitMoves();
+    }
     this.matchResultSeq++;
     this.matchResultKey = [
         gameServer.activeWorld && gameServer.activeWorld.id || 'world',
@@ -65,14 +100,14 @@ Tournament.prototype.endGame = function(gameServer) {
     this.winner = this.contenders[0];
     this.updateEliminatedSpectators(this.winner);
     this.gamePhase = 3;
-    this.timer = this.endTime;
+    this.setPhaseTimer(this.endTime);
     this.finishDelayedMatchResults(gameServer);
 };
 
 Tournament.prototype.endGameTimeout = function(gameServer) {
     gameServer.run = false;
     this.gamePhase = 4;
-    this.timer = this.endTime;
+    this.setPhaseTimer(this.endTime);
     this.finishDelayedMatchResults(gameServer);
 };
 
@@ -109,6 +144,9 @@ Tournament.prototype.prepare = function(gameServer) {
     this.eliminated = [];
     this.winners = [];
     this.winner = null;
+    this.timerEndsAt = 0;
+    this.timerZeroShown = false;
+    this.timeLimitEndsAt = 0;
     this.matchResultKey = '';
     this.battleRound = 1;
     this.battleScores = {};
@@ -242,6 +280,19 @@ Tournament.prototype.isBattle2v2World = function(gameServer) {
     return gameServer && gameServer.activeWorld && gameServer.activeWorld.id === ':battle:2v2';
 };
 
+Tournament.prototype.addBattleLeaderboardPlayers = function(lb, startIndex) {
+    var index = startIndex;
+    for (var i = 0; i < this.contenders.length; i++) {
+        var player = this.contenders[i];
+        if (!player || !player.cells || player.cells.length <= 0) continue;
+        lb[index++] = player.getName ? player.getName() : (player.name || 'player');
+    }
+
+    if (index === startIndex) {
+        lb[index] = this.winner && this.winner.getName ? this.winner.getName() : '-';
+    }
+};
+
 Tournament.prototype.getBattleRoundKey = function(player, team) {
     if (team) return 'team:' + team;
     if (!player) return '';
@@ -284,6 +335,9 @@ Tournament.prototype.startNextBattleRound = function(gameServer) {
     this.winner = null;
     this.battleMatchFinal = false;
     this.matchResultKey = '';
+    this.timerEndsAt = 0;
+    this.timerZeroShown = false;
+    this.timeLimitEndsAt = 0;
     this.timeLimit = config.tourneyTimeLimit * 60;
     this.prepTime = config.tourneyPrepTime;
     this.endTime = config.tourneyEndTime;
@@ -313,7 +367,7 @@ Tournament.prototype.endBattleRound = function(gameServer, winner) {
     this.updateEliminatedSpectators(this.winner);
     this.battleMatchFinal = this.addBattleRoundWin(winner);
     this.gamePhase = 3;
-    this.timer = this.endTime;
+    this.setPhaseTimer(this.battleMatchFinal ? this.endTime : this.battleNextRoundTime);
 
     if (this.battleMatchFinal) {
         this.finishDelayedMatchResults(gameServer);
@@ -335,7 +389,7 @@ Tournament.prototype.endBattleTeamRound = function(gameServer, winningTeam) {
     this.updateEliminatedSpectators(this.winner);
     this.battleMatchFinal = this.addBattleRoundWin(this.winner, winningTeam);
     this.gamePhase = 3;
-    this.timer = this.endTime;
+    this.setPhaseTimer(this.battleMatchFinal ? this.endTime : this.battleNextRoundTime);
 
     if (this.battleMatchFinal) {
         this.finishBattleTeamMatchResults(gameServer, winningTeam);
@@ -457,31 +511,46 @@ Tournament.prototype.updateLB = function(gameServer) {
             }
             break;
         case 1:
-            lb[0] = this.isBattleWorld(gameServer) ? "Round " + this.battleRound : "Game starting in";
-            lb[1] = this.timer.toString();
-            lb[2] = "Good luck!";
-            if (this.timer <= 0) {
-                this.startGame(gameServer);
+            this.timer = this.getPhaseTimer();
+            if (this.isBattleWorld(gameServer)) {
+                lb[0] = "Game Starting in";
+                lb[1] = this.timer.toString();
+                lb[2] = "Good luck!";
             } else {
-                this.timer--;
+                lb[0] = "Game starting in";
+                lb[1] = this.timer.toString();
+                lb[2] = "Good luck!";
+            }
+            if (this.isPhaseTimerDone() && this.timerZeroShown) {
+                this.startGame(gameServer);
+            } else if (this.isPhaseTimerDone()) {
+                this.timerZeroShown = true;
             }
             break;
         case 2:
-            lb[0] = "Players Remaining";
-            lb[1] = this.contenders.length + "/" + this.maxContenders;
-            lb[2] = "Time Limit:";
-            lb[3] = this.formatTime(this.timeLimit);
-            if (this.timeLimit < 0) {
-                this.endGameTimeout(gameServer);
+            this.timeLimit = this.getTimeLimitTimer();
+            if (this.isBattleWorld(gameServer)) {
+                lb[0] = "Players Remaining";
+                lb[1] = this.contenders.length + "/" + this.maxContenders;
+                lb[2] = "-----------";
+                lb[3] = "round " + this.battleRound;
+                this.addBattleLeaderboardPlayers(lb, 4);
             } else {
-                this.timeLimit--;
+                lb[0] = "Players Remaining";
+                lb[1] = this.contenders.length + "/" + this.maxContenders;
+                lb[2] = "Time Limit:";
+                lb[3] = this.formatTime(this.timeLimit);
+                if (this.timeLimit <= 0) {
+                    this.endGameTimeout(gameServer);
+                }
             }
             break;
         case 3:
+            this.timer = this.getPhaseTimer();
             lb[0] = this.battleMatchFinal ? "Congratulations" : "Round " + this.battleRound;
             lb[1] = this.winner ? this.winner.getName() : "Winner";
             lb[2] = this.battleMatchFinal ? "for winning!" : "winner";
-            if (this.timer <= 0) {
+            if (this.isPhaseTimerDone() && this.timerZeroShown) {
                 if (this.isBattleWorld(gameServer)) {
                     if (this.battleMatchFinal) {
                         this.cleanupBattleMatch(gameServer);
@@ -493,16 +562,20 @@ Tournament.prototype.updateLB = function(gameServer) {
                     gameServer.startingFood();
                     this.restartCurrentPlayers(gameServer);
                 }
+            } else if (this.isPhaseTimerDone()) {
+                this.timerZeroShown = true;
             } else {
-                lb[3] = "Game restarting in";
-                lb[4] = this.timer.toString();
-                this.timer--;
+                if (!this.isBattleWorld(gameServer)) {
+                    lb[3] = "Game restarting in";
+                    lb[4] = this.timer.toString();
+                }
             }
             break;
         case 4:
+            this.timer = this.getPhaseTimer();
             lb[0] = "Time Limit";
             lb[1] = "Reached!";
-            if (this.timer <= 0) {
+            if (this.isPhaseTimerDone() && this.timerZeroShown) {
                 if (this.isBattleWorld(gameServer)) {
                     this.cleanupBattleMatch(gameServer);
                 } else {
@@ -510,10 +583,13 @@ Tournament.prototype.updateLB = function(gameServer) {
                     gameServer.startingFood();
                     this.restartCurrentPlayers(gameServer);
                 }
+            } else if (this.isPhaseTimerDone()) {
+                this.timerZeroShown = true;
             } else {
-                lb[2] = "Game restarting in";
-                lb[3] = this.timer.toString();
-                this.timer--;
+                if (!this.isBattleWorld(gameServer)) {
+                    lb[2] = "Game restarting in";
+                    lb[3] = this.timer.toString();
+                }
             }
             break;
         default:
