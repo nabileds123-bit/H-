@@ -9,6 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Setup SSH key
@@ -35,20 +36,34 @@ jobs:
 
       - name: Deploy to VPS
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p "${{ secrets.VPS_PORT || 22 }}" "${{ secrets.VPS_USER || 'root' }}@${{ secrets.VPS_HOST }}" <<'EOSSH'
+          ssh -T -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=20 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            -p "${{ secrets.VPS_PORT || 22 }}" \
+            "${{ secrets.VPS_USER || 'root' }}@${{ secrets.VPS_HOST }}" <<'EOSSH'
             set -e
 
             APP_DIR="/var/www/bubblev2"
             APP_NAME="bubblev2"
 
+            echo "=== Connected to VPS ==="
+            date
+            whoami
+            hostname
+
             cd "$APP_DIR"
 
             echo "=== Pull latest code ==="
+            git remote -v
             git fetch origin main
             git reset --hard origin/main
+            git log -1 --oneline
 
             echo "=== Install dependencies ==="
-            npm install --omit=dev
+            npm install --omit=dev --no-audit --no-fund
 
             echo "=== Restart PM2 ==="
             pm2 restart "$APP_NAME" --update-env
