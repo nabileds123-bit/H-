@@ -34,6 +34,12 @@ jobs:
           ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
           ssh-keygen -l -f ~/.ssh/deploy_key
 
+      - name: Debug deploy target
+        run: |
+          echo "VPS_HOST length: $(printf '%s' '${{ secrets.VPS_HOST }}' | wc -c)"
+          echo "VPS_PORT length: $(printf '%s' '${{ secrets.VPS_PORT }}' | wc -c)"
+          echo "VPS_USER length: $(printf '%s' '${{ secrets.VPS_USER }}' | wc -c)"
+
       - name: Deploy to VPS
         run: |
           ssh -T -i ~/.ssh/deploy_key \
