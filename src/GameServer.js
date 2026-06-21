@@ -746,9 +746,16 @@ GameServer.prototype.getBattleLobbyPayload = function(mode, clientId, userId) {
         mode: mode,
         ready: ready,
         players: players.map(function(member) {
+            var battleMode = statsStore.normalizeBattleMode(mode);
+            var battleStats = member.userId ?
+                statsStore.getBattleSummaryForUser(member.userId, battleMode, 'global') :
+                statsStore.getBattleSummaryForUser(member.name, battleMode, 'global');
             return {
                 name: member.name || 'Player',
-                clientId: member.clientId
+                clientId: member.clientId,
+                winRate: battleStats ? battleStats.winRate : 0,
+                win: battleStats ? battleStats.win : 0,
+                lose: battleStats ? battleStats.lose : 0
             };
         }),
         count: players.length,

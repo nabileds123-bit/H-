@@ -815,10 +815,14 @@ $(document).on('keyup', function(input) {
     }
 
     .account-battle-score {
-        color: #8d1616;
+        color: #111;
         font-size: 16px;
         font-weight: 900;
         text-align: center;
+    }
+
+    .account-battle-row.is-lose .account-battle-score {
+        color: #c92a2a;
     }
 
     #accountDetailSearchStatus {
@@ -1758,6 +1762,18 @@ $(document).on('keyup', function(input) {
         color: #4aa564;
         text-align: center;
         font-weight: bold;
+    }
+
+    .battle-percent.is-low {
+        color: #c92a2a;
+    }
+
+    .battle-percent.is-mid {
+        color: #c49102;
+    }
+
+    .battle-percent.is-high {
+        color: #168a34;
     }
 
     #button-start-battle {
@@ -3226,12 +3242,12 @@ $(document).on('keyup', function(input) {
         <div class="spa-page-body">
             <div id="accountDetailView">
                 <div class="account-detail-tabs">
-                    <button type="button" class="account-detail-tab" data-account-detail-tab="profile">Profile</button>
+                    <button type="button" class="account-detail-tab active" data-account-detail-tab="profile">Profile</button>
                     <button type="button" class="account-detail-tab" data-account-detail-tab="top1">Top 1</button>
                     <button type="button" class="account-detail-tab" data-account-detail-tab="2vs2">2 vs 2</button>
-                    <button type="button" class="account-detail-tab active" data-account-detail-tab="1vs1">1 vs 1</button>
+                    <button type="button" class="account-detail-tab" data-account-detail-tab="1vs1">1 vs 1</button>
                 </div>
-                <div id="accountDetailProfile" class="account-detail-pane">
+                <div id="accountDetailProfile" class="account-detail-pane active">
                     <div class="account-detail-table">
                         <div class="account-detail-row">
                             <span class="account-detail-label">Name:</span>
@@ -3274,7 +3290,7 @@ $(document).on('keyup', function(input) {
                 <div id="accountDetail2vs2" class="account-detail-pane">
                     <div class="account-detail-empty">Belum ada data 2 vs 2.</div>
                 </div>
-                <div id="accountDetail1vs1" class="account-detail-pane active">
+                <div id="accountDetail1vs1" class="account-detail-pane">
                     <div class="account-detail-empty">Belum ada data 1 vs 1.</div>
                 </div>
             </div>
@@ -4320,19 +4336,39 @@ $(function () {
             .attr('title', blocked ? 'Tunggu player lain masuk lobby dulu.' : '');
     }
 
+    function getBattleWinRateClass(winRate) {
+        winRate = parseInt(winRate, 10) || 0;
+        if (winRate < 40) return 'is-low';
+        if (winRate < 60) return 'is-mid';
+        return 'is-high';
+    }
+
+    function getBattleLobbySelfPlayer(players) {
+        players = players || [];
+        for (var i = 0; i < players.length; i++) {
+            if (players[i] && players[i].clientId === battleLobbyClientId) return players[i];
+        }
+        return players[0] || { name: getBattleLobbyPlayerName(), winRate: 0 };
+    }
+
     function renderBattleLobbyPlayers(players, count, required) {
         var rows = [];
+        var selfPlayer = getBattleLobbySelfPlayer(players);
+        var winRate = parseInt(selfPlayer.winRate, 10);
+        var winRateClass;
         players = players || [];
         count = count || players.length || 1;
         battleLobbyPlayerCount = count;
 
-        players = [{ name: getBattleLobbyPlayerName() }];
+        if (isNaN(winRate)) winRate = 0;
+        winRateClass = getBattleWinRateClass(winRate);
+        players = [{ name: selfPlayer.name || getBattleLobbyPlayerName(), winRate: winRate }];
 
         for (var i = 0; i < players.length; i++) {
             rows.push(
                 '<tr class="battle-player-row">' +
                 '<td><div class="tournament-player-info"><span class="battle-avatar">' + escapeHtml(String(players[i].name || 'P').charAt(0).toUpperCase() || 'P') + '</span><span class="tournament-player-name">' + escapeHtml(players[i].name || 'Player') + '</span></div></td>' +
-                '<td class="battle-percent">Ready</td>' +
+                '<td class="battle-percent ' + winRateClass + '">' + escapeHtml(winRate) + '%</td>' +
                 '</tr>'
             );
         }
@@ -5337,11 +5373,12 @@ $(function () {
         var rows = records.map(function(record) {
             var scoreFor = parseInt(record.scoreFor, 10);
             var scoreAgainst = parseInt(record.scoreAgainst, 10);
-            if (isNaN(scoreFor)) scoreFor = record.result === 'win' ? 1 : 0;
-            if (isNaN(scoreAgainst)) scoreAgainst = record.result === 'win' ? 0 : 1;
+            var result = String(record.result || '').toLowerCase();
+            if (isNaN(scoreFor)) scoreFor = result === 'win' ? 1 : 0;
+            if (isNaN(scoreAgainst)) scoreAgainst = result === 'win' ? 0 : 1;
 
             return [
-                '<div class="account-battle-row">',
+                '<div class="account-battle-row ' + (result === 'lose' ? 'is-lose' : 'is-win') + '">',
                 '<span class="account-battle-name">' + escapeHtml(record.username || $('#accountDetailTitle').text() || '-') + '</span>',
                 '<span class="account-battle-score">' + scoreFor + ':' + scoreAgainst + '</span>',
                 '<span class="account-battle-opponent">' + escapeHtml(record.opponentUsername || '-') + '</span>',
@@ -5444,7 +5481,7 @@ $(function () {
 
     function openAccountDetailDialog(name) {
         var playerName = String(name || '').trim();
-        var activeTab = getAccountDetailActiveTab();
+        var activeTab = playerName ? getAccountDetailActiveTab() : 'profile';
 
         closeCommunityDropup();
         closeFriendInviteModal();
@@ -6413,7 +6450,7 @@ $(function () {
     });
 
     function getAccountDetailActiveTab() {
-        return $('.account-detail-tab.active').data('account-detail-tab') || '1vs1';
+        return $('.account-detail-tab.active').data('account-detail-tab') || 'profile';
     }
 
     function setAccountDetailTab(tab) {
@@ -6423,7 +6460,7 @@ $(function () {
             '2vs2': '#accountDetail2vs2',
             '1vs1': '#accountDetail1vs1'
         };
-        tab = tabs[tab] ? tab : '1vs1';
+        tab = tabs[tab] ? tab : 'profile';
 
         $('.account-detail-tab').removeClass('active');
         $('.account-detail-tab[data-account-detail-tab="' + tab + '"]').addClass('active');
