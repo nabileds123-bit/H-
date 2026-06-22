@@ -1364,9 +1364,7 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-stat-head,
-    .guild-stat-row,
-    .guild-log-head,
-    .guild-log-row {
+    .guild-stat-row {
         display: grid;
         align-items: center;
         min-height: 34px;
@@ -1374,8 +1372,7 @@ $(document).on('keyup', function(input) {
         font-size: 13px;
     }
 
-    .guild-stat-head,
-    .guild-log-head {
+    .guild-stat-head {
         background: #f7f7f7;
         color: #555;
         font-weight: bold;
@@ -1385,6 +1382,8 @@ $(document).on('keyup', function(input) {
     .guild-log-row {
         background: #fff;
         color: #333;
+        border-bottom: 1px solid #eee;
+        font-size: 13px;
     }
 
     .guild-stat-head,
@@ -1392,15 +1391,8 @@ $(document).on('keyup', function(input) {
         grid-template-columns: 95px 1fr 78px;
     }
 
-    .guild-log-head,
-    .guild-log-row {
-        grid-template-columns: 120px 78px 1fr 1fr;
-    }
-
     .guild-stat-head span,
-    .guild-stat-row span,
-    .guild-log-head span,
-    .guild-log-row span {
+    .guild-stat-row span {
         min-width: 0;
         padding: 0 8px;
         overflow: hidden;
@@ -1412,6 +1404,15 @@ $(document).on('keyup', function(input) {
         color: #1d5fd3;
         font-weight: 700;
         text-align: right;
+    }
+
+    .guild-log-row {
+        display: block;
+        min-height: 0;
+        padding: 8px 10px;
+        line-height: 1.35;
+        white-space: normal;
+        word-break: break-word;
     }
 
     .guild-online-dot {
@@ -2486,7 +2487,8 @@ $(document).on('keyup', function(input) {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 350px;
+        width: 280px;
+        max-width: calc(100vw - 28px);
         min-height: 0;
         background: #fff;
         border-radius: 4px;
@@ -5203,19 +5205,17 @@ $(function () {
             return;
         }
 
-        $('#guildDetailLogs').html([
-            '<div class="guild-log-head"><span>Date</span><span>Action</span><span>Player</span><span>By</span></div>',
-            logs.map(function(item) {
-                return [
-                    '<div class="guild-log-row">',
-                    '<span>' + escapeHtml(formatInviteTime(item.at) || '-') + '</span>',
-                    '<span>' + escapeHtml(item.action || '-') + '</span>',
-                    '<span>' + escapeHtml(item.player || '-') + '</span>',
-                    '<span>' + escapeHtml(item.actor || '-') + '</span>',
-                    '</div>'
-                ].join('');
-            }).join('')
-        ].join(''));
+        $('#guildDetailLogs').html(logs.map(function(item) {
+            var text = [
+                formatInviteTime(item.at) || '-',
+                item.player || '-',
+                item.action || '-',
+                'by',
+                item.actor || '-'
+            ].join(' ');
+
+            return '<div class="guild-log-row">' + escapeHtml(text) + '</div>';
+        }).join(''));
     }
 
     function updateGuildDetailActions() {

@@ -206,6 +206,7 @@ function adminHandle(req, res, requireAdmin, getAdminSession) {
             ok: true,
             items: statsStore.guildStats(query.period).map(function(guild) {
                 guild.top1Time = formatMs(guild.top1Ms);
+                guild.guildPoint = Math.floor(Math.max(0, parseInt(guild.top1Ms, 10) || 0) / 60000);
                 return guild;
             })
         });

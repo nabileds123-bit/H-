@@ -9,6 +9,7 @@ var storePath = path.join(dataDir, 'stats.json');
 
 var defaultStore = {
     top1TimeRecords: [],
+    guildTop1TimeRecords: [],
     battleMatchRecords: [],
     adminAuditLogs: []
 };
@@ -176,6 +177,10 @@ function getUserGuildId(user) {
     return String(user && (user.guildId || user.guild_id || user.guildTag) || '').trim();
 }
 
+function normalizeGuildId(value) {
+    return String(value || '').trim().toUpperCase();
+}
+
 function normalizeCountryCode(value) {
     var code = String(value || '').trim().toUpperCase();
     if (code === 'XX' || code === 'T1') return '';
@@ -254,6 +259,61 @@ function upsertTop1Time(data) {
             updated_at: Date.now()
         };
         store.top1TimeRecords.push(found);
+    }
+
+    writeStore(store);
+    return found;
+}
+
+function upsertGuildTop1Time(data) {
+    var mode = normalizeTop1Mode(data.mode);
+    var user = getUserInfo(data.userId || data.username);
+    var amount = Math.floor(parseInt(data.top1Ms, 10) || parseInt(data.addMs, 10) || 0);
+
+    if (!mode || !user || amount <= 0) {
+        return null;
+    }
+
+    var guildId = normalizeGuildId(data.guildId || data.guild_id || user.guildId || user.guildTag);
+    if (!guildId) {
+        return null;
+    }
+
+    var store = readStore();
+    var date = data.recordDate || getJakartaDate();
+    var serverId = String(data.serverId || 'default');
+    var found = null;
+
+    for (var i = 0; i < store.guildTop1TimeRecords.length; i++) {
+        var item = store.guildTop1TimeRecords[i];
+        if (normalizeGuildId(item.guild_id) === guildId && item.user_id === user.userId && item.mode === mode && item.record_date === date) {
+            found = item;
+            break;
+        }
+    }
+
+    if (found) {
+        found.username = user.username;
+        found.guild_id = guildId;
+        found.country_code = normalizeCountryCode(data.country_code || data.countryCode || user.country_code || found.country_code);
+        found.server_id = serverId;
+        found.top1_ms = Math.max(0, (parseInt(found.top1_ms, 10) || 0) + amount);
+        found.updated_at = Date.now();
+    } else {
+        found = {
+            id: createId(),
+            user_id: user.userId,
+            username: user.username,
+            guild_id: guildId,
+            country_code: normalizeCountryCode(data.country_code || data.countryCode || user.country_code),
+            mode: mode,
+            server_id: serverId,
+            record_date: date,
+            top1_ms: amount,
+            created_at: Date.now(),
+            updated_at: Date.now()
+        };
+        store.guildTop1TimeRecords.push(found);
     }
 
     writeStore(store);
@@ -413,11 +473,11 @@ function top1HighScore(mode, period, limit) {
 }
 
 function guildTop1Records(guildId, period, limit) {
-    var normalizedGuild = String(guildId || '').trim().toUpperCase();
+    var normalizedGuild = normalizeGuildId(guildId);
     var range = getPeriodRange(period);
 
-    return readStore().top1TimeRecords.filter(function(record) {
-        return String(record.guild_id || '').trim().toUpperCase() === normalizedGuild &&
+    return readStore().guildTop1TimeRecords.filter(function(record) {
+        return normalizeGuildId(record.guild_id) === normalizedGuild &&
             inRange(record.record_date, range);
     }).sort(function(a, b) {
         if (String(b.record_date || '') !== String(a.record_date || '')) {
@@ -483,6 +543,7 @@ function guildStats(period) {
     period = normalizeGuildPeriod(period);
     var range = getPeriodRange(period);
     var guilds = {};
+    var guildAliases = {};
     var guildList = adminStore.list('guilds');
 
     guildList.forEach(function(guild) {
@@ -507,12 +568,16 @@ function guildStats(period) {
                 '2vs2': { win: 0, lose: 0, totalMatch: 0, winRate: 0 }
             }
         };
+        guildAliases[normalizeGuildId(id)] = id;
+        guildAliases[normalizeGuildId(guild.tag)] = id;
+        guildAliases[normalizeGuildId(guild.name)] = id;
     });
 
-    readStore().top1TimeRecords.forEach(function(record) {
+    readStore().guildTop1TimeRecords.forEach(function(record) {
         if (!record.guild_id || !inRange(record.record_date, range)) return;
-        if (!guilds[record.guild_id]) return;
-        guilds[record.guild_id].top1Ms += parseInt(record.top1_ms, 10) || 0;
+        var guildKey = guildAliases[normalizeGuildId(record.guild_id)];
+        if (!guildKey || !guilds[guildKey]) return;
+        guilds[guildKey].top1Ms += parseInt(record.top1_ms, 10) || 0;
     });
 
     readStore().battleMatchRecords.forEach(function(record) {
@@ -572,6 +637,7 @@ module.exports = {
     normalizeTop1Mode: normalizeTop1Mode,
     readStore: readStore,
     top1HighScore: top1HighScore,
+    upsertGuildTop1Time: upsertGuildTop1Time,
     upsertTop1Time: upsertTop1Time,
     writeStore: writeStore
 };

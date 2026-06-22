@@ -1723,6 +1723,7 @@ GameServer.prototype.flushTop1Stats = function(player, world, force) {
 
     var userId = this.getPlayerStatsUserId(player);
     var mode = player.top1CurrentMode || this.getTop1StatsMode(world || player.world);
+    var addMs = player.top1UnsavedMs;
     if (!userId || !mode) return;
 
     statsStore.upsertTop1Time({
@@ -1730,7 +1731,16 @@ GameServer.prototype.flushTop1Stats = function(player, world, force) {
         mode: mode,
         serverId: this.getStatsServerId(world || player.world),
         country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode),
-        addMs: player.top1UnsavedMs
+        addMs: addMs
+    });
+
+    statsStore.upsertGuildTop1Time({
+        userId: userId,
+        guildId: this.getPlayerGuildId(player),
+        mode: mode,
+        serverId: this.getStatsServerId(world || player.world),
+        country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode),
+        addMs: addMs
     });
 
     player.top1UnsavedMs = 0;
