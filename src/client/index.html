@@ -7694,6 +7694,17 @@ $(function () {
         });
     });
 
+    $('#profileCellColor').on('click', function () {
+        $('#cellColorPalette').toggleClass('is-open');
+    });
+
+    $('#cellColorPalette .cell-color-swatch').on('click', function () {
+        var color = $(this).data('color');
+        $('#cellColorPalette .cell-color-swatch').removeClass('is-selected');
+        $(this).addClass('is-selected');
+        $('#profileCellColor').css('background-color', color);
+    });
+
     var savedCellColor = localStorage.getItem('cellColor');
     if (savedCellColor) {
         $('#profileCellColor').css('background-color', savedCellColor);
