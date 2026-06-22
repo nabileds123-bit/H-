@@ -646,6 +646,22 @@ $(document).on('keyup', function(input) {
         color: #337ab7;
     }
 
+    .account-top1-table .account-detail-row {
+        grid-template-columns: 1fr 90px;
+    }
+
+    .account-top1-table .account-detail-label {
+        padding-left: 0;
+        text-align: center;
+    }
+
+    .account-top1-table .account-detail-value {
+        padding-right: 10px;
+        color: #1d5fd3;
+        font-weight: 700;
+        text-align: right;
+    }
+
     .account-detail-premium {
         color: #188a18;
     }
@@ -874,6 +890,16 @@ $(document).on('keyup', function(input) {
         white-space: nowrap;
     }
 
+    .highscore-win {
+        color: #168a34;
+        font-weight: 700;
+    }
+
+    .highscore-lose {
+        color: #c92a2a;
+        font-weight: 700;
+    }
+
     .highscore-flag {
         text-align: center;
         line-height: 1;
@@ -1048,7 +1074,7 @@ $(document).on('keyup', function(input) {
 
     .guild-top1-time {
         text-align: right;
-        color: #777;
+        color: #1d5fd3;
         font-size: 13px;
         padding-right: 2px;
         white-space: nowrap;
@@ -2314,7 +2340,7 @@ $(document).on('keyup', function(input) {
         top: 50%;
         left: calc(50% + 210px);
         width: 380px;
-        height: 550px;
+        height: 400px;
         transform: translateY(-50%);
         z-index: 255;
     }
@@ -2830,8 +2856,8 @@ $(document).on('keyup', function(input) {
             <div id="locationUnknown">
                <select id="region" class="form-control" required>
                     <option disabled value=""> -- Select a Region --</option>
-                    <option selected value="US-Atlanta">East &amp; North America</option>
-                    <option value="OC-Sydney">Oceania</option>
+                    <option value="US-Atlanta">East &amp; North America</option>
+                    <option selected value="OC-Sydney">Oceania</option>
                 </select>
             </div>
             <div class="form-group">
@@ -3388,7 +3414,7 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Region</div>
-                    <div class="battle-settings-value battle-region">East &amp; North America</div>
+                    <div class="battle-settings-value battle-region">Oceania</div>
                 </div>
                 <div class="battle-settings-row">
                     <div class="battle-settings-label">Queue</div>
@@ -3702,12 +3728,12 @@ $(function () {
             return 'US-Atlanta';
         }
 
-        return 'US-Atlanta';
+        return 'OC-Sydney';
     }
 
     function getRegionLabel(region) {
         var option = $('#region option[value="' + region + '"]');
-        return option.length ? option.text().replace(/\s*\([^)]*\)\s*$/, '') : 'East & North America';
+        return option.length ? option.text().replace(/\s*\([^)]*\)\s*$/, '') : 'Oceania';
     }
 
     function updateBattleRegionLabel() {
@@ -3724,7 +3750,7 @@ $(function () {
         }
 
         if (!$('#region').val()) {
-            $('#region').val('US-Atlanta');
+            $('#region').val('OC-Sydney');
         }
 
         if (typeof window.setRegion === 'function') {
@@ -4349,27 +4375,30 @@ $(function () {
         for (var i = 0; i < players.length; i++) {
             if (players[i] && players[i].clientId === battleLobbyClientId) return players[i];
         }
-        return players[0] || { name: getBattleLobbyPlayerName(), winRate: 0 };
+        return players[0] || { name: getBattleLobbyPlayerName(), winRate: 0, win: 0, lose: 0 };
     }
 
     function renderBattleLobbyPlayers(players, count, required) {
         var rows = [];
         var selfPlayer = getBattleLobbySelfPlayer(players);
         var winRate = parseInt(selfPlayer.winRate, 10);
+        var totalMatches = (parseInt(selfPlayer.win, 10) || 0) + (parseInt(selfPlayer.lose, 10) || 0);
+        var winRateText = '';
         var winRateClass;
         players = players || [];
         count = count || players.length || 1;
         battleLobbyPlayerCount = count;
 
         if (isNaN(winRate)) winRate = 0;
-        winRateClass = getBattleWinRateClass(winRate);
+        winRateClass = totalMatches > 0 ? getBattleWinRateClass(winRate) : '';
+        winRateText = totalMatches > 0 ? escapeHtml(winRate) + '%' : '';
         players = [{ name: selfPlayer.name || getBattleLobbyPlayerName(), winRate: winRate }];
 
         for (var i = 0; i < players.length; i++) {
             rows.push(
                 '<tr class="battle-player-row">' +
                 '<td><div class="tournament-player-info"><span class="battle-avatar">' + escapeHtml(String(players[i].name || 'P').charAt(0).toUpperCase() || 'P') + '</span><span class="tournament-player-name">' + escapeHtml(players[i].name || 'Player') + '</span></div></td>' +
-                '<td class="battle-percent ' + winRateClass + '">' + escapeHtml(winRate) + '%</td>' +
+                '<td class="battle-percent ' + winRateClass + '">' + winRateText + '</td>' +
                 '</tr>'
             );
         }
@@ -4818,6 +4847,21 @@ $(function () {
         return '<span class="guild-icon guild-icon-fallback"></span>';
     }
 
+    function formatGuildTop1Time(value) {
+        var text = String(value == null ? '' : value).trim();
+        var match = /^(\d+):(\d{1,2})(?::(\d{1,2}))?$/.exec(text);
+        var minutes;
+
+        if (match) {
+            minutes = (parseInt(match[1], 10) * 60) + parseInt(match[2], 10);
+        } else {
+            minutes = parseInt(text, 10);
+            if (isNaN(minutes)) minutes = 0;
+        }
+
+        return minutes >= 60 ? Math.floor(minutes / 60) + 'h' : minutes + 'm';
+    }
+
     function renderGuildList() {
         var query = String($('#guildSearch').val() || '').trim().toLowerCase();
         var items = guildList.filter(function(guild) {
@@ -4842,7 +4886,7 @@ $(function () {
                 getGuildIconHtml(guild),
                 '<a class="guild-name" href="' + escapeHtml(guildHref) + '">' + escapeHtml(guildName) + '</a>',
                 '<div class="guild-members">' + escapeHtml(guild.members || 1) + '</div>',
-                '<div class="guild-top1-time">? ' + escapeHtml(guild.top1 || '00:00') + '</div>',
+                '<div class="guild-top1-time">' + escapeHtml(formatGuildTop1Time(guild.top1 || '00:00')) + '</div>',
                 '</div>'
             ].join('');
         }).join(''));
@@ -5106,14 +5150,14 @@ $(function () {
             var name = item.username || item.name || item.nick || '-';
             var rowClass = rank === 1 ? 'highscore-row is-top' : 'highscore-row';
             var value = isBattle
-                ? ((item.win || 0) + '/' + (item.lose || 0))
-                : formatHighScoreTop1(item);
+                ? '<span class="highscore-win">' + escapeHtml(item.win || 0) + '</span>/<span class="highscore-lose">' + escapeHtml(item.lose || 0) + '</span>'
+                : escapeHtml(formatHighScoreTop1(item));
 
             rows.push(
                 '<div class="' + rowClass + '">' +
                 '<div class="highscore-rank">' + highScoreRankHtml(rank) + '</div>' +
                 '<div class="highscore-nick">' + escapeHtml(name) + '</div>' +
-                '<div class="highscore-time">' + escapeHtml(value) + '</div>' +
+                '<div class="highscore-time">' + value + '</div>' +
                 '<div class="highscore-flag">' + highScoreFlagHtml(item) + '</div>' +
                 '</div>'
             );
@@ -5228,8 +5272,9 @@ $(function () {
         loadAccountDetailStats(user.username || '');
     }
 
-    function renderStatRows(target, rows) {
-        $(target).html('<div class="account-detail-table">' + rows.map(function(row) {
+    function renderStatRows(target, rows, tableClass) {
+        var className = 'account-detail-table' + (tableClass ? ' ' + tableClass : '');
+        $(target).html('<div class="' + className + '">' + rows.map(function(row) {
             return '<div class="account-detail-row"><span class="account-detail-label">' + escapeHtml(row.label) + ':</span><span class="account-detail-value">' + escapeHtml(row.value) + '</span></div>';
         }).join('') + '</div>');
     }
@@ -5362,11 +5407,16 @@ $(function () {
         return '<span class="battle-tier" title="' + tooltip + '"><img src="/img/' + tierImage + '" alt="Tier ' + tier + '" title="' + tooltip + '"></span>';
     }
 
+    function getBattleSummaryCount(value) {
+        var count = parseInt(value, 10);
+        return isNaN(count) ? 0 : count;
+    }
+
     function renderBattleAccountDetail(target, response) {
         var stats = response && response.stats || {};
         var records = response && response.records || [];
-        var win = stats.win || 0;
-        var lose = stats.lose || 0;
+        var win = getBattleSummaryCount(stats.win);
+        var lose = getBattleSummaryCount(stats.lose);
         var bestWinStreak = 0;
         var runningWinStreak = 0;
         var currentWinStreak = 0;
@@ -5429,7 +5479,7 @@ $(function () {
             var rows = (response.items || []).map(function(item) {
                 return { label: item.label, value: item.top1Time || '00:00' };
             });
-            renderStatRows('#accountDetailTop1', rows.length ? rows : [{ label: 'Top 1 Time', value: '00:00' }]);
+            renderStatRows('#accountDetailTop1', rows.length ? rows : [{ label: 'Top 1 Time', value: '00:00' }], 'account-top1-table');
         });
 
         ['1vs1', '2vs2'].forEach(function(mode) {
