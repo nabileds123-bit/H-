@@ -850,9 +850,10 @@ GameServer.prototype.getAuthUserFromToken = function(token) {
 
 GameServer.prototype.findOnlineClientByUserId = function(userId) {
     userId = String(userId || '');
+    var clients = this.allClients || this.clients || [];
 
-    for (var i = 0; i < this.clients.length; i++) {
-        var tracker = this.clients[i] && this.clients[i].playerTracker;
+    for (var i = 0; i < clients.length; i++) {
+        var tracker = clients[i] && clients[i].playerTracker;
         var authUser = tracker && tracker.authUser;
         if (authUser && String(authUser.id || '') === userId && tracker.getStatus && tracker.getStatus()) {
             return tracker;

@@ -1079,7 +1079,7 @@ function hasId(list, id) {
 function getLiveFriendPresence(gameServer, user) {
     var userId = String(user && user.id || '');
     var presence = { online: false, inBattle: false };
-    var clients = gameServer && gameServer.clients ? gameServer.clients : [];
+    var clients = gameServer && gameServer.allClients ? gameServer.allClients : (gameServer && gameServer.clients ? gameServer.clients : []);
 
     if (!userId) return presence;
 
