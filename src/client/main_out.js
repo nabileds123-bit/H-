@@ -672,11 +672,6 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         return name;
     }
 
-    function hasGuildTagName(name) {
-        name = String(name || "");
-        return name.charAt(0) === "[" && name.indexOf("]") > 0;
-    }
-
     function isNoDisplayName(name) {
         name = String(name || "").toLowerCase();
         for (var i = 0; i < knownNameDict_noDisp.length; i++) {
@@ -689,10 +684,6 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     }
 
     function shouldHideCellName(name, skinName) {
-        if (hasGuildTagName(name)) {
-            return false;
-        }
-
         return isNoDisplayName(skinName) || isNoDisplayName(getPlainPlayerName(name));
     }
 
