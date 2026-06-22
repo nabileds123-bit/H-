@@ -246,6 +246,7 @@ function normalizeUserChanges(body) {
         'level',
         'battleTier',
         'cellColor',
+        'hideNickname',
         'guildTag',
         'skin',
         'skinUrl',

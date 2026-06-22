@@ -22,7 +22,7 @@ function getNodeName(node) {
     var skinName = node.getSkinName ? node.getSkinName() : '';
     var battleTier = normalizeBattleTier(node.getBattleTier ? node.getBattleTier() : '');
 
-    if (name && (skinName || battleTier)) {
+    if (skinName || battleTier) {
         return SKIN_META_START + skinName + SKIN_META_SEPARATOR + battleTier + SKIN_META_END + name;
     }
 

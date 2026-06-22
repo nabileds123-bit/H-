@@ -276,6 +276,7 @@ function createUser(data) {
         rankedTier: 'UNRANKED',
         rankedModeStats: defaultRankedModeStats(),
         cellColor: '#000000',
+        hideNickname: false,
         skin: '',
         skinUrl: '',
         skinPath: '',

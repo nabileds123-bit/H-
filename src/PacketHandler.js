@@ -453,6 +453,7 @@ function applyAuthUserToClient(client, user) {
         username: user.username,
         email: user.email,
         cellColor: user.cellColor || '#000000',
+        hideNickname: user.hideNickname === true || String(user.hideNickname || '').toLowerCase() === 'true',
         accountType: user.accountType || 'Free',
         premiumUntil: user.premiumUntil || '',
         premiumChatColor: user.premiumChatColor || '',
@@ -746,7 +747,7 @@ PacketHandler.prototype.setNickname = function(newNick) {
         nick = user.username;
         applyAuthUserToClient(client, user);
 
-        if (!usesTeams && user.cellColor && user.cellColor !== '#000000') {
+        if (!usesTeams && user.cellColor) {
             var color = hexToColor(user.cellColor);
             if (color) {
                 client.setColor(color);

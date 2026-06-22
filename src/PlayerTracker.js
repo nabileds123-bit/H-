@@ -85,6 +85,10 @@ PlayerTracker.prototype.setGuildTag = function(tag) {
 }
 
 PlayerTracker.prototype.getDisplayName = function() {
+    if (this.authUser && (this.authUser.hideNickname === true || String(this.authUser.hideNickname || '').toLowerCase() === 'true')) {
+        return "";
+    }
+
     if (!this.guildTag) {
         return this.name;
     }

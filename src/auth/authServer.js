@@ -20,16 +20,12 @@ var MAX_SKIN_BODY_BYTES = 1024 * 1024;
 var GUILD_WITHDRAW_DISCORD_URL = 'https://discord.gg/gUsYm8AWE2';
 var CELL_COLORS = [
     '#000000',
-    '#6FCA36',
-    '#4379EF',
-    '#98B6FD',
     '#36D2D6',
-    '#6DE5B7',
     '#41B136',
-    '#FBD348',
-    '#FFAE6A',
+    '#800080',
     '#D61017',
-    '#D9A5FC'
+    '#800000',
+    '#FFFFFF'
 ];
 
 function sendJson(res, status, body) {
@@ -93,6 +89,10 @@ function normalizeCellColor(value) {
     return CELL_COLORS.indexOf(color) !== -1 ? color : null;
 }
 
+function isEnabled(value) {
+    return value === true || String(value || '').toLowerCase() === 'true';
+}
+
 function normalizeCountryCode(value) {
     var code = String(value || '').trim().toUpperCase();
     if (code === 'XX' || code === 'T1') return '';
@@ -143,6 +143,7 @@ function publicAuthUser(user, lastLoginAt) {
         email: user.email,
         lastLoginAt: lastLoginAt || user.lastLoginAt || Date.now(),
         cellColor: user.cellColor || '#000000',
+        hideNickname: isEnabled(user.hideNickname),
         accountType: user.accountType || 'Free',
         premiumChatColor: user.premiumChatColor || '',
         premiumChatBadge: user.premiumChatBadge || '',
@@ -169,6 +170,7 @@ function publicPlayerProfile(user) {
         username: user.username || '',
         lastLoginAt: user.lastLoginAt || user.updatedAt || user.createdAt || Date.now(),
         cellColor: user.cellColor || '#000000',
+        hideNickname: isEnabled(user.hideNickname),
         accountType: user.accountType || 'Free',
         premiumChatColor: user.premiumChatColor || '',
         premiumChatBadge: user.premiumChatBadge || '',
@@ -1726,7 +1728,7 @@ function handle(req, res, gameServer) {
     }
 
     if (req.method === 'POST' && pathname === '/api/auth/cell-color') {
-        handleCellColor(req, res);
+        sendJson(res, 403, { ok: false, message: 'Cell color can only be changed by admin.' });
         return true;
     }
 
