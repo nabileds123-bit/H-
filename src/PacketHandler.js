@@ -747,7 +747,7 @@ PacketHandler.prototype.setNickname = function(newNick) {
         nick = user.username;
         applyAuthUserToClient(client, user);
 
-        if (!usesTeams && user.cellColor) {
+        if (!usesTeams && user.cellColor && user.cellColor !== '#000000') {
             var color = hexToColor(user.cellColor);
             if (color) {
                 client.setColor(color);

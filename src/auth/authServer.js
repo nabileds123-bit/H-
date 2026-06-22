@@ -21,9 +21,7 @@ var GUILD_WITHDRAW_DISCORD_URL = 'https://discord.gg/gUsYm8AWE2';
 var CELL_COLORS = [
     '#000000',
     '#36D2D6',
-    '#41B136',
     '#800080',
-    '#D61017',
     '#800000',
     '#FFFFFF'
 ];
