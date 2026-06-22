@@ -677,16 +677,13 @@ this.merg = true;
                 break;
             }
 
-            if (!user || !isPremiumUser(user)) {
-                if (user) {
-                    this.socket.sendPacket(new Packet.Message(PREMIUM_CHAT_WARNING));
-                }
-                break;
-            }
-
             var isGuildChat = /^\/g\s+/i.test(message);
 
             if (isGuildChat) {
+                if (!user) {
+                    break;
+                }
+
                 message = message.replace(/^\/g\s+/i, "").trim();
 
                 if (!message) {
@@ -710,6 +707,13 @@ this.merg = true;
                 this.gameServer.withWorld(this.socket.world, function() {
                     this.sendGuildChat(player, message);
                 });
+                break;
+            }
+
+            if (!user || !isPremiumUser(user)) {
+                if (user) {
+                    this.socket.sendPacket(new Packet.Message(PREMIUM_CHAT_WARNING));
+                }
                 break;
             }
 

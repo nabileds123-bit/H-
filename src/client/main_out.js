@@ -1649,8 +1649,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             }
 
             var isAdminCommand = isCommandMessage(str);
+            var isGuildChat = /^\/g\s+/i.test(str);
             var canSendPremiumChat = typeof wHandle.canSendPremiumChat === 'function' ? wHandle.canSendPremiumChat() : false;
-            if (!isAdminCommand && !canSendPremiumChat) {
+            if (!isAdminCommand && !isGuildChat && !canSendPremiumChat) {
                 if (typeof wHandle.showPremiumChatWarning === 'function') {
                     wHandle.showPremiumChatWarning();
                 }
