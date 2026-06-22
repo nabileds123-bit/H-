@@ -6,18 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Eat cells smaller than you and don't get eaten by the bigger ones, as an MMO">
     <meta name="keywords"
-          content="agario, agar, io, cell, cells, virus, bacteria, blob, game, games, web game, html5, fun, flash">
+     content="bubbleam, bubble, am, cell, cells, virus, bacteria, blob, game, games, web game, html5, fun, flash">
     <meta name="robots" content="index, follow">
     <meta name="viewport"
-          content="minimal-ui, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    content="minimal-ui, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta property="fb:app_id" content="677505792353827"/>
-    <meta property="og:title" content="Agar.io"/>
+    <meta property="og:title" content="Bubble.am"/>
     <meta property="og:description"
           content="Eat cells smaller than you and don't get eaten by the bigger ones, as an MMO"/>
-    <meta property="og:url" content="http://agar.io"/>
-    <meta property="og:image" content="http://agar.io/img/1200x630.png"/>
+    <meta property="og:url" content="https://bubble.am"/>
+    <meta property="og:image" content="/img/bg.png"/>
     <meta property="og:image:width" content="1200"/>
     <meta property="og:image:height" content="630"/>
     <meta property="og:type" content="website"/>
@@ -4441,7 +4441,7 @@ $(function () {
     }
 
     function getBattleLobbyRequiredPlayers() {
-        return battleLobbyInviteMode === '2vs2' ? 4 : 2;
+        return battleLobbyInviteMode === '2vs2' ? 2 : 1;
     }
 
     function getBattleInviteModeFromValue(modeValue) {
@@ -4466,7 +4466,7 @@ $(function () {
     }
 
     function isBattleLobbyStartBlocked() {
-        return battleLobbyInviteMode === '2vs2' && !battleLobbyQueued && battleLobbyPlayerCount < 2;
+        return battleLobbyInviteMode === '2vs2' && !battleLobbyQueued && battleLobbyPlayerCount < getBattleLobbyRequiredPlayers();
     }
 
     function updateBattleStartAvailability() {
@@ -4502,14 +4502,20 @@ $(function () {
         var winRateClass;
         players = players || [];
         count = count || players.length || 1;
+        required = required || getBattleLobbyRequiredPlayers();
         battleLobbyPlayerCount = count;
 
         if (isNaN(winRate)) winRate = 0;
-        winRateClass = totalMatches > 0 ? getBattleWinRateClass(winRate) : '';
-        winRateText = totalMatches > 0 ? escapeHtml(winRate) + '%' : '';
-        players = [{ name: selfPlayer.name || getBattleLobbyPlayerName(), winRate: winRate }];
+        if (!players.length) {
+            players = [{ name: selfPlayer.name || getBattleLobbyPlayerName(), winRate: winRate }];
+        }
 
         for (var i = 0; i < players.length; i++) {
+            var playerWinRate = parseInt(players[i].winRate, 10);
+            var playerTotalMatches = (parseInt(players[i].win, 10) || 0) + (parseInt(players[i].lose, 10) || 0);
+            if (isNaN(playerWinRate)) playerWinRate = 0;
+            winRateClass = playerTotalMatches > 0 ? getBattleWinRateClass(playerWinRate) : '';
+            winRateText = playerTotalMatches > 0 ? escapeHtml(playerWinRate) + '%' : '';
             rows.push(
                 '<tr class="battle-player-row">' +
                 '<td><div class="tournament-player-info"><span class="battle-avatar">' + escapeHtml(String(players[i].name || 'P').charAt(0).toUpperCase() || 'P') + '</span><span class="tournament-player-name">' + escapeHtml(players[i].name || 'Player') + '</span></div></td>' +
@@ -4519,7 +4525,7 @@ $(function () {
         }
 
         $('.tournament-players').html(rows.join(''));
-        $('.battle-online').text('1/1');
+        $('.battle-online').text(count + '/' + required);
         updateBattleStartAvailability();
     }
 
@@ -4537,7 +4543,7 @@ $(function () {
     }
 
     function renderBattleLobbyStatus(response) {
-        var required = response && response.required || getBattleLobbyRequiredPlayers();
+        var required = getBattleLobbyRequiredPlayers();
         var count = response && typeof response.count === 'number' ? response.count : 1;
         var status = response && response.status || 'Waiting for players';
 
@@ -4696,7 +4702,7 @@ $(function () {
         updateBattleRegionLabel();
         updateBattleRewardLabels();
         $('.battle-srvstatus').text('Waiting for start');
-        renderBattleLobbyPlayers([{ name: getBattleLobbyPlayerName() }], 1, 1);
+        renderBattleLobbyPlayers([{ name: getBattleLobbyPlayerName() }], 1, getBattleLobbyRequiredPlayers());
         resetBattleLobbyEstimate();
         loadFriendInviteList();
         $('#tournament-modal').addClass('is-open');
@@ -6320,10 +6326,18 @@ $(function () {
     function inviteFriend(friendId) {
         if (!friendId) return;
 
+        var selectedMode = getSelectedModeValue();
+        if (String(selectedMode || '').indexOf(':battle') === 0) {
+            battleLobbyModeValue = selectedMode;
+            battleLobbyInviteMode = getBattleInviteModeFromValue(selectedMode);
+            sendBattleInvite(friendId);
+            return;
+        }
+
         postAuth('/api/play/invite', {
             token: getAuthToken(),
             targetUserId: friendId,
-            mode: getSelectedModeValue(),
+            mode: selectedMode,
             modeName: getFriendInviteModeText(),
             link: getFriendInviteLink()
         }, function(err, response) {
@@ -6449,6 +6463,12 @@ $(function () {
             if (!accepted || !response || !response.invite) return;
 
             var mode = response.invite.mode || '';
+            if (String(mode || '').indexOf(':battle') === 0) {
+                battleLobbyModeValue = mode;
+                battleLobbyInviteMode = getBattleInviteModeFromValue(mode);
+                openBattleLobby(mode, battleLobbyInviteMode);
+                return;
+            }
             if (mode && typeof window.setGameMode === 'function') {
                 window.setGameMode(resolveGameModeRoom(mode), true);
             }
