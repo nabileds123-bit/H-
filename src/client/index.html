@@ -887,6 +887,7 @@ $(document).on('keyup', function(input) {
     }
 
     .highscore-time {
+        color: #1f6fd6;
         text-align: center;
         white-space: nowrap;
     }
@@ -5397,7 +5398,15 @@ $(function () {
     }
 
     function formatHighScoreTop1(item) {
-        return parseHighScoreDurationMinutes(item && (item.top1Time || item.time || item.duration), item) + 'm.';
+        var minutes = parseHighScoreDurationMinutes(item && (item.top1Time || item.time || item.duration), item);
+        var hours = Math.floor(minutes / 60);
+        var restMinutes = minutes % 60;
+
+        if (hours > 0) {
+            return hours + 'h' + (restMinutes > 0 ? ' ' + restMinutes + 'm' : '');
+        }
+
+        return minutes + 'm.';
     }
 
     function highScoreRankHtml(rank) {
