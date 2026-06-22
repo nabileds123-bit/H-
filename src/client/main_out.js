@@ -696,6 +696,18 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         return isNoDisplayName(skinName) || isNoDisplayName(getPlainPlayerName(name));
     }
 
+    function getCellRenderedName(name, isOwnCell) {
+        name = String(name == null ? "" : name);
+        if (wHandle.cellPrefixNotRendered !== true || !isOwnCell) {
+            return name;
+        }
+
+        var match = name.match(/^\s*(?:\[[^\]]+\]|\([^)]+\)|[A-Za-z0-9_]{1,16}\s*(?:\||-))\s*(.+)$/);
+        return match && match[1] ? match[1].trim() : name;
+    }
+
+    wHandle.getCellRenderedName = getCellRenderedName;
+
     function handleWsMessage(msg) {
         function getString() {
             var text = '',
@@ -3015,8 +3027,9 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 if (0 != this.id) {
                     var b = ~~this.y;
                     if ((showName || c) && this.name && this.nameCache && !shouldHideCellName(this.name, skinName)) {
+                        var renderedName = getCellRenderedName(this.name, c);
                         ncache = this.nameCache;
-                        ncache.setValue(this.name);
+                        ncache.setValue(renderedName);
                         ncache.setSize(this.getNameSize());
                         var ratio = Math.ceil(10 * viewZoom) / 10;
                         ncache.setScale(ratio);

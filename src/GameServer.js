@@ -1724,6 +1724,7 @@ GameServer.prototype.flushTop1Stats = function(player, world, force) {
     var userId = this.getPlayerStatsUserId(player);
     var mode = player.top1CurrentMode || this.getTop1StatsMode(world || player.world);
     var addMs = player.top1UnsavedMs;
+    var recordDate = player.top1CurrentDate || statsStore.getJakartaDate();
     if (!userId || !mode) return;
 
     statsStore.upsertTop1Time({
@@ -1731,6 +1732,7 @@ GameServer.prototype.flushTop1Stats = function(player, world, force) {
         mode: mode,
         serverId: this.getStatsServerId(world || player.world),
         country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode),
+        recordDate: recordDate,
         addMs: addMs
     });
 
@@ -1740,6 +1742,7 @@ GameServer.prototype.flushTop1Stats = function(player, world, force) {
         mode: mode,
         serverId: this.getStatsServerId(world || player.world),
         country_code: player.authUser && (player.authUser.country_code || player.authUser.countryCode),
+        recordDate: recordDate,
         addMs: addMs
     });
 
@@ -2053,13 +2056,26 @@ GameServer.prototype.updateMatchLeaderboardStats = function(world) {
         }
 
         if (top1Mode && this.getPlayerStatsUserId(player) && topPlayer === player && !player.spectate) {
+            var currentTop1Date = statsStore.getJakartaDate();
             if (!player.top1Counting || player.top1CurrentMode !== top1Mode) {
                 player.top1Counting = true;
                 player.top1StartMs = now;
                 player.top1CurrentMode = top1Mode;
-                player.top1CurrentDate = statsStore.getJakartaDate();
+                player.top1CurrentDate = currentTop1Date;
             } else {
                 var elapsedTop1 = Math.max(0, now - (player.top1StartMs || now));
+                if (player.top1CurrentDate && player.top1CurrentDate !== currentTop1Date) {
+                    player.top1TotalMs = (player.top1TotalMs || 0) + elapsedTop1;
+                    player.top1UnsavedMs = (player.top1UnsavedMs || 0) + elapsedTop1;
+                    this.flushTop1Stats(player, world, true);
+                    player.top1TotalMs = 0;
+                    player.top1LastPopupMinute = 0;
+                    player.top1StartMs = now;
+                    player.top1CurrentDate = currentTop1Date;
+                    player.top1CurrentMode = top1Mode;
+                    player.top1Counting = true;
+                    elapsedTop1 = 0;
+                }
                 var currentTotal = (player.top1TotalMs || 0) + elapsedTop1;
                 var minute = Math.floor(currentTotal / 60000);
                 if (minute > 0 && minute > (player.top1LastPopupMinute || 0)) {

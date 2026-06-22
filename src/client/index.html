@@ -823,6 +823,7 @@ $(document).on('keyup', function(input) {
 
     .account-battle-name,
     .account-battle-opponent {
+        color: #111;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -838,7 +839,7 @@ $(document).on('keyup', function(input) {
     }
 
     .account-battle-row.is-lose .account-battle-score {
-        color: #c92a2a;
+        color: #111;
     }
 
     #accountDetailSearchStatus {
@@ -3591,6 +3592,8 @@ $(document).on('keyup', function(input) {
 <div style="font-family:'Ubuntu'">&nbsp;</div>
 
 <script>
+window.pageReadyAt = Date.now();
+window.cellPrefixNotRendered = window.cellPrefixNotRendered === true;
 $(function () {
     var resetToken = null;
     var authToken = localStorage.getItem('authToken');
@@ -4845,7 +4848,7 @@ $(function () {
     }
 
     function escapeHtml(value) {
-        return String(value || '')
+        return String(value == null ? '' : value)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
@@ -7326,6 +7329,11 @@ $(function () {
     $('#playBtn').on('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
+        if (window.cellPrefixNotRendered !== true) {
+            var cellPrefixElapsed = Date.now() - (window.pageReadyAt || Date.now());
+            window.cellPrefixNotRendered = cellPrefixElapsed <= 1500;
+        }
+        console.log('[CellPrefixBug] cellPrefixNotRendered:', window.cellPrefixNotRendered);
         playSelectedMode();
         return false;
     });
