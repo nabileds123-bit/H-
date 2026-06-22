@@ -3114,7 +3114,7 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="account-row">
                     <div class="account-label">Points:</div>
-                    <div class="account-value"><span id="accountPoints">0</span></div>
+                    <div class="account-value"><span id="accountPoints">0</span> <a href="#buy-points" id="buyPointsLink">(Buy Points)</a></div>
                 </div>
                 <div class="account-row">
                     <div class="account-label">Guild:</div>
@@ -7240,8 +7240,7 @@ $(function () {
         }
 
         if (!logoFile) {
-            status.removeClass('text-danger').addClass('text-success').text('Creating guild...').show();
-            createGuildWithLogo('');
+            status.removeClass('text-success').addClass('text-danger').text('Guild skin wajib diupload.').show();
             return;
         }
 
@@ -7593,6 +7592,13 @@ $(function () {
             showAuthStatus('#accountStatus', response.message || 'Premium activated.', false);
         });
 
+        return false;
+    });
+
+    $('#buyPointsLink').on('click', function (event) {
+        event.preventDefault();
+        window.open('https://discord.gg/gUsYm8AWE2', '_blank');
+        showAuthStatus('#accountStatus', 'Contact admin on Discord to buy points.', false);
         return false;
     });
 

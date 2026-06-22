@@ -2160,6 +2160,14 @@ var f = new Entity.Food(this.getNextNodeId(), null, this.getRandomPosition(), Ma
     this.currentFood++; 
 }
 
+GameServer.prototype.getPlayerSpawnMass = function(client, config) {
+    var baseMass = parseInt(config && config.playerStartMass, 10) || 10;
+    var level = parseInt(client && client.authUser && client.authUser.level, 10) || 1;
+    var bonus = Math.floor(Math.sqrt(Math.max(0, level - 1)) * 30);
+
+    return Math.min(baseMass + bonus, 1000);
+}
+
 GameServer.prototype.spawnPlayer = function(client) {
    var config = this.getWorldConfig();
    client.matchFoodEaten = 0;
@@ -2180,7 +2188,7 @@ GameServer.prototype.spawnPlayer = function(client) {
    var pos = this.getRandomPosition();
    }
 	
-    var startMass = config.playerStartMass;
+    var startMass = this.getPlayerSpawnMass(client, config);
     
     // Check if there are ejected mass in the world. Does not work in team mode
     if ((this.nodesEjected.length > 0) && (!this.gameMode.haveTeams)) {

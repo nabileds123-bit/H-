@@ -1284,8 +1284,10 @@ function handleGuildCreate(req, res) {
 
         var tag = normalizeGuildTag(body.tag);
         var name = String(body.name || '').trim();
+        var logo = String(body.logo || '').trim();
         if (!isValidGuildName(name)) return sendJson(res, 400, { ok: false, message: 'Guild name is not valid.' });
         if (!isValidGuildTag(tag)) return sendJson(res, 400, { ok: false, message: 'Guild prefix is not valid.' });
+        if (!logo) return sendJson(res, 400, { ok: false, message: 'Guild skin is required.' });
         if (normalizeGuildTag(user.guildTag) && normalizeGuildTag(user.guildTag) !== tag) {
             return sendJson(res, 400, { ok: false, message: 'You are already in a guild.' });
         }
@@ -1307,8 +1309,8 @@ function handleGuildCreate(req, res) {
             }]),
             description: String(body.description || '').trim(),
             bio: String(body.description || '').trim(),
-            logo: String(body.logo || '').trim(),
-            guildSkinUrl: String(body.logo || '').trim()
+            logo: logo,
+            guildSkinUrl: logo
         });
 
         var updatedUser = users.updateUser(user.id, {
