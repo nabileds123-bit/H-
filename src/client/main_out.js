@@ -2229,12 +2229,14 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         ctx.translate(canvasWidth / 2, canvasHeight / 2);
         ctx.scale(viewZoom, viewZoom);
         ctx.translate(-nodeX, -nodeY);
-        ctx.save();
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 1 / viewZoom;
-        ctx.globalAlpha = .9;
-        ctx.strokeRect(leftPos, topPos, rightPos - leftPos, bottomPos - topPos);
-        ctx.restore();
+        if (showBorders) {
+            ctx.save();
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.lineWidth = 1 / viewZoom;
+            ctx.globalAlpha = .9;
+            ctx.strokeRect(leftPos, topPos, rightPos - leftPos, bottomPos - topPos);
+            ctx.restore();
+        }
         for (d = 0; d < Cells.length; d++) Cells[d].drawOneCell(ctx);
 
         for (d = 0; d < nodelist.length; d++) nodelist[d].drawOneCell(ctx);
@@ -2506,6 +2508,8 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         userScore = 0,
         showDarkTheme = false,
         showMass = false,
+        showOthersMass = false,
+        showBorders = true,
         posX = nodeX = ~~((leftPos + rightPos) / 2),
         posY = nodeY = ~~((topPos + bottomPos) / 2),
         posSize = 1,
@@ -2589,6 +2593,12 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     };
     wHandle.setShowMass = function (arg) {
         showMass = arg
+    };
+    wHandle.setShowOthersMass = function (arg) {
+        showOthersMass = arg
+    };
+    wHandle.setShowBorders = function (arg) {
+        showBorders = arg
     };
     wHandle.spectate = function () {
         if (!pendingModeSwitch && wHandle.resumeCurrentGame()) {
@@ -3005,7 +3015,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     }
 
                     //draw mass
-                    if (showMass && (c || 0 == playerCells.length && (!this.isVirus || this.isAgitated) && 20 < this.size)) {
+                    if ((showMass && (c || 0 == playerCells.length && (!this.isVirus || this.isAgitated) && 20 < this.size)) || (showOthersMass && !c && !this.isVirus && 20 < this.size)) {
                         if (null == this.sizeCache) {
                             this.sizeCache = new UText(this.getNameSize() / 2, "#FFFFFF", true, "#000000")
                         }

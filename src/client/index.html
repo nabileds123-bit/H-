@@ -2869,7 +2869,6 @@ $(document).on('keyup', function(input) {
                     <label><input id="check_enableChat" type="checkbox" checked> Chat</label>
                     <label><input id="check_ShowOthersMass" type="checkbox"> Show others mass</label>
                     <label><input id="check_setShowBorders" type="checkbox" checked> Show border</label>
-                    <label id="battleNotify"><input id="check_Notify" type="checkbox" checked> Notifications</label>
                 </div>
                 <div style="display:none;">
                     <input id="check_Skins" type="checkbox">
@@ -6212,7 +6211,7 @@ $(function () {
                 break;
             case 'Colors':
                 $('#noColorsCheckbox').prop('checked', !!value).triggerHandler('change');
-                callGameSetter('setColors', !value);
+                callGameSetter('setColors', !!value);
                 break;
             case 'enableChat':
                 $('#chat_textbox').toggle(!!value);
@@ -6227,9 +6226,6 @@ $(function () {
                 break;
             case 'setShowBorders':
                 callGameSetter('setShowBorders', !!value);
-                break;
-            case 'Notify':
-                $('#bubbleNotifications').toggle(!!value);
                 break;
             case 'Notify11':
                 if (typeof loadFriendInviteList === 'function') loadFriendInviteList();
@@ -6247,7 +6243,6 @@ $(function () {
             check_ShowMass: 'ShowMass',
             check_ShowOthersMass: 'ShowOthersMass',
             check_setShowBorders: 'setShowBorders',
-            check_Notify: 'Notify',
             check_Notify11: 'Notify11'
         };
         var aliasMap = {
