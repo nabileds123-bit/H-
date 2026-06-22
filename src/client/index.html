@@ -1182,7 +1182,6 @@ $(document).on('keyup', function(input) {
     .guild-detail-bio {
         min-height: 92px;
         padding: 8px 10px;
-        border: 1px solid #d8d8d8;
         background: #fff;
         color: #333;
         font-size: 13px;
@@ -1390,7 +1389,7 @@ $(document).on('keyup', function(input) {
 
     .guild-stat-head,
     .guild-stat-row {
-        grid-template-columns: 95px 1fr 82px 78px;
+        grid-template-columns: 95px 1fr 78px;
     }
 
     .guild-log-head,
@@ -1464,7 +1463,7 @@ $(document).on('keyup', function(input) {
     .guild-info-value {
         min-width: 0;
         padding-right: 10px;
-        text-align: right;
+        text-align: left;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -2955,7 +2954,7 @@ $(document).on('keyup', function(input) {
             </div>
             <div class="form-group">
                 <div id="modeButtonWrap">
-                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":x5" data-battle-mode=":battle:1v1" data-invite-mode="FREEFORALL">FREEFORALL</button>
+                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":x5" data-battle-mode=":battle:1v1" data-invite-mode="X5">X5</button>
                     <button type="button" class="btn btn-default mode-button" data-ffa-mode=":hardcore" data-battle-mode=":battle:2v2" data-invite-mode="Hardcore">Hardcore</button>
                     <button type="button" id="battleSpectateBtn" class="btn btn-success mode-button battle-spectate-button">Spectate</button>
                 </div>
@@ -3214,7 +3213,7 @@ $(document).on('keyup', function(input) {
     <div class="side-container">
         <div class="modal-content friends-online">
             <div class="modal-header">
-                <h4 class="modal-title">Invite friends to <span class="friends-modal-mode">FFA - FREEFORALL</span></h4>
+                <h4 class="modal-title">Invite friends to <span class="friends-modal-mode">FFA - X5</span></h4>
             </div>
             <div class="modal-body">
                 <div id="friend-invite-modal">
@@ -3285,7 +3284,7 @@ $(document).on('keyup', function(input) {
                     <button type="button" class="guild-detail-tab active" data-guild-detail-tab="members">Members</button>
                     <button type="button" class="guild-detail-tab" data-guild-detail-tab="info">Info</button>
                     <button type="button" class="guild-detail-tab" data-guild-detail-tab="statistics">Statistics</button>
-                    <button type="button" class="guild-detail-tab" data-guild-detail-tab="logs">Logs</button>
+                    <button type="button" class="guild-detail-tab guild-logs-tab" data-guild-detail-tab="logs">Logs</button>
                 </div>
                 <div id="guildDetailMembers" class="guild-detail-pane active">
                     <div class="guild-member-head">
@@ -3459,7 +3458,7 @@ $(document).on('keyup', function(input) {
                 <div class="highscore-filters">
                     <select id="highScoreMode" class="form-control highscore-mode">
                         <option>FFA - Hardcore</option>
-                        <option>FFA - FREEFORALL</option>
+                        <option>FFA - X5</option>
                         <option>1vs1</option>
                         <option>2vs2</option>
                     </select>
@@ -3595,8 +3594,8 @@ $(function () {
     var resetToken = null;
     var authToken = localStorage.getItem('authToken');
     var authUser = localStorage.getItem('authUser');
-    if (localStorage.getItem('inviteSubMode') === 'X5') {
-        localStorage.setItem('inviteSubMode', 'FREEFORALL');
+    if (localStorage.getItem('inviteSubMode') === 'FREEFORALL') {
+        localStorage.setItem('inviteSubMode', 'X5');
     }
     var inviteSubMode = localStorage.getItem('inviteSubMode') || 'Hardcore';
     var inviteSubModeTouched = false;
@@ -5139,13 +5138,12 @@ $(function () {
         }
 
         $('#guildDetailStatistics').html([
-            '<div class="guild-stat-head"><span>Date</span><span>Player</span><span>Mode</span><span>Top 1</span></div>',
+            '<div class="guild-stat-head"><span>Date</span><span>Player</span><span>Top 1</span></div>',
             items.map(function(item) {
                 return [
                     '<div class="guild-stat-row">',
                     '<span>' + escapeHtml(item.recordDate || '-') + '</span>',
                     '<span>' + escapeHtml(item.username || '-') + '</span>',
-                    '<span>' + escapeHtml(String(item.mode || '').toUpperCase()) + '</span>',
                     '<span class="guild-stat-time">' + escapeHtml(formatTop1RecordTime(item.top1Ms)) + '</span>',
                     '</div>'
                 ].join('');
@@ -5231,6 +5229,13 @@ $(function () {
         $('#guildEditBtn').toggle(isLeader);
         $('#guildDeleteBtn').toggle(isLeader);
         $('#guildLeaveBtn').toggle(isStaff || isMember);
+        $('.guild-logs-tab').toggle(isLeader || isStaff);
+        if (!isLeader && !isStaff && $('#guildDetailLogs').hasClass('active')) {
+            $('.guild-detail-tab').removeClass('active');
+            $('.guild-detail-pane').removeClass('active');
+            $('.guild-detail-tab[data-guild-detail-tab="members"]').addClass('active');
+            $('#guildDetailMembers').addClass('active');
+        }
     }
 
     function openGuildDetailView(name, tag, logoSrc) {
@@ -5851,7 +5856,7 @@ $(function () {
         if (value.indexOf('1v1') !== -1 || value === '12') return 'Battle 1v1';
         if (value.indexOf('2v2') !== -1 || value === '11') return 'Battle 2v2';
         if (value.indexOf('hardcore') !== -1 || value === '7') return 'FFA - Hardcore';
-        if (value.indexOf('x5') !== -1 || value.indexOf('freeforall') !== -1 || value === '5') return 'FFA - FREEFORALL';
+        if (value.indexOf('x5') !== -1 || value.indexOf('freeforall') !== -1 || value === '5') return 'FFA - X5';
         if (value.indexOf('teams') !== -1 || value === '3') return 'Teams';
         if (value.indexOf('experimental') !== -1 || value === '2') return 'Experimental';
         return String(id || getFriendInviteModeText() || 'FFA');
@@ -5986,8 +5991,8 @@ $(function () {
         $('#modeButtonWrap').toggleClass('is-battle', isBattle);
 
         buttons.eq(0)
-            .text(isBattle ? '1vs1' : 'FREEFORALL')
-            .attr('data-invite-mode', isBattle ? '1vs1' : 'FREEFORALL');
+            .text(isBattle ? '1vs1' : 'X5')
+            .attr('data-invite-mode', isBattle ? '1vs1' : 'X5');
 
         buttons.eq(1)
             .text(isBattle ? '2vs2' : 'Hardcore')
@@ -6000,7 +6005,7 @@ $(function () {
             return;
         }
 
-        if (!isBattle && inviteSubMode !== 'FREEFORALL' && inviteSubMode !== 'Hardcore') {
+        if (!isBattle && inviteSubMode !== 'X5' && inviteSubMode !== 'Hardcore') {
             setInviteSubMode('Hardcore');
             return;
         }
