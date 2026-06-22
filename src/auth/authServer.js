@@ -14,6 +14,7 @@ var GUILD_SKIN_COST = 50;
 var PREMIUM_COST = 2;
 var PREMIUM_DAYS = 7;
 var VERIFY_EMAIL_POINTS = 160;
+var WEB_ONLINE_MS = 20000;
 var MAX_PLAYER_SKIN_BYTES = 500 * 1024;
 var MAX_GUILD_SKIN_BYTES = 200 * 1024;
 var MAX_SKIN_BODY_BYTES = 1024 * 1024;
@@ -298,7 +299,8 @@ function handleLogin(req, res) {
         var changes = {
             sessionToken: sessionToken,
             sessionCreatedAt: lastLoginAt,
-            lastLoginAt: lastLoginAt
+            lastLoginAt: lastLoginAt,
+            webOnlineUntil: lastLoginAt + WEB_ONLINE_MS
         };
         var requestCountryCode = getRequestCountryCode(req);
         if (requestCountryCode) {
@@ -769,6 +771,13 @@ function publicGuild(guild) {
     } : null;
 }
 
+function touchWebPresence(user) {
+    if (!user || !user.id) return user;
+    return users.updateUser(user.id, {
+        webOnlineUntil: Date.now() + WEB_ONLINE_MS
+    }) || user;
+}
+
 function publicInvite(invite) {
     var guild = findGuildByTag(invite.guild_tag || invite.guild_id);
     return {
@@ -966,6 +975,7 @@ function handleNotifications(req, res, query) {
     try {
         var user = users.findBySessionToken(String(query.token || ''));
         if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+        user = touchWebPresence(user);
         var items = getNotificationItems(user);
 
         sendJson(res, 200, {
@@ -983,6 +993,7 @@ function handleNotificationStream(req, res, query) {
     var token = String(query.token || '');
     var user = users.findBySessionToken(token);
     if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+    touchWebPresence(user);
 
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -993,11 +1004,13 @@ function handleNotificationStream(req, res, query) {
     if (res.flushHeaders) res.flushHeaders();
 
     var lastPayload = '';
+    var lastPresenceTouch = 0;
 
     function writeEvent(force) {
         var freshUser;
         var items;
         var payload;
+        var now;
 
         try {
             freshUser = users.findBySessionToken(token);
@@ -1009,6 +1022,11 @@ function handleNotificationStream(req, res, query) {
                 return;
             }
 
+            now = Date.now();
+            if (force || now - lastPresenceTouch >= 10000) {
+                freshUser = touchWebPresence(freshUser);
+                lastPresenceTouch = now;
+            }
             items = getNotificationItems(freshUser);
             payload = JSON.stringify({ ok: true, items: items, notifications: items });
         } catch (err) {
@@ -1080,8 +1098,12 @@ function getLiveFriendPresence(gameServer, user) {
     var userId = String(user && user.id || '');
     var presence = { online: false, inBattle: false };
     var clients = gameServer && gameServer.allClients ? gameServer.allClients : (gameServer && gameServer.clients ? gameServer.clients : []);
+    var webOnlineUntil = parseInt(user && user.webOnlineUntil, 10) || 0;
 
     if (!userId) return presence;
+    if (webOnlineUntil > Date.now()) {
+        presence.online = true;
+    }
 
     for (var i = 0; i < clients.length; i++) {
         var tracker = clients[i] && clients[i].playerTracker;
@@ -1168,6 +1190,7 @@ function buildFriendsPayload(user, gameServer) {
 function handleFriendsList(req, res, query, gameServer) {
     var user = users.findBySessionToken(String(query.token || ''));
     if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+    user = touchWebPresence(user);
 
     sendJson(res, 200, buildFriendsPayload(user, gameServer));
 }

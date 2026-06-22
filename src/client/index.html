@@ -6132,6 +6132,7 @@ $(function () {
             if (status === 'accepted') status = 'friend';
             var pending = status === 'outgoing';
             var canInvite = status === 'friend' && friend.online && !friend.inBattle;
+            var isOnline = status === 'friend' && !!friend.online;
             var rowClass = (pending ? ' friend-row-pending' : '') + (canInvite ? ' friend-row-invite' : '');
             var initial = String(friend.username || 'P').charAt(0).toUpperCase() || 'P';
             var avatarClass = index % 2 ? 'friend-avatar-red' : 'friend-avatar-blue';
@@ -6139,8 +6140,8 @@ $(function () {
             var actions = '';
 
             if (status === 'friend') {
-                actions = '<span class="friend-presence ' + (canInvite ? 'is-online' : 'is-offline') + '">' +
-                    '<span class="friend-online-dot ' + (canInvite ? '' : 'is-offline') + '"></span>' +
+                actions = '<span class="friend-presence ' + (isOnline ? 'is-online' : 'is-offline') + '">' +
+                    '<span class="friend-online-dot ' + (isOnline ? '' : 'is-offline') + '"></span>' +
                     '</span>';
             } else if (status === 'incoming') {
                 actions =
