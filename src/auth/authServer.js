@@ -17,6 +17,7 @@ var VERIFY_EMAIL_POINTS = 160;
 var MAX_PLAYER_SKIN_BYTES = 500 * 1024;
 var MAX_GUILD_SKIN_BYTES = 200 * 1024;
 var MAX_SKIN_BODY_BYTES = 1024 * 1024;
+var GUILD_WITHDRAW_DISCORD_URL = 'https://discord.gg/gUsYm8AWE2';
 var CELL_COLORS = [
     '#000000',
     '#6FCA36',
@@ -1522,6 +1523,10 @@ function getGuildRewardMonth() {
     return statsStore.getJakartaDate().slice(0, 7);
 }
 
+function isGuildWithdrawDay() {
+    return statsStore.getJakartaDate().slice(8, 10) === '01';
+}
+
 function getGuildMonthlyRewardPoints(guildTag) {
     var normalized = normalizeGuildTag(guildTag);
     var guild = statsStore.guildStats('month').filter(function(item) {
@@ -1543,6 +1548,14 @@ function handleGuildWithdraw(req, res) {
             return sendJson(res, 403, { ok: false, message: 'Only guild leader can withdraw guild reward.' });
         }
 
+        if (!isGuildWithdrawDay()) {
+            return sendJson(res, 400, {
+                ok: false,
+                message: 'Guild reward withdraw is only available on the 1st day of each month. Please contact admin on Discord: ' + GUILD_WITHDRAW_DISCORD_URL,
+                discordUrl: GUILD_WITHDRAW_DISCORD_URL
+            });
+        }
+
         var guildTag = normalizeGuildTag(guild.tag || guild.id);
         var month = getGuildRewardMonth();
         var duplicate = (adminStore.list('guildWithdrawals') || []).filter(function(item) {
@@ -1552,7 +1565,8 @@ function handleGuildWithdraw(req, res) {
         if (duplicate) {
             return sendJson(res, 409, {
                 ok: false,
-                message: 'Guild reward already withdrawn this month.',
+                message: 'Guild reward withdraw request already sent this month. Please contact admin on Discord: ' + GUILD_WITHDRAW_DISCORD_URL,
+                discordUrl: GUILD_WITHDRAW_DISCORD_URL,
                 withdrawal: duplicate
             });
         }
@@ -1569,14 +1583,16 @@ function handleGuildWithdraw(req, res) {
             leaderId: user.id,
             month: month,
             points: points,
-            status: 'withdrawn'
+            discordUrl: GUILD_WITHDRAW_DISCORD_URL,
+            status: 'pending_admin'
         });
 
         sendJson(res, 200, {
             ok: true,
-            message: 'Guild reward withdrawn.',
+            message: 'Guild reward withdraw request sent. Please contact admin on Discord: ' + GUILD_WITHDRAW_DISCORD_URL,
             points: points,
             month: month,
+            discordUrl: GUILD_WITHDRAW_DISCORD_URL,
             withdrawal: withdrawal
         });
     });

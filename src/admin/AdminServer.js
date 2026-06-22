@@ -20,6 +20,7 @@ var collections = {
     points: true,
     skins: true,
     guilds: true,
+    guildWithdrawals: true,
     notifications: true,
     highscores: true,
     battleMatches: true

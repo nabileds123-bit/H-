@@ -10,6 +10,7 @@ var defaultStore = {
     skins: [],
     guilds: [],
     guildInvites: [],
+    guildWithdrawals: [],
     notifications: [],
     highscores: [],
     battleMatches: []

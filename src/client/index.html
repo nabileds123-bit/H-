@@ -5092,6 +5092,10 @@ $(function () {
         return 'guildWithdraw:' + String(guildTag || '').trim().toUpperCase() + ':' + month;
     }
 
+    function isGuildWithdrawDay() {
+        return new Date().getDate() === 1;
+    }
+
     function renderGuildInfo() {
         var guildItem = activeGuildDetail && activeGuildDetail.item || {};
         var guildTag = String(activeGuildDetail && activeGuildDetail.tag || guildItem.tag || '').trim().toUpperCase();
@@ -5100,10 +5104,12 @@ $(function () {
         var claimed = localStorage.getItem(getGuildWithdrawMonthKey(guildTag)) === '1';
         var pointHtml = '<span class="guild-info-point">' + escapeHtml(points) + '</span>';
 
-        if (isLeader && points > 0 && !claimed) {
-            pointHtml += '<a href="#guild-withdraw" class="guild-withdraw-link">withdraw</a>';
+        if (isLeader && points > 0 && !claimed && isGuildWithdrawDay()) {
+            pointHtml += '<a href="#guild-withdraw" class="guild-withdraw-link">withdraw via Discord</a>';
+        } else if (isLeader && points > 0 && !claimed) {
+            pointHtml += '<span class="guild-withdraw-link text-muted">withdraw on date 1</span>';
         } else if (claimed) {
-            pointHtml += '<span class="guild-withdraw-link text-muted">withdrawn this month</span>';
+            pointHtml += '<span class="guild-withdraw-link text-muted">request sent this month</span>';
         }
 
         $('#guildDetailInfo').html([
@@ -6940,7 +6946,8 @@ $(function () {
 
             localStorage.setItem(key, '1');
             renderGuildInfo();
-            alert((response && response.points || points) + ' guild point withdrawn for this month.');
+            alert((response && response.points || points) + ' guild point withdraw request sent. Contact admin on Discord: ' + ((response && response.discordUrl) || 'https://discord.gg/gUsYm8AWE2'));
+            window.open((response && response.discordUrl) || 'https://discord.gg/gUsYm8AWE2', '_blank');
         });
     });
 
