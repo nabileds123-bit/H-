@@ -789,6 +789,22 @@ function pendingInvitesForUser(user) {
     }).map(publicInvite);
 }
 
+function normalizePlayInvites(value) {
+    return Array.isArray(value) ? value.filter(function(invite) {
+        return invite && invite.status === 'pending' && (!invite.expiresAt || invite.expiresAt > Date.now());
+    }) : [];
+}
+
+function pendingPlayInvitesForUser(user) {
+    return normalizePlayInvites(user && user.playInvitesReceived);
+}
+
+function updateUserPlayInvites(user, field, list) {
+    var changes = {};
+    changes[field] = normalizePlayInvites(list);
+    return users.updateUser(user.id, changes);
+}
+
 function removeGuildInvites(guildTag) {
     (adminStore.list('guildInvites') || []).forEach(function(invite) {
         if (normalizeGuildTag(invite.guild_tag || invite.guild_id) === normalizeGuildTag(guildTag)) {
@@ -816,15 +832,34 @@ function handleGuildInvites(req, res, query) {
 }
 
 function getNotificationItems(user) {
-    return pendingInvitesForUser(user).map(function(invite) {
+    var guildInvites = pendingInvitesForUser(user).map(function(invite) {
         return {
             id: 'guild-invite-' + invite.id,
             type: 'guild_invite',
+            inviteType: 'guild',
             inviteId: invite.id,
+            entityId: invite.id,
+            status: invite.status || 'pending',
+            title: 'Guild Invite',
             message: 'You have been invited to join [' + invite.guild_tag + '] ' + invite.guild_name,
             invite: invite
         };
-    }).concat(getIncomingFriendRequests(user).map(function(friend) {
+    });
+
+    var playInvites = pendingPlayInvitesForUser(user).map(function(invite) {
+        return {
+            id: 'play-invite-' + invite.id,
+            type: 'play_invite',
+            inviteType: 'play',
+            entityId: invite.id,
+            status: invite.status || 'pending',
+            title: 'Play Invite',
+            message: (invite.fromUsername || 'Player') + ' invited you to play ' + (invite.modeName || 'Game') + '.',
+            invite: invite
+        };
+    });
+
+    var friendRequests = getIncomingFriendRequests(user).map(function(friend) {
         return {
             id: 'friend-request-' + friend.id,
             type: 'friend_request',
@@ -836,7 +871,9 @@ function getNotificationItems(user) {
             message: friend.username + ' sent you a friend request.',
             friend: publicFriendProfile(friend, 'incoming')
         };
-    })).concat(getPendingBattleInvites(user).map(function(invite) {
+    });
+
+    var battleInvites = getPendingBattleInvites(user).map(function(invite) {
         return {
             id: 'battle-invite-' + invite.id,
             type: 'battle_invite',
@@ -847,7 +884,82 @@ function getNotificationItems(user) {
             message: (invite.fromUsername || 'Player') + ' invited you to play ' + (invite.mode || 'Battle') + '.',
             invite: invite
         };
-    }));
+    });
+
+    return guildInvites.concat(playInvites).concat(friendRequests).concat(battleInvites);
+}
+
+function handlePlayInvite(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var sender = users.findBySessionToken(String(body.token || ''));
+        if (!sender) return sendJson(res, 401, { ok: false, message: 'Please login to continue.' });
+
+        var target = users.findByIdOrUsernameOrEmail(String(body.targetUserId || body.targetId || body.userId || '').trim());
+        if (!target) return sendJson(res, 404, { ok: false, message: 'Player not found.' });
+        if (String(target.id || '') === String(sender.id || '')) {
+            return sendJson(res, 400, { ok: false, message: 'You cannot invite yourself.' });
+        }
+        if (!Array.isArray(sender.friends) || sender.friends.indexOf(target.id) === -1) {
+            return sendJson(res, 403, { ok: false, message: 'You can only invite friends.' });
+        }
+
+        var mode = String(body.mode || '').trim();
+        var duplicate = pendingPlayInvitesForUser(target).filter(function(invite) {
+            return String(invite.fromUserId || '') === String(sender.id || '') && String(invite.mode || '') === mode;
+        })[0];
+        if (duplicate) return sendJson(res, 409, { ok: false, message: 'Invitation already pending.' });
+
+        var now = Date.now();
+        var invite = {
+            id: createId(),
+            type: 'play_invite',
+            fromUserId: sender.id,
+            fromUsername: sender.username,
+            toUserId: target.id,
+            toUsername: target.username,
+            mode: mode,
+            modeName: String(body.modeName || 'Game').trim(),
+            link: String(body.link || '').trim(),
+            status: 'pending',
+            createdAt: now,
+            updatedAt: now,
+            expiresAt: now + 60000
+        };
+        var received = pendingPlayInvitesForUser(target);
+        received.push(invite);
+        updateUserPlayInvites(target, 'playInvitesReceived', received);
+
+        sendJson(res, 200, { ok: true, message: 'Invitation sent.', invite: invite });
+    });
+}
+
+function handlePlayInviteRespond(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'Please login to continue.' });
+
+        var inviteId = String(body.id || body.inviteId || '').trim();
+        var invite = null;
+        var remaining = pendingPlayInvitesForUser(user).filter(function(item) {
+            if (String(item.id || '') === inviteId) {
+                invite = item;
+                return false;
+            }
+            return true;
+        });
+
+        if (!invite) return sendJson(res, 404, { ok: false, message: 'Invitation not found.' });
+
+        invite.status = body.accepted ? 'accepted' : 'declined';
+        invite.updatedAt = Date.now();
+        updateUserPlayInvites(user, 'playInvitesReceived', remaining);
+
+        sendJson(res, 200, { ok: true, accepted: !!body.accepted, invite: invite });
+    });
 }
 
 function handleNotifications(req, res, query) {
@@ -1606,6 +1718,7 @@ function handle(req, res, gameServer) {
 
     if (pathname.indexOf('/api/auth/') !== 0 &&
         pathname.indexOf('/api/guild/') !== 0 &&
+        pathname.indexOf('/api/play/') !== 0 &&
         pathname.indexOf('/api/friends') !== 0 &&
         pathname !== '/api/notifications' &&
         pathname !== '/api/notifications/stream') {
@@ -1659,6 +1772,16 @@ function handle(req, res, gameServer) {
 
     if (req.method === 'POST' && pathname === '/api/friends/respond') {
         handleFriendRespond(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/play/invite') {
+        handlePlayInvite(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/play/invite/respond') {
+        handlePlayInviteRespond(req, res);
         return true;
     }
 

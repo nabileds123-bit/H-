@@ -4017,6 +4017,19 @@ $(function () {
                 ].join('');
             }
 
+            if (item.type === 'play_invite') {
+                return [
+                    '<div class="notification-item">',
+                    '<div class="notification-title">' + escapeHtml(item.message || 'Play invite') + '</div>',
+                    '<div class="notification-meta">' + escapeHtml(item.status || 'pending') + '</div>',
+                    '<div class="notification-actions">',
+                    '<button type="button" class="btn btn-success play-invite-accept" data-invite-id="' + escapeHtml(item.entityId || '') + '">Join</button>',
+                    '<button type="button" class="btn btn-default play-invite-decline" data-invite-id="' + escapeHtml(item.entityId || '') + '">Decline</button>',
+                    '</div>',
+                    '</div>'
+                ].join('');
+            }
+
             return [
                 '<div class="notification-item">',
                 '<div class="notification-title">' + escapeHtml(item.message || 'Notification') + '</div>',
@@ -4141,9 +4154,9 @@ $(function () {
         }
 
         var id = String(item.id || ('local-' + Date.now()));
-        var inviteType = item.inviteType || (item.type === 'battle_invite' ? 'battle' : item.type === 'friend_request' ? 'friend' : '');
+        var inviteType = item.inviteType || (item.type === 'battle_invite' ? 'battle' : item.type === 'friend_request' ? 'friend' : item.type === 'guild_invite' ? 'guild' : item.type === 'play_invite' ? 'play' : '');
         var entityId = item.entityId || item.targetId || item.inviteId || '';
-        var canAction = item.status === 'pending' && (inviteType === 'friend' || inviteType === 'battle');
+        var canAction = item.status === 'pending' && (inviteType === 'friend' || inviteType === 'battle' || inviteType === 'guild' || inviteType === 'play');
         var html = '';
 
         if (canAction) {
@@ -6304,17 +6317,23 @@ $(function () {
     }
 
     function inviteFriend(friendId) {
-        var link = getFriendInviteLink();
+        if (!friendId) return;
 
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(link).then(function() {
-                alert('Invite link copied.');
-            }, function() {
-                alert('Invite link: ' + link);
-            });
-        } else {
-            alert('Invite link: ' + link);
-        }
+        postAuth('/api/play/invite', {
+            token: getAuthToken(),
+            targetUserId: friendId,
+            mode: getSelectedModeValue(),
+            modeName: getFriendInviteModeText(),
+            link: getFriendInviteLink()
+        }, function(err, response) {
+            if (err) {
+                alert(err || 'Failed to send invitation.');
+                return;
+            }
+
+            updateSimpleNotification('Invite', response.message || 'Invitation sent.');
+            refreshNotifications();
+        });
     }
 
     function getBattleInvitePendingKey(friendId) {
@@ -6411,6 +6430,28 @@ $(function () {
                     openBattleLobby(response.mode, battleLobbyInviteMode);
                 }
             }
+        });
+    }
+
+    function respondPlayInvite(inviteId, accepted) {
+        postAuth('/api/play/invite/respond', {
+            token: getAuthToken(),
+            id: inviteId,
+            accepted: !!accepted
+        }, function(err, response) {
+            if (err) {
+                alert(err || 'Failed to respond invitation.');
+                return;
+            }
+
+            refreshNotifications();
+            if (!accepted || !response || !response.invite) return;
+
+            var mode = response.invite.mode || '';
+            if (mode && typeof window.setGameMode === 'function') {
+                window.setGameMode(resolveGameModeRoom(mode), true);
+            }
+            setNick(document.getElementById('nick').value);
         });
     }
 
@@ -7478,6 +7519,18 @@ $(function () {
         respondBattleInvite($(this).data('invite-id'), false);
     });
 
+    $('#notificationView').on('click', '.play-invite-accept', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        respondPlayInvite($(this).data('invite-id'), true);
+    });
+
+    $('#notificationView').on('click', '.play-invite-decline', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        respondPlayInvite($(this).data('invite-id'), false);
+    });
+
     $('#bubbleNotifications').on('click', '.invite-accept', function (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -7487,6 +7540,10 @@ $(function () {
             respondBattleInvite(id, true);
         } else if (type === 'friend') {
             friendAction('/api/friends/accept', id);
+        } else if (type === 'guild') {
+            acceptGuildInvite(id);
+        } else if (type === 'play') {
+            respondPlayInvite(id, true);
         }
         $(this).closest('.bubble_invite').remove();
     });
@@ -7500,6 +7557,10 @@ $(function () {
             respondBattleInvite(id, false);
         } else if (type === 'friend') {
             friendAction('/api/friends/decline', id);
+        } else if (type === 'guild') {
+            declineGuildInvite(id);
+        } else if (type === 'play') {
+            respondPlayInvite(id, false);
         }
         $(this).closest('.bubble_invite').remove();
     });
