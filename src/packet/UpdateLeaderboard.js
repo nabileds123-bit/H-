@@ -7,6 +7,9 @@ module.exports = UpdateLeaderboard;
 
 function getLeaderboardName(item) {
     if (!item) return "";
+    if (typeof item.getPublicName === "function") {
+        return item.getPublicName() || "";
+    }
     if (typeof item.getDisplayName === "function") {
         return item.getDisplayName() || "";
     }

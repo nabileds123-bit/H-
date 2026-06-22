@@ -89,6 +89,10 @@ PlayerTracker.prototype.getDisplayName = function() {
         return "";
     }
 
+    return this.getPublicName();
+}
+
+PlayerTracker.prototype.getPublicName = function() {
     if (!this.guildTag) {
         return this.name;
     }
