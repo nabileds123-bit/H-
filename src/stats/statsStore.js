@@ -9,7 +9,9 @@ var storePath = path.join(dataDir, 'stats.json');
 
 var defaultStore = {
     top1TimeRecords: [],
+    pendingTop1TimeRecords: [],
     guildTop1TimeRecords: [],
+    pendingGuildTop1TimeRecords: [],
     battleMatchRecords: [],
     adminAuditLogs: []
 };
@@ -97,6 +99,88 @@ function jakartaDateParts(time) {
 
 function getJakartaDate(time) {
     return jakartaDateParts(time).date;
+}
+
+function mergeTop1Record(list, record, isGuild) {
+    var found = null;
+
+    for (var i = 0; i < list.length; i++) {
+        var item = list[i];
+        var sameUser = item.user_id === record.user_id;
+        var sameMode = item.mode === record.mode;
+        var sameDate = item.record_date === record.record_date;
+        var sameGuild = !isGuild || normalizeGuildId(item.guild_id) === normalizeGuildId(record.guild_id);
+        if (sameUser && sameMode && sameDate && sameGuild) {
+            found = item;
+            break;
+        }
+    }
+
+    if (found) {
+        found.username = record.username || found.username;
+        found.guild_id = record.guild_id || found.guild_id;
+        found.country_code = normalizeCountryCode(record.country_code || found.country_code);
+        found.server_id = record.server_id || found.server_id;
+        found.top1_ms = Math.max(0, (parseInt(found.top1_ms, 10) || 0) + (parseInt(record.top1_ms, 10) || 0));
+        found.updated_at = Date.now();
+        return found;
+    }
+
+    found = Object.assign({}, record, {
+        id: record.id || createId(),
+        created_at: record.created_at || Date.now(),
+        updated_at: Date.now()
+    });
+    list.push(found);
+    return found;
+}
+
+function finalizePendingTop1Records(store, cutoffDate) {
+    cutoffDate = cutoffDate || getJakartaDate();
+    store.pendingTop1TimeRecords = Array.isArray(store.pendingTop1TimeRecords) ? store.pendingTop1TimeRecords : [];
+    store.pendingGuildTop1TimeRecords = Array.isArray(store.pendingGuildTop1TimeRecords) ? store.pendingGuildTop1TimeRecords : [];
+
+    store.top1TimeRecords = store.top1TimeRecords.filter(function(record) {
+        if (!record || !record.record_date || record.record_date < cutoffDate) return true;
+        mergeTop1Record(store.pendingTop1TimeRecords, record, false);
+        return false;
+    });
+
+    store.guildTop1TimeRecords = store.guildTop1TimeRecords.filter(function(record) {
+        if (!record || !record.record_date || record.record_date < cutoffDate) return true;
+        mergeTop1Record(store.pendingGuildTop1TimeRecords, record, true);
+        return false;
+    });
+
+    store.pendingTop1TimeRecords = store.pendingTop1TimeRecords.filter(function(record) {
+        if (!record || !record.record_date || record.record_date >= cutoffDate) return true;
+        mergeTop1Record(store.top1TimeRecords, record, false);
+        return false;
+    });
+
+    store.pendingGuildTop1TimeRecords = store.pendingGuildTop1TimeRecords.filter(function(record) {
+        if (!record || !record.record_date || record.record_date >= cutoffDate) return true;
+        mergeTop1Record(store.guildTop1TimeRecords, record, true);
+        return false;
+    });
+
+    return store;
+}
+
+function finalizePendingTop1Stats() {
+    var store = readStore();
+    var beforeTop1 = (store.pendingTop1TimeRecords || []).length;
+    var beforeGuild = (store.pendingGuildTop1TimeRecords || []).length;
+    var beforeFinalTop1 = (store.top1TimeRecords || []).length;
+    var beforeFinalGuild = (store.guildTop1TimeRecords || []).length;
+    finalizePendingTop1Records(store, getJakartaDate());
+    if (beforeTop1 !== (store.pendingTop1TimeRecords || []).length ||
+        beforeGuild !== (store.pendingGuildTop1TimeRecords || []).length ||
+        beforeFinalTop1 !== (store.top1TimeRecords || []).length ||
+        beforeFinalGuild !== (store.guildTop1TimeRecords || []).length) {
+        writeStore(store);
+    }
+    return store;
 }
 
 function dateToUtcMs(date) {
@@ -224,42 +308,28 @@ function upsertTop1Time(data) {
         return null;
     }
 
-    var store = readStore();
     var date = data.recordDate || getJakartaDate();
+    var today = getJakartaDate();
+    var store = readStore();
     var serverId = String(data.serverId || 'default');
-    var found = null;
+    var targetList;
+    var found;
 
-    for (var i = 0; i < store.top1TimeRecords.length; i++) {
-        var item = store.top1TimeRecords[i];
-        if (item.user_id === user.userId && item.mode === mode && item.record_date === date) {
-            found = item;
-            break;
-        }
-    }
-
-    if (found) {
-        found.username = user.username;
-        found.guild_id = user.guildId;
-        found.country_code = normalizeCountryCode(data.country_code || data.countryCode || user.country_code || found.country_code);
-        found.server_id = serverId;
-        found.top1_ms = Math.max(0, (parseInt(found.top1_ms, 10) || 0) + amount);
-        found.updated_at = Date.now();
-    } else {
-        found = {
-            id: createId(),
-            user_id: user.userId,
-            username: user.username,
-            guild_id: user.guildId,
-            country_code: normalizeCountryCode(data.country_code || data.countryCode || user.country_code),
-            mode: mode,
-            server_id: serverId,
-            record_date: date,
-            top1_ms: amount,
-            created_at: Date.now(),
-            updated_at: Date.now()
-        };
-        store.top1TimeRecords.push(found);
-    }
+    finalizePendingTop1Records(store, today);
+    targetList = date >= today ? store.pendingTop1TimeRecords : store.top1TimeRecords;
+    found = mergeTop1Record(targetList, {
+        id: createId(),
+        user_id: user.userId,
+        username: user.username,
+        guild_id: user.guildId,
+        country_code: normalizeCountryCode(data.country_code || data.countryCode || user.country_code),
+        mode: mode,
+        server_id: serverId,
+        record_date: date,
+        top1_ms: amount,
+        created_at: Date.now(),
+        updated_at: Date.now()
+    }, false);
 
     writeStore(store);
     return found;
@@ -279,42 +349,28 @@ function upsertGuildTop1Time(data) {
         return null;
     }
 
-    var store = readStore();
     var date = data.recordDate || getJakartaDate();
+    var today = getJakartaDate();
+    var store = readStore();
     var serverId = String(data.serverId || 'default');
-    var found = null;
+    var targetList;
+    var found;
 
-    for (var i = 0; i < store.guildTop1TimeRecords.length; i++) {
-        var item = store.guildTop1TimeRecords[i];
-        if (normalizeGuildId(item.guild_id) === guildId && item.user_id === user.userId && item.mode === mode && item.record_date === date) {
-            found = item;
-            break;
-        }
-    }
-
-    if (found) {
-        found.username = user.username;
-        found.guild_id = guildId;
-        found.country_code = normalizeCountryCode(data.country_code || data.countryCode || user.country_code || found.country_code);
-        found.server_id = serverId;
-        found.top1_ms = Math.max(0, (parseInt(found.top1_ms, 10) || 0) + amount);
-        found.updated_at = Date.now();
-    } else {
-        found = {
-            id: createId(),
-            user_id: user.userId,
-            username: user.username,
-            guild_id: guildId,
-            country_code: normalizeCountryCode(data.country_code || data.countryCode || user.country_code),
-            mode: mode,
-            server_id: serverId,
-            record_date: date,
-            top1_ms: amount,
-            created_at: Date.now(),
-            updated_at: Date.now()
-        };
-        store.guildTop1TimeRecords.push(found);
-    }
+    finalizePendingTop1Records(store, today);
+    targetList = date >= today ? store.pendingGuildTop1TimeRecords : store.guildTop1TimeRecords;
+    found = mergeTop1Record(targetList, {
+        id: createId(),
+        user_id: user.userId,
+        username: user.username,
+        guild_id: guildId,
+        country_code: normalizeCountryCode(data.country_code || data.countryCode || user.country_code),
+        mode: mode,
+        server_id: serverId,
+        record_date: date,
+        top1_ms: amount,
+        created_at: Date.now(),
+        updated_at: Date.now()
+    }, true);
 
     writeStore(store);
     return found;
@@ -366,7 +422,7 @@ function getTop1SummaryForUser(identifier, period) {
     if (!user) return result;
 
     var range = getPeriodRange(period);
-    readStore().top1TimeRecords.forEach(function(record) {
+    finalizePendingTop1Stats().top1TimeRecords.forEach(function(record) {
         if (record.user_id !== user.userId || !inRange(record.record_date, range)) return;
         if (TOP1_MODES[record.mode]) {
             result[record.mode] += parseInt(record.top1_ms, 10) || 0;
@@ -444,7 +500,7 @@ function top1HighScore(mode, period, limit) {
     var range = getPeriodRange(period);
     var map = {};
 
-    readStore().top1TimeRecords.forEach(function(record) {
+    finalizePendingTop1Stats().top1TimeRecords.forEach(function(record) {
         if (record.mode !== topMode || !inRange(record.record_date, range)) return;
         var recordUser = getUserInfo(record.user_id || record.username) || {};
         if (!map[record.user_id]) {
@@ -476,7 +532,7 @@ function guildTop1Records(guildId, period, limit) {
     var normalizedGuild = normalizeGuildId(guildId);
     var range = getPeriodRange(period);
 
-    return readStore().guildTop1TimeRecords.filter(function(record) {
+    return finalizePendingTop1Stats().guildTop1TimeRecords.filter(function(record) {
         return normalizeGuildId(record.guild_id) === normalizedGuild &&
             inRange(record.record_date, range);
     }).sort(function(a, b) {
@@ -542,6 +598,7 @@ function battleHighScore(mode, period, limit) {
 function guildStats(period) {
     period = normalizeGuildPeriod(period);
     var range = getPeriodRange(period);
+    var store = finalizePendingTop1Stats();
     var guilds = {};
     var guildAliases = {};
     var guildList = adminStore.list('guilds');
@@ -573,7 +630,7 @@ function guildStats(period) {
         guildAliases[normalizeGuildId(guild.name)] = id;
     });
 
-    readStore().guildTop1TimeRecords.forEach(function(record) {
+    store.guildTop1TimeRecords.forEach(function(record) {
         if (!record.guild_id || !inRange(record.record_date, range)) return;
         var guildKey = guildAliases[normalizeGuildId(record.guild_id)];
         if (!guildKey || !guilds[guildKey]) return;
