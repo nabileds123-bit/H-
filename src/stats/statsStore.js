@@ -412,6 +412,32 @@ function top1HighScore(mode, period, limit) {
         });
 }
 
+function guildTop1Records(guildId, period, limit) {
+    var normalizedGuild = String(guildId || '').trim().toUpperCase();
+    var range = getPeriodRange(period);
+
+    return readStore().top1TimeRecords.filter(function(record) {
+        return String(record.guild_id || '').trim().toUpperCase() === normalizedGuild &&
+            inRange(record.record_date, range);
+    }).sort(function(a, b) {
+        if (String(b.record_date || '') !== String(a.record_date || '')) {
+            return String(b.record_date || '').localeCompare(String(a.record_date || ''));
+        }
+        return (parseInt(b.top1_ms, 10) || 0) - (parseInt(a.top1_ms, 10) || 0);
+    }).slice(0, limit || 50).map(function(record) {
+        return {
+            id: record.id,
+            username: record.username || '-',
+            mode: record.mode,
+            guildId: record.guild_id,
+            recordDate: record.record_date || '',
+            top1Ms: parseInt(record.top1_ms, 10) || 0,
+            createdAt: record.created_at || 0,
+            updatedAt: record.updated_at || 0
+        };
+    });
+}
+
 function battleHighScore(mode, period, limit) {
     var battleMode = normalizeBattleMode(mode) || '1vs1';
     var range = getPeriodRange(period);
@@ -474,6 +500,7 @@ function guildStats(period) {
             leaderLevel: parseInt(guild.leaderLevel, 10) || 1,
             logo: guild.logo || guild.guildSkinUrl || '',
             guildSkinUrl: guild.guildSkinUrl || guild.logo || '',
+            createdAt: guild.createdAt || 0,
             top1Ms: 0,
             battle: {
                 '1vs1': { win: 0, lose: 0, totalMatch: 0, winRate: 0 },
@@ -538,6 +565,7 @@ module.exports = {
     getPeriodRange: getPeriodRange,
     getTop1SummaryForUser: getTop1SummaryForUser,
     guildStats: guildStats,
+    guildTop1Records: guildTop1Records,
     normalizeBattleMode: normalizeBattleMode,
     normalizeGuildPeriod: normalizeGuildPeriod,
     normalizePeriod: normalizePeriod,

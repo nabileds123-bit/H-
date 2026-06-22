@@ -125,6 +125,20 @@ function publicHandle(req, res) {
         });
     }
 
+    var top1RecordsMatch = pathname.match(/^\/api\/guilds\/([^\/]+)\/top1\/records$/);
+    if (req.method === 'GET' && top1RecordsMatch) {
+        var recordsGuildId = decodeURIComponent(top1RecordsMatch[1]);
+        var records = statsStore.guildTop1Records(recordsGuildId, query.period, parseInt(query.limit, 10) || 50);
+        return sendJson(res, 200, {
+            ok: true,
+            period: statsStore.normalizePeriod(query.period),
+            items: records.map(function(record) {
+                record.top1Time = formatMs(record.top1Ms);
+                return record;
+            })
+        });
+    }
+
     var battleMatch = pathname.match(/^\/api\/guilds\/([^\/]+)\/battle$/);
     if (req.method === 'GET' && battleMatch) {
         var battleGuildId = decodeURIComponent(battleMatch[1]);

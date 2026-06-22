@@ -169,7 +169,6 @@
                     showOverlays(true);
                     sendPauseState(true);
                     wPressed = qPressed = spacePressed = ctrlPressed = false;
-                    wHandle.isSpectating = false;
                     break;
 
                 case 13:
@@ -1830,6 +1829,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
     function updateMatchStats() {
         var now = Date.now();
         var isAlive = playerCells && playerCells.length > 0;
+        var minLocalResultMs = 60000;
 
         if (isAlive && !hasSpawnedOnce) {
             hasSpawnedOnce = true;
@@ -1884,7 +1884,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             matchStats.lastLeaderboardCheck = now;
         }
 
-        if (wasAliveLastFrame && !isAlive && hasSpawnedOnce && !matchResultVisible && !isTournamentLikeMode()) {
+        if (wasAliveLastFrame && !isAlive && hasSpawnedOnce && !matchResultVisible && !isTournamentLikeMode() && now - (matchStats.startTime || now) >= minLocalResultMs) {
             matchStats.endTime = now;
             hideTopTimePopup();
             showMatchResult();
@@ -2561,12 +2561,25 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
         hideOverlays();
         return true;
     };
+    wHandle.resumeCurrentSpectate = function (desiredMode) {
+        if (!wHandle.isSpectating) {
+            return false;
+        }
+
+        if (desiredMode && desiredMode != gameMode) {
+            return false;
+        }
+
+        hideOverlays();
+        return true;
+    };
     wHandle.setNick = function (arg) {
         if (!pendingModeSwitch && wHandle.resumeCurrentGame()) {
             return;
         }
 
         hideOverlays();
+        wHandle.isSpectating = false;
         var authUser = null != wHandle.localStorage ? wHandle.localStorage.authUser : null;
         var guestNick = String(arg || '').trim();
         if (!authUser && !guestNick) {

@@ -5,6 +5,7 @@ var email = require('./email');
 var skinStorage = require('./skinStorage');
 var adminStore = require('../admin/adminStore');
 var battleTier = require('../battleTier');
+var statsStore = require('../stats/statsStore');
 
 var VERIFY_EXPIRES = 24 * 60 * 60 * 1000;
 var RESET_EXPIRES = 60 * 60 * 1000;
@@ -762,7 +763,8 @@ function publicGuild(guild) {
         description: guild.description || guild.bio || '',
         bio: guild.bio || guild.description || '',
         logo: logo,
-        guildSkinUrl: logo
+        guildSkinUrl: logo,
+        createdAt: guild.createdAt || 0
     } : null;
 }
 
@@ -1361,6 +1363,7 @@ function handleGuildInviteAccept(req, res) {
             ok: true,
             message: 'Joined guild.',
             guild: publicGuild(guild),
+            inviter: invite.inviter_username || '',
             user: publicAuthUser(updatedUser)
         });
     });
@@ -1515,6 +1518,70 @@ function handleGuildLeave(req, res) {
     });
 }
 
+function getGuildRewardMonth() {
+    return statsStore.getJakartaDate().slice(0, 7);
+}
+
+function getGuildMonthlyRewardPoints(guildTag) {
+    var normalized = normalizeGuildTag(guildTag);
+    var guild = statsStore.guildStats('month').filter(function(item) {
+        return normalizeGuildTag(item.guildId) === normalized || normalizeGuildTag(item.tag) === normalized;
+    })[0];
+    return Math.floor((parseInt(guild && guild.top1Ms, 10) || 0) / 60000);
+}
+
+function handleGuildWithdraw(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var guild = ensureGuildForUser(user);
+        if (!guild) return sendJson(res, 404, { ok: false, message: 'Guild not found.' });
+        if (getGuildRole(user, guild) !== 'leader') {
+            return sendJson(res, 403, { ok: false, message: 'Only guild leader can withdraw guild reward.' });
+        }
+
+        var guildTag = normalizeGuildTag(guild.tag || guild.id);
+        var month = getGuildRewardMonth();
+        var duplicate = (adminStore.list('guildWithdrawals') || []).filter(function(item) {
+            return normalizeGuildTag(item.guildTag || item.guild_id) === guildTag && String(item.month || '') === month;
+        })[0];
+
+        if (duplicate) {
+            return sendJson(res, 409, {
+                ok: false,
+                message: 'Guild reward already withdrawn this month.',
+                withdrawal: duplicate
+            });
+        }
+
+        var points = getGuildMonthlyRewardPoints(guildTag);
+        if (points <= 0) {
+            return sendJson(res, 400, { ok: false, message: 'No guild reward points available this month.' });
+        }
+
+        var withdrawal = adminStore.create('guildWithdrawals', {
+            guildTag: guildTag,
+            guildName: guild.name || guildTag,
+            leader: user.username,
+            leaderId: user.id,
+            month: month,
+            points: points,
+            status: 'withdrawn'
+        });
+
+        sendJson(res, 200, {
+            ok: true,
+            message: 'Guild reward withdrawn.',
+            points: points,
+            month: month,
+            withdrawal: withdrawal
+        });
+    });
+}
+
 function handle(req, res, gameServer) {
     var parsed = url.parse(req.url, true);
     var pathname = parsed.pathname;
@@ -1609,6 +1676,11 @@ function handle(req, res, gameServer) {
 
     if (req.method === 'POST' && pathname === '/api/guild/leave') {
         handleGuildLeave(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/withdraw') {
+        handleGuildWithdraw(req, res);
         return true;
     }
 

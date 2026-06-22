@@ -1364,6 +1364,57 @@ $(document).on('keyup', function(input) {
         filter: saturate(3) hue-rotate(320deg) contrast(1.35);
     }
 
+    .guild-stat-head,
+    .guild-stat-row,
+    .guild-log-head,
+    .guild-log-row {
+        display: grid;
+        align-items: center;
+        min-height: 34px;
+        border-bottom: 1px solid #eee;
+        font-size: 13px;
+    }
+
+    .guild-stat-head,
+    .guild-log-head {
+        background: #f7f7f7;
+        color: #555;
+        font-weight: bold;
+    }
+
+    .guild-stat-row,
+    .guild-log-row {
+        background: #fff;
+        color: #333;
+    }
+
+    .guild-stat-head,
+    .guild-stat-row {
+        grid-template-columns: 95px 1fr 82px 78px;
+    }
+
+    .guild-log-head,
+    .guild-log-row {
+        grid-template-columns: 120px 78px 1fr 1fr;
+    }
+
+    .guild-stat-head span,
+    .guild-stat-row span,
+    .guild-log-head span,
+    .guild-log-row span {
+        min-width: 0;
+        padding: 0 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .guild-stat-time {
+        color: #1d5fd3;
+        font-weight: 700;
+        text-align: right;
+    }
+
     .guild-online-dot {
         display: inline-block;
         width: 17px;
@@ -1388,6 +1439,45 @@ $(document).on('keyup', function(input) {
         padding: 16px 4px;
         color: #777;
         text-align: center;
+    }
+
+    .guild-info-table {
+        border-top: 1px solid #e3e3e3;
+    }
+
+    .guild-info-row {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        min-height: 38px;
+        align-items: center;
+        border-bottom: 1px solid #e3e3e3;
+        background: #f9f9f9;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .guild-info-label {
+        padding-left: 10px;
+        color: #777;
+    }
+
+    .guild-info-value {
+        min-width: 0;
+        padding-right: 10px;
+        text-align: right;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .guild-info-point {
+        color: #1d5fd3;
+        font-weight: 700;
+    }
+
+    .guild-withdraw-link {
+        margin-left: 8px;
+        font-weight: 500;
     }
 
     #guildCreateDialog {
@@ -1637,8 +1727,9 @@ $(document).on('keyup', function(input) {
         top: 50%;
         left: 50%;
         z-index: 420;
-        width: 760px;
-        min-height: 600px;
+        width: 860px;
+        height: 650px;
+        min-height: 0;
         background: #fff;
         border: 1px solid rgba(0, 0, 0, .18);
         border-radius: 6px;
@@ -1682,7 +1773,9 @@ $(document).on('keyup', function(input) {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 18px 12px;
+        height: calc(100% - 52px);
         padding: 18px 6px 20px 6px;
+        box-sizing: border-box;
     }
 
     .battle-lobby-panel {
@@ -2339,8 +2432,8 @@ $(document).on('keyup', function(input) {
         position: absolute;
         top: 50%;
         left: calc(50% + 210px);
-        width: 380px;
-        height: 400px;
+        width: 300px;
+        height: 550px;
         transform: translateY(-50%);
         z-index: 255;
     }
@@ -2862,7 +2955,7 @@ $(document).on('keyup', function(input) {
             </div>
             <div class="form-group">
                 <div id="modeButtonWrap">
-                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":x5" data-battle-mode=":battle:1v1" data-invite-mode="X5">X5</button>
+                    <button type="button" class="btn btn-default mode-button" data-ffa-mode=":x5" data-battle-mode=":battle:1v1" data-invite-mode="FREEFORALL">FREEFORALL</button>
                     <button type="button" class="btn btn-default mode-button" data-ffa-mode=":hardcore" data-battle-mode=":battle:2v2" data-invite-mode="Hardcore">Hardcore</button>
                     <button type="button" id="battleSpectateBtn" class="btn btn-success mode-button battle-spectate-button">Spectate</button>
                 </div>
@@ -3121,7 +3214,7 @@ $(document).on('keyup', function(input) {
     <div class="side-container">
         <div class="modal-content friends-online">
             <div class="modal-header">
-                <h4 class="modal-title">Invite friends to <span class="friends-modal-mode">FFA - X5</span></h4>
+                <h4 class="modal-title">Invite friends to <span class="friends-modal-mode">FFA - FREEFORALL</span></h4>
             </div>
             <div class="modal-body">
                 <div id="friend-invite-modal">
@@ -3366,7 +3459,7 @@ $(document).on('keyup', function(input) {
                 <div class="highscore-filters">
                     <select id="highScoreMode" class="form-control highscore-mode">
                         <option>FFA - Hardcore</option>
-                        <option>FFA - X5</option>
+                        <option>FFA - FREEFORALL</option>
                         <option>1vs1</option>
                         <option>2vs2</option>
                     </select>
@@ -3503,8 +3596,7 @@ $(function () {
     var authToken = localStorage.getItem('authToken');
     var authUser = localStorage.getItem('authUser');
     if (localStorage.getItem('inviteSubMode') === 'X5') {
-        localStorage.setItem('inviteSubMode', 'Hardcore');
-        localStorage.setItem('preferredModeMigratedToHardcore', 'true');
+        localStorage.setItem('inviteSubMode', 'FREEFORALL');
     }
     var inviteSubMode = localStorage.getItem('inviteSubMode') || 'Hardcore';
     var inviteSubModeTouched = false;
@@ -3853,6 +3945,12 @@ $(function () {
         return date.toLocaleString();
     }
 
+    function formatGuildCreatedDate(value) {
+        var date = new Date(parseInt(value, 10) || Date.parse(value));
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString();
+    }
+
     function renderGuildInviteActions(invite) {
         return [
             '<div class="guild-invite-actions">',
@@ -4130,6 +4228,7 @@ $(function () {
             if (response.guild) {
                 upsertGuildListItem(response.guild);
                 openGuildDetailView(response.guild.name, response.guild.tag, getGuildLogoUrl(response.guild));
+                addGuildLog('join', authUser || localStorage.getItem('authUser') || 'Player', response.inviter || response.guild.leader || '-');
             }
             refreshGuildInvites();
             refreshNotifications();
@@ -4792,6 +4891,8 @@ $(function () {
             description: guild.description || guild.bio || guild.about || '',
             bio: guild.bio || guild.description || guild.about || '',
             top1: guild.top1 || '-',
+            top1Ms: parseInt(guild.top1Ms, 10) || 0,
+            monthlyTop1Ms: parseInt(guild.monthlyTop1Ms, 10) || parseInt(guild.top1Ms, 10) || 0,
             createdAt: guild.createdAt || Date.now(),
             updatedAt: Date.now()
         };
@@ -4862,6 +4963,11 @@ $(function () {
         return minutes >= 60 ? Math.floor(minutes / 60) + 'h' : minutes + 'm';
     }
 
+    function formatTop1RecordTime(ms) {
+        var minutes = Math.floor((parseInt(ms, 10) || 0) / 60000);
+        return minutes >= 60 ? Math.floor(minutes / 60) + 'h' + (minutes % 60 ? ' ' + (minutes % 60) + 'm' : '') : minutes + 'm';
+    }
+
     function renderGuildList() {
         var query = String($('#guildSearch').val() || '').trim().toLowerCase();
         var items = guildList.filter(function(guild) {
@@ -4914,13 +5020,16 @@ $(function () {
                     tag: tag,
                     members: item.members || 1,
                     top1: item.top1Time || '00:00',
+                    top1Ms: item.top1Ms || 0,
+                    monthlyTop1Ms: item.top1Ms || 0,
                     leader: item.leader || existing.leader || '',
                     leaderLevel: item.leaderLevel || existing.leaderLevel || 1,
                     membersList: item.membersList || existing.membersList || '',
                     description: item.description || item.bio || existing.description || existing.bio || '',
                     bio: item.bio || item.description || existing.bio || existing.description || '',
                     logo: item.logo || item.guildSkinUrl || existing.logo || existing.guildSkinUrl || '',
-                    guildSkinUrl: item.guildSkinUrl || item.logo || existing.guildSkinUrl || existing.logo || ''
+                    guildSkinUrl: item.guildSkinUrl || item.logo || existing.guildSkinUrl || existing.logo || '',
+                    createdAt: item.createdAt || existing.createdAt || Date.now()
                 });
             }).filter(function(guild) {
                 return !!guild.tag;
@@ -4972,6 +5081,145 @@ $(function () {
         $('#guildMemberList').html(rows.join(''));
     }
 
+    function getGuildMonthlyRewardPoints(guildItem) {
+        return Math.floor((parseInt(guildItem && guildItem.monthlyTop1Ms, 10) || 0) / 60000);
+    }
+
+    function getGuildWithdrawMonthKey(guildTag) {
+        var date = new Date();
+        var month = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+        return 'guildWithdraw:' + String(guildTag || '').trim().toUpperCase() + ':' + month;
+    }
+
+    function renderGuildInfo() {
+        var guildItem = activeGuildDetail && activeGuildDetail.item || {};
+        var guildTag = String(activeGuildDetail && activeGuildDetail.tag || guildItem.tag || '').trim().toUpperCase();
+        var points = getGuildMonthlyRewardPoints(guildItem);
+        var isLeader = String(guildViewerRole || '').toLowerCase() === 'leader';
+        var claimed = localStorage.getItem(getGuildWithdrawMonthKey(guildTag)) === '1';
+        var pointHtml = '<span class="guild-info-point">' + escapeHtml(points) + '</span>';
+
+        if (isLeader && points > 0 && !claimed) {
+            pointHtml += '<a href="#guild-withdraw" class="guild-withdraw-link">withdraw</a>';
+        } else if (claimed) {
+            pointHtml += '<span class="guild-withdraw-link text-muted">withdrawn this month</span>';
+        }
+
+        $('#guildDetailInfo').html([
+            '<div class="guild-info-table">',
+            '<div class="guild-info-row"><span class="guild-info-label">Point:</span><span class="guild-info-value">' + pointHtml + '</span></div>',
+            '<div class="guild-info-row"><span class="guild-info-label">Member:</span><span class="guild-info-value">' + escapeHtml(guildItem.members || guildMembers.length || 1) + '</span></div>',
+            '<div class="guild-info-row"><span class="guild-info-label">Created:</span><span class="guild-info-value">' + escapeHtml(formatGuildCreatedDate(guildItem.createdAt)) + '</span></div>',
+            '</div>'
+        ].join(''));
+    }
+
+    function loadGuildMonthlyReward(guildTag) {
+        guildTag = String(guildTag || '').trim().toUpperCase();
+        if (!guildTag || !activeGuildDetail) return;
+
+        $.getJSON('/api/guilds/' + encodeURIComponent(guildTag) + '/top1', { period: 'month' }, function(response) {
+            var guild = response && response.guild;
+            if (!guild || !activeGuildDetail || String(activeGuildDetail.tag || '').trim().toUpperCase() !== guildTag) return;
+
+            activeGuildDetail.item = $.extend({}, activeGuildDetail.item, {
+                top1: guild.top1Time || activeGuildDetail.item.top1 || '00:00',
+                top1Ms: guild.top1Ms || activeGuildDetail.item.top1Ms || 0,
+                monthlyTop1Ms: guild.top1Ms || 0
+            });
+            renderGuildInfo();
+        }).fail(renderGuildInfo);
+    }
+
+    function renderGuildStatistics(items) {
+        items = items || [];
+        if (!items.length) {
+            $('#guildDetailStatistics').html('<div class="guild-detail-empty">No Top 1 records yet.</div>');
+            return;
+        }
+
+        $('#guildDetailStatistics').html([
+            '<div class="guild-stat-head"><span>Date</span><span>Player</span><span>Mode</span><span>Top 1</span></div>',
+            items.map(function(item) {
+                return [
+                    '<div class="guild-stat-row">',
+                    '<span>' + escapeHtml(item.recordDate || '-') + '</span>',
+                    '<span>' + escapeHtml(item.username || '-') + '</span>',
+                    '<span>' + escapeHtml(String(item.mode || '').toUpperCase()) + '</span>',
+                    '<span class="guild-stat-time">' + escapeHtml(formatTop1RecordTime(item.top1Ms)) + '</span>',
+                    '</div>'
+                ].join('');
+            }).join('')
+        ].join(''));
+    }
+
+    function loadGuildStatistics(guildTag) {
+        guildTag = String(guildTag || '').trim().toUpperCase();
+        if (!guildTag) {
+            renderGuildStatistics([]);
+            return;
+        }
+
+        $('#guildDetailStatistics').html('<div class="guild-detail-empty">Loading statistics...</div>');
+        $.getJSON('/api/guilds/' + encodeURIComponent(guildTag) + '/top1/records', { period: 'month', limit: 50 }, function(response) {
+            renderGuildStatistics(response && response.items || []);
+        }).fail(function() {
+            renderGuildStatistics([]);
+        });
+    }
+
+    function getGuildLogStorageKey(guildTag) {
+        return 'guildLogs:' + String(guildTag || '').trim().toUpperCase();
+    }
+
+    function getGuildLogs(guildTag) {
+        try {
+            var logs = JSON.parse(localStorage.getItem(getGuildLogStorageKey(guildTag)) || '[]');
+            return Array.isArray(logs) ? logs : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function addGuildLog(action, playerName, actorName) {
+        var guildTag = activeGuildDetail && activeGuildDetail.tag || getCurrentGuildTag();
+        if (!guildTag) return;
+
+        var logs = getGuildLogs(guildTag);
+        logs.unshift({
+            at: Date.now(),
+            action: action,
+            player: playerName || '-',
+            actor: actorName || getCurrentGuildViewerName()
+        });
+        localStorage.setItem(getGuildLogStorageKey(guildTag), JSON.stringify(logs.slice(0, 100)));
+        renderGuildLogs();
+    }
+
+    function renderGuildLogs() {
+        var guildTag = activeGuildDetail && activeGuildDetail.tag || '';
+        var logs = getGuildLogs(guildTag);
+
+        if (!logs.length) {
+            $('#guildDetailLogs').html('<div class="guild-detail-empty">No guild logs yet.</div>');
+            return;
+        }
+
+        $('#guildDetailLogs').html([
+            '<div class="guild-log-head"><span>Date</span><span>Action</span><span>Player</span><span>By</span></div>',
+            logs.map(function(item) {
+                return [
+                    '<div class="guild-log-row">',
+                    '<span>' + escapeHtml(formatInviteTime(item.at) || '-') + '</span>',
+                    '<span>' + escapeHtml(item.action || '-') + '</span>',
+                    '<span>' + escapeHtml(item.player || '-') + '</span>',
+                    '<span>' + escapeHtml(item.actor || '-') + '</span>',
+                    '</div>'
+                ].join('');
+            }).join('')
+        ].join(''));
+    }
+
     function updateGuildDetailActions() {
         var viewerRole = String(guildViewerRole || 'guest').toLowerCase();
         var isLeader = viewerRole === 'leader';
@@ -5015,6 +5263,10 @@ $(function () {
         renderGuildBio(guildItem);
         guildMembers = parseGuildMemberList(guildItem, leaderName, viewerOwnsGuild);
         renderGuildMembers();
+        renderGuildInfo();
+        loadGuildMonthlyReward(guildTag);
+        loadGuildStatistics(guildTag);
+        renderGuildLogs();
         updateGuildDetailActions();
         $('#guildDetailView').css('display', 'flex');
     }
@@ -5065,7 +5317,7 @@ $(function () {
         if (text.indexOf('1') !== -1) return '1vs1';
         if (text.indexOf('2') !== -1 || text.indexOf('3') !== -1) return '2vs2';
         if (text.indexOf('hardcore') !== -1) return 'hardcore';
-        if (text.indexOf('x5') !== -1) return 'x5';
+        if (text.indexOf('x5') !== -1 || text.indexOf('freeforall') !== -1) return 'x5';
         return 'ffa';
     }
 
@@ -5279,6 +5531,10 @@ $(function () {
         }).join('') + '</div>');
     }
 
+    function hasTop1Time(item) {
+        return (parseInt(item && item.top1Ms, 10) || 0) > 0;
+    }
+
     function normalizeBattleTier(value) {
         value = String(value || 'UNRANKED').toUpperCase();
         if (value === 'UNRANKED' || value === 'UNRANK') return 'UNRANKED';
@@ -5476,10 +5732,14 @@ $(function () {
         if (!username) return;
 
         $.getJSON('/api/account/top1', { username: username, period: 'today' }, function(response) {
-            var rows = (response.items || []).map(function(item) {
-                return { label: item.label, value: item.top1Time || '00:00' };
+            var rows = (response.items || []).filter(hasTop1Time).map(function(item) {
+                return { label: 'Today ' + item.label, value: item.top1Time || '00:00' };
             });
-            renderStatRows('#accountDetailTop1', rows.length ? rows : [{ label: 'Top 1 Time', value: '00:00' }], 'account-top1-table');
+            if (rows.length) {
+                renderStatRows('#accountDetailTop1', rows, 'account-top1-table');
+            } else {
+                $('#accountDetailTop1').empty();
+            }
         });
 
         ['1vs1', '2vs2'].forEach(function(mode) {
@@ -5591,7 +5851,7 @@ $(function () {
         if (value.indexOf('1v1') !== -1 || value === '12') return 'Battle 1v1';
         if (value.indexOf('2v2') !== -1 || value === '11') return 'Battle 2v2';
         if (value.indexOf('hardcore') !== -1 || value === '7') return 'FFA - Hardcore';
-        if (value.indexOf('x5') !== -1 || value === '5') return 'FFA - X5';
+        if (value.indexOf('x5') !== -1 || value.indexOf('freeforall') !== -1 || value === '5') return 'FFA - FREEFORALL';
         if (value.indexOf('teams') !== -1 || value === '3') return 'Teams';
         if (value.indexOf('experimental') !== -1 || value === '2') return 'Experimental';
         return String(id || getFriendInviteModeText() || 'FFA');
@@ -5726,8 +5986,8 @@ $(function () {
         $('#modeButtonWrap').toggleClass('is-battle', isBattle);
 
         buttons.eq(0)
-            .text(isBattle ? '1vs1' : 'X5')
-            .attr('data-invite-mode', isBattle ? '1vs1' : 'X5');
+            .text(isBattle ? '1vs1' : 'FREEFORALL')
+            .attr('data-invite-mode', isBattle ? '1vs1' : 'FREEFORALL');
 
         buttons.eq(1)
             .text(isBattle ? '2vs2' : 'Hardcore')
@@ -5740,7 +6000,7 @@ $(function () {
             return;
         }
 
-        if (!isBattle && inviteSubMode !== 'X5' && inviteSubMode !== 'Hardcore') {
+        if (!isBattle && inviteSubMode !== 'FREEFORALL' && inviteSubMode !== 'Hardcore') {
             setInviteSubMode('Hardcore');
             return;
         }
@@ -6656,6 +6916,29 @@ $(function () {
         $('#guildDetail' + String(tab).charAt(0).toUpperCase() + String(tab).slice(1)).addClass('active');
     });
 
+    $('#guildDetailInfo').on('click', '.guild-withdraw-link', function (event) {
+        event.preventDefault();
+        var guildTag = activeGuildDetail && activeGuildDetail.tag || '';
+        var key = getGuildWithdrawMonthKey(guildTag);
+        var points = getGuildMonthlyRewardPoints(activeGuildDetail && activeGuildDetail.item);
+
+        if (String(guildViewerRole || '').toLowerCase() !== 'leader') return;
+        if (points <= 0 || localStorage.getItem(key) === '1') return;
+
+        postAuth('/api/guild/withdraw', {
+            token: getAuthToken()
+        }, function(err, response) {
+            if (err) {
+                alert(err);
+                return;
+            }
+
+            localStorage.setItem(key, '1');
+            renderGuildInfo();
+            alert((response && response.points || points) + ' guild point withdrawn for this month.');
+        });
+    });
+
     $('#guildList').on('click', '.guild-row', function (event) {
         event.preventDefault();
         openGuildDetailView($(this).data('guild-name'), $(this).data('guild-tag'), $(this).data('guild-logo'));
@@ -6787,6 +7070,7 @@ $(function () {
                 return;
             }
             if (response.user) storeAuthUser(response.user);
+            addGuildLog('leave', authUser || localStorage.getItem('authUser') || 'Player', authUser || localStorage.getItem('authUser') || 'Player');
             updateGuildUi();
             refreshGuildInvites();
             refreshNotifications();
@@ -6813,6 +7097,7 @@ $(function () {
         if (action === 'promote' && guildViewerRole === 'leader' && member.role === 'member') {
             member.role = 'staff';
             persistActiveGuildMembers();
+            addGuildLog('promote', member.name, getCurrentGuildViewerName());
             renderGuildMembers();
             return;
         }
@@ -6821,6 +7106,7 @@ $(function () {
             if (!confirm('Demote ' + member.name + ' menjadi Member?')) return;
             member.role = 'member';
             persistActiveGuildMembers();
+            addGuildLog('demote', member.name, getCurrentGuildViewerName());
             renderGuildMembers();
             return;
         }
@@ -6832,6 +7118,7 @@ $(function () {
                     return item.id !== member.id;
                 });
                 persistActiveGuildMembers();
+                addGuildLog('kick', member.name, getCurrentGuildViewerName());
                 renderGuildMembers();
                 return;
             }
@@ -6842,6 +7129,7 @@ $(function () {
                     return item.id !== member.id;
                 });
                 persistActiveGuildMembers();
+                addGuildLog('kick', member.name, getCurrentGuildViewerName());
                 renderGuildMembers();
             }
         }
@@ -6985,6 +7273,10 @@ $(function () {
             ? hardcoreRooms.indexOf(window.currentGameMode || '') !== -1
             : window.currentGameMode === selectedModeValue;
 
+        if (activeModeMatchesSelection && typeof window.resumeCurrentSpectate === 'function' && window.resumeCurrentSpectate()) {
+            return false;
+        }
+
         if (activeModeMatchesSelection && typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
             return false;
         }
@@ -7073,18 +7365,9 @@ $(function () {
         if (baseMode === ':battle' && !isLoggedIn()) {
             alert('Please login to play Battle.');
             $(this).val(':x5');
-            baseMode = ':x5';
         }
 
         renderModeButtons();
-
-        if (baseMode === ':battle') {
-            return;
-        }
-
-        if (typeof window.setGameMode === 'function') {
-            window.setGameMode(window.getSelectedGameModeForConnection(), true);
-        }
     });
 
     $('#friend-invite-modal').on('click', function (event) {
