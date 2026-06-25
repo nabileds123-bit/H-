@@ -55,7 +55,8 @@ function normalizePremiumChatEffect(value) {
         neon: true,
         galaxy: true,
         ice: true,
-        toxic: true
+        toxic: true,
+        nuke: true
     }[value] ? value : '';
 }
 

@@ -1250,6 +1250,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 galaxy: "#b56dff",
                 ice: "#9eefff",
                 toxic: "#9dff38",
+                nuke: "#ffb000",
                 bull: "#ff1f1f"
             }[effect] || "#ff1f1f";
         }
@@ -1504,6 +1505,55 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     ctx.lineTo(x + i * 8, baseY + Math.sin(age / 80 + i) * 2);
                 }
                 ctx.stroke();
+            } else if (msg.premiumEffect === "nuke") {
+                var blast = (age % 1200) / 1200;
+                var radius = 8 + blast * (Math.max(28, width * 0.8));
+                var flash = Math.max(0, 1 - blast * 1.35);
+                var boomX = centerX;
+                var boomY = y + height / 2;
+
+                ctx.globalAlpha = 0.18 + flash * 0.32;
+                ctx.fillStyle = "#fff3a8";
+                ctx.shadowColor = "#ffb000";
+                ctx.shadowBlur = 18 + flash * 16;
+                ctx.beginPath();
+                ctx.arc(boomX, boomY, 9 + flash * 14, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 0.75 * (1 - blast);
+                ctx.strokeStyle = "#ffb000";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(boomX, boomY, radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.globalAlpha = 0.55;
+                var plume = ctx.createLinearGradient(boomX, topY - 18, boomX, baseY + 8);
+                plume.addColorStop(0, "rgba(255, 246, 180, .85)");
+                plume.addColorStop(0.38, "rgba(255, 176, 0, .75)");
+                plume.addColorStop(1, "rgba(255, 68, 0, .18)");
+                ctx.fillStyle = plume;
+                ctx.shadowColor = "#ff6b00";
+                ctx.shadowBlur = 11 + pulse * 7;
+                ctx.beginPath();
+                ctx.ellipse(boomX, topY - 4 + Math.sin(age / 170) * 2, Math.max(11, width * 0.18), 8 + pulse * 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(boomX - 4, topY + 2, 8, height + 4);
+                ctx.beginPath();
+                ctx.ellipse(boomX, baseY + 1, Math.max(16, width * 0.28), 6 + pulse * 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 0.75;
+                ctx.strokeStyle = "rgba(255, 93, 0, .9)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x - 4, baseY);
+                for (i = 0; i <= Math.max(3, width / 7); i++) {
+                    ctx.lineTo(x + i * 7, baseY + Math.sin(age / 55 + i) * 3);
+                }
+                ctx.stroke();
+
+                ctx.globalAlpha = 1;
             }
 
             ctx.restore();
