@@ -695,6 +695,54 @@ GameServer.prototype.handleBattleDisconnect = function(socket) {
     });
 }
 
+GameServer.prototype.findSocketByBattleIdentity = function(clientId, userId) {
+    clientId = String(clientId || '').trim();
+    userId = String(userId || '').trim();
+    if (!clientId && !userId) return null;
+
+    for (var i = 0; i < this.allClients.length; i++) {
+        var socket = this.allClients[i];
+        if (!socket) continue;
+        if (clientId && this.getBattleClientId(socket) === clientId) return socket;
+        if (userId && this.getBattleUserId(socket) === userId) return socket;
+    }
+
+    return null;
+}
+
+GameServer.prototype.forfeitActiveBattleForLobbyJoin = function(clientId, userId) {
+    var socket = this.findSocketByBattleIdentity(clientId, userId);
+    var world = socket && socket.world;
+    var mode = world && world.gameMode;
+    var fallbackMode = this.getNonBattleDefaultWorldId ? this.getNonBattleDefaultWorldId() : null;
+
+    this.clearBattleLobbyClient(clientId, true, userId);
+
+    if (!socket || !world || !this.isBattleModeRequest || !this.isBattleModeRequest(world.id)) return false;
+
+    return this.withWorld(world, function() {
+        var finished = false;
+
+        if (mode && typeof mode.finishBattleDisconnectMatch === 'function' && mode.gamePhase == 2) {
+            finished = mode.finishBattleDisconnectMatch(this, socket.playerTracker);
+        }
+
+        if (mode && typeof mode.cleanupBattleMatch === 'function') {
+            mode.cleanupBattleMatch(this);
+        } else if (fallbackMode && !this.isBattleModeRequest(fallbackMode)) {
+            this.setClientWorld(socket, fallbackMode, true);
+        }
+
+        console.log('[Battle] requeue reset client=%s user=%s world=%s forfeit=%s',
+            clientId || '-',
+            userId || '-',
+            world.id || '-',
+            finished ? 'yes' : 'no'
+        );
+        return true;
+    });
+}
+
 GameServer.prototype.getBattleLobbyQueueCount = function(mode) {
     var total = 0;
 
@@ -796,6 +844,7 @@ GameServer.prototype.joinBattleLobby = function(data) {
         return { ok: false, message: 'Missing lobby client.' };
     }
 
+    this.forfeitActiveBattleForLobbyJoin(clientId, userId);
     this.pruneBattleLobby(mode);
     this.clearBattleLobbyClient(clientId, false, userId);
     lobby = this.getBattleLobby(mode);

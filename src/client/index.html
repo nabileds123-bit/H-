@@ -4749,24 +4749,13 @@ $(function () {
 
     window.playSelectedMode = function () {
         var selectedModeValue = getSelectedModeValue();
-        var activeModeMatchesSelection = selectedModeValue === ':hardcore'
-            ? hardcoreRooms.indexOf(window.currentGameMode || '') !== -1
-            : window.currentGameMode === selectedModeValue;
-
-        if (activeModeMatchesSelection && typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
-            return;
-        }
-
-        var targetMode = resolveGameModeRoom(selectedModeValue);
-
         var selectedGroup = getSelectedGameModeGroup();
 
-        if (selectedGroup !== 'direct' && !inviteSubModeTouched) {
-            updateInviteModeSelection();
-            return;
-        }
-
         if (selectedGroup === 'battle') {
+            if (!inviteSubModeTouched) {
+                updateInviteModeSelection();
+                return;
+            }
             if (battlePlayLoading) return;
 
             var selectedMode = getSelectedModeValue();
@@ -4784,6 +4773,21 @@ $(function () {
                     throw err;
                 }
             }, 700);
+            return;
+        }
+
+        var activeModeMatchesSelection = selectedModeValue === ':hardcore'
+            ? hardcoreRooms.indexOf(window.currentGameMode || '') !== -1
+            : window.currentGameMode === selectedModeValue;
+
+        if (activeModeMatchesSelection && typeof window.resumeCurrentGame === 'function' && window.resumeCurrentGame()) {
+            return;
+        }
+
+        var targetMode = resolveGameModeRoom(selectedModeValue);
+
+        if (selectedGroup !== 'direct' && !inviteSubModeTouched) {
+            updateInviteModeSelection();
             return;
         }
 
