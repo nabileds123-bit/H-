@@ -33,7 +33,7 @@ function clone(value) {
 
 function ensureStore() {
     if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir);
+        fs.mkdirSync(dataDir, { recursive: true });
     }
 
     if (!fs.existsSync(storePath)) {

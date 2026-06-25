@@ -5,40 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bubble V2 Admin</title>
   <style>
-    body{margin:0;background:#f4f6f8;color:#1f2933;font-family:Arial,sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:#f4f6f8;color:#1f2933;font-family:Arial,sans-serif;font-size:14px}
     button,input,select,textarea{font:inherit}
-    .login{max-width:360px;margin:12vh auto;padding:22px;background:#fff;border:1px solid #d9e2ec;border-radius:6px}
+    button{cursor:pointer}
+    .login{max-width:360px;margin:12vh auto;padding:22px;background:#fff;border:1px solid #d9e2ec;border-radius:6px;box-shadow:0 12px 28px rgba(15,23,42,.08)}
     .app{display:none;min-height:100vh}
     .top{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:#17202a;color:#fff}
     .brand{font-weight:700}
-    .layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 52px)}
-    .nav{background:#fff;border-right:1px solid #d9e2ec;padding:12px}
+    .layout{display:grid;grid-template-columns:236px minmax(0,1fr);height:calc(100vh - 52px);min-height:0}
+    .nav{background:#fff;border-right:1px solid #d9e2ec;padding:12px;overflow:auto}
     .nav button{width:100%;height:36px;margin:2px 0;border:0;background:transparent;text-align:left;color:#334e68;border-radius:4px;padding:0 10px}
     .nav button.active,.nav button:hover{background:#e6f0ff;color:#0b5cad}
-    .main{padding:16px;min-width:0}
-    .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px}
-    .toolbar input{height:34px;flex:1;border:1px solid #bcccdc;border-radius:4px;padding:0 10px}
+    .main{display:flex;flex-direction:column;gap:10px;padding:16px;min-width:0;min-height:0}
+    .main h2{margin:0;font-size:20px;line-height:1.3}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .toolbar input{height:34px;flex:1;min-width:220px;border:1px solid #bcccdc;border-radius:4px;padding:0 10px}
     .btn{height:34px;border:1px solid #2f80ed;border-radius:4px;background:#2f80ed;color:#fff;padding:0 12px;cursor:pointer}
     .btn.secondary{border-color:#9fb3c8;background:#fff;color:#334e68}
     .btn.danger{border-color:#d64545;background:#d64545}
-    .panel{background:#fff;border:1px solid #d9e2ec;border-radius:6px;overflow:hidden}
-    table{width:100%;border-collapse:collapse;font-size:13px}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .panel{background:#fff;border:1px solid #d9e2ec;border-radius:6px;overflow:auto;min-height:220px;max-height:calc(100vh - 174px)}
+    table{width:100%;min-width:980px;border-collapse:collapse;font-size:13px}
     th,td{padding:9px 10px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top}
-    th{background:#f7fafc;color:#52606d;font-size:12px;text-transform:uppercase}
+    th{position:sticky;top:0;z-index:1;background:#f7fafc;color:#52606d;font-size:12px;text-transform:uppercase}
+    td{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     td.actions{white-space:nowrap;width:120px}
-    .status{min-height:20px;margin:8px 0;color:#52606d}
+    .empty{text-align:center;color:#829ab1;padding:28px}
+    .status{min-height:20px;margin:0;color:#52606d}
     .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
-    .modal.open{display:block}
-    .dialog{width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 40px);overflow:auto;margin:20px auto;background:#fff;border-radius:6px}
+    .modal.open{display:flex;align-items:flex-start;justify-content:center;padding:20px 12px}
+    .dialog{width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 40px);display:flex;flex-direction:column;background:#fff;border-radius:6px;box-shadow:0 18px 50px rgba(15,23,42,.22);overflow:hidden}
     .dialog-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e4e7eb}
-    .form{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px}
+    .form{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px;overflow:auto}
     .field{display:flex;flex-direction:column;gap:5px}
     .field.full{grid-column:1/-1}
     .field label{font-size:12px;color:#52606d;font-weight:700}
-    .field input,.field select,.field textarea{border:1px solid #bcccdc;border-radius:4px;padding:8px}
-    .field textarea{min-height:90px}
+    .field input,.field select,.field textarea{width:100%;border:1px solid #bcccdc;border-radius:4px;padding:8px}
+    .field textarea{min-height:110px;resize:vertical}
     .dialog-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 16px;border-top:1px solid #e4e7eb}
-    @media(max-width:760px){.layout{grid-template-columns:1fr}.nav{border-right:0;border-bottom:1px solid #d9e2ec}.form{grid-template-columns:1fr}}
+    @media(max-width:760px){.layout{grid-template-columns:1fr;height:auto}.nav{display:flex;gap:6px;overflow:auto;border-right:0;border-bottom:1px solid #d9e2ec}.nav button{width:auto;white-space:nowrap}.main{min-height:calc(100vh - 112px)}.panel{max-height:calc(100vh - 210px)}.form{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -51,12 +57,12 @@
   </div>
 
   <div id="app" class="app">
-    <div class="top"><div class="brand">Bubble V2 Admin</div><button id="logoutBtn" class="btn secondary">Logout</button></div>
+    <div class="top"><div class="brand">Bubble V2 Admin</div><button id="logoutBtn" type="button" class="btn secondary">Logout</button></div>
     <div class="layout">
       <div id="nav" class="nav"></div>
       <main class="main">
         <h2 id="title"></h2>
-        <div class="toolbar"><input id="search" placeholder="Search"><button id="addBtn" class="btn">Add</button><button id="reloadBtn" class="btn secondary">Reload</button></div>
+        <div class="toolbar"><input id="search" placeholder="Search"><button id="addBtn" type="button" class="btn">Add</button><button id="reloadBtn" type="button" class="btn secondary">Reload</button></div>
         <p id="status" class="status"></p>
         <div class="panel"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
       </main>
@@ -65,9 +71,9 @@
 
   <div id="modal" class="modal">
     <div class="dialog">
-      <div class="dialog-head"><strong id="modalTitle"></strong><button id="closeModal" class="btn secondary">Close</button></div>
+      <div class="dialog-head"><strong id="modalTitle"></strong><button id="closeModal" type="button" class="btn secondary">Close</button></div>
       <form id="form" class="form"></form>
-      <div class="dialog-foot"><button id="deleteBtn" class="btn danger">Delete</button><button id="saveBtn" class="btn">Save</button></div>
+      <div class="dialog-foot"><button id="deleteBtn" type="button" class="btn danger">Delete</button><button id="saveBtn" type="button" class="btn">Save</button></div>
     </div>
   </div>
 
@@ -102,6 +108,14 @@
     function text(value) { return value == null ? '' : String(value); }
     function esc(value) { return text(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
     function setStatus(message, error) { var el=document.getElementById('status'); el.style.color=error?'#b42318':'#52606d'; el.textContent=message||''; }
+    function updateUrlState() {
+      var params = new URLSearchParams(window.location.search || '');
+      params.set('module', current);
+      var search = document.getElementById('search').value.trim();
+      if (search) params.set('search', search);
+      else params.delete('search');
+      window.history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+    }
     function applyUrlState() {
       var params = new URLSearchParams(window.location.search || '');
       var moduleName = params.get('module');
@@ -116,20 +130,22 @@
     }
     function load(key) {
       current = key || current;
+      updateUrlState();
       renderNav();
       document.getElementById('title').textContent = modules[current].title;
       document.getElementById('addBtn').style.display = modules[current].readonly ? 'none' : '';
       setStatus('Loading...');
-      api('/api/admin/' + modules[current].endpoint).then(function(data){ items = data.items || []; renderTable(); setStatus(items.length + ' item loaded.'); }).catch(function(err){ setStatus(err.message || 'Load failed.', true); });
+      api('/api/admin/' + modules[current].endpoint).then(function(data){ items = data.items || []; renderTable(); }).catch(function(err){ setStatus(err.message || 'Load failed.', true); });
     }
     function renderTable() {
       var mod = modules[current];
       var q = document.getElementById('search').value.toLowerCase();
       var filtered = items.filter(function(item){ return JSON.stringify(item).toLowerCase().indexOf(q) !== -1; });
       document.getElementById('thead').innerHTML = '<tr>' + mod.columns.map(function(c){return '<th>'+esc(c)+'</th>';}).join('') + (mod.readonly ? '' : '<th>Actions</th>') + '</tr>';
-      document.getElementById('tbody').innerHTML = filtered.map(function(item){
-        return '<tr>' + mod.columns.map(function(c){return '<td>'+esc(item[c])+'</td>';}).join('') + (mod.readonly ? '' : '<td class="actions"><button class="btn secondary" data-edit="'+esc(item.id)+'">Edit</button></td>') + '</tr>';
-      }).join('');
+      document.getElementById('tbody').innerHTML = filtered.length ? filtered.map(function(item){
+        return '<tr>' + mod.columns.map(function(c){return '<td title="'+esc(item[c])+'">'+esc(item[c])+'</td>';}).join('') + (mod.readonly ? '' : '<td class="actions"><button type="button" class="btn secondary" data-edit="'+esc(item.id)+'">Edit</button></td>') + '</tr>';
+      }).join('') : '<tr><td class="empty" colspan="'+(mod.columns.length + (mod.readonly ? 0 : 1))+'">No data found.</td></tr>';
+      setStatus(filtered.length + ' shown from ' + items.length + ' item.');
     }
     function openModal(item) {
       editing = item || null;
@@ -160,8 +176,9 @@
       return data;
     }
     function save() {
+      document.getElementById('saveBtn').disabled = true;
       var endpoint = '/api/admin/' + modules[current].endpoint + (editing ? '/' + encodeURIComponent(editing.id) : '');
-      api(endpoint, {method: editing ? 'PUT' : 'POST', body: JSON.stringify(formData())}).then(function(){ closeModal(); load(current); }).catch(function(err){ setStatus(err.message || 'Save failed.', true); });
+      api(endpoint, {method: editing ? 'PUT' : 'POST', body: JSON.stringify(formData())}).then(function(){ closeModal(); load(current); }).catch(function(err){ setStatus(err.message || 'Save failed.', true); }).finally(function(){ document.getElementById('saveBtn').disabled = false; });
     }
     function remove() {
       if (!editing || !confirm('Delete this item?')) return;
@@ -174,11 +191,14 @@
     document.getElementById('nav').onclick = function(e){ if(e.target.dataset.module) load(e.target.dataset.module); };
     document.getElementById('addBtn').onclick = function(){ openModal(null); };
     document.getElementById('reloadBtn').onclick = function(){ load(current); };
-    document.getElementById('search').oninput = renderTable;
-    document.getElementById('tbody').onclick = function(e){ if(e.target.dataset.edit) openModal(items.filter(function(item){return item.id===e.target.dataset.edit;})[0]); };
+    document.getElementById('search').oninput = function(){ updateUrlState(); renderTable(); };
+    document.getElementById('tbody').onclick = function(e){ if(e.target.dataset.edit) openModal(items.filter(function(item){return String(item.id)===String(e.target.dataset.edit);})[0]); };
     document.getElementById('closeModal').onclick = closeModal;
     document.getElementById('saveBtn').onclick = save;
     document.getElementById('deleteBtn').onclick = remove;
+    document.getElementById('form').onsubmit = function(e){ e.preventDefault(); save(); };
+    document.getElementById('modal').onclick = function(e){ if(e.target.id === 'modal') closeModal(); };
+    document.onkeydown = function(e){ if(e.key === 'Escape') closeModal(); };
     api('/api/admin/session').then(function(data){ data.authenticated ? showApp() : showLogin(); }).catch(showLogin);
   </script>
 </body>

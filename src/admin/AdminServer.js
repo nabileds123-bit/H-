@@ -28,7 +28,7 @@ var collections = {
 
 function ensureSessionStore() {
     if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir);
+        fs.mkdirSync(dataDir, { recursive: true });
     }
 
     if (!fs.existsSync(sessionsPath)) {
@@ -72,7 +72,7 @@ function readAdminConfigOverrides() {
 
 function writeAdminConfigOverride(key, value) {
     if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir);
+        fs.mkdirSync(dataDir, { recursive: true });
     }
 
     var overrides = readAdminConfigOverrides();
@@ -133,19 +133,25 @@ function writeConfigValue(key, value) {
 }
 
 function sendJson(res, status, body) {
+    if (res.headersSent) return true;
+
     res.writeHead(status, {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store'
     });
     res.end(JSON.stringify(body));
+    return true;
 }
 
 function sendHtml(res, status, html) {
+    if (res.headersSent) return true;
+
     res.writeHead(status, {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store'
     });
     res.end(html);
+    return true;
 }
 
 function readBody(req, callback) {

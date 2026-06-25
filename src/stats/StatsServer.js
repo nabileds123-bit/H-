@@ -2,6 +2,8 @@ var url = require('url');
 var statsStore = require('./statsStore');
 
 function sendJson(res, status, body) {
+    if (res.headersSent) return true;
+
     res.writeHead(status, {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
@@ -10,6 +12,7 @@ function sendJson(res, status, body) {
         'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
     });
     res.end(JSON.stringify(body));
+    return true;
 }
 
 function formatMs(ms) {
