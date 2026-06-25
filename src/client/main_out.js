@@ -1256,6 +1256,119 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             }[effect] || "#ff1f1f";
         }
 
+        function hexToRgba(hex, alpha) {
+            var match = /^#?([a-f0-9]{6})$/i.exec(hex || "");
+            if (!match) return "rgba(255, 31, 31, " + alpha + ")";
+            var value = parseInt(match[1], 16);
+            return "rgba(" + ((value >> 16) & 255) + ", " + ((value >> 8) & 255) + ", " + (value & 255) + ", " + alpha + ")";
+        }
+
+        function drawRoundRect(ctx, x, y, width, height, radius) {
+            radius = Math.min(radius, width / 2, height / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function drawPremiumChatBackground(ctx, msg, x, y, width, height) {
+            if (!msg || !msg.premiumEffect) return;
+
+            var age = Math.max(0, Date.now() - (msg.time || Date.now()));
+            var pulse = (Math.sin(age / 180) + 1) / 2;
+            var color = getPremiumEffectColor(msg.premiumEffect);
+            var left = x - 4;
+            var top = y - 3;
+            var bgWidth = width + 8;
+            var bgHeight = height + 5;
+
+            ctx.save();
+            ctx.globalAlpha = 0.78;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 8 + pulse * 5;
+
+            var bg = ctx.createLinearGradient(left, top, left + bgWidth, top + bgHeight);
+            if (msg.premiumEffect === "rainbow") {
+                bg.addColorStop(0, "rgba(255, 59, 92, .24)");
+                bg.addColorStop(0.25, "rgba(255, 206, 58, .20)");
+                bg.addColorStop(0.5, "rgba(124, 255, 101, .18)");
+                bg.addColorStop(0.75, "rgba(40, 215, 255, .20)");
+                bg.addColorStop(1, "rgba(255, 79, 163, .24)");
+            } else if (msg.premiumEffect === "galaxy") {
+                bg.addColorStop(0, "rgba(38, 30, 96, .42)");
+                bg.addColorStop(0.55, "rgba(95, 42, 150, .34)");
+                bg.addColorStop(1, "rgba(255, 79, 163, .18)");
+            } else if (msg.premiumEffect === "nuke") {
+                bg.addColorStop(0, "rgba(255, 176, 0, .30)");
+                bg.addColorStop(0.45, "rgba(255, 86, 0, .22)");
+                bg.addColorStop(1, "rgba(45, 23, 0, .18)");
+            } else if (msg.premiumEffect === "strike" || msg.premiumEffect === "lightning") {
+                bg.addColorStop(0, "rgba(255, 243, 106, .20)");
+                bg.addColorStop(0.45, "rgba(56, 201, 255, .18)");
+                bg.addColorStop(1, "rgba(255, 255, 255, .08)");
+            } else {
+                bg.addColorStop(0, hexToRgba(color, 0.18));
+                bg.addColorStop(1, hexToRgba(color, 0.08));
+            }
+
+            ctx.fillStyle = bg;
+            drawRoundRect(ctx, left, top, bgWidth, bgHeight, 6);
+            ctx.fill();
+
+            ctx.globalAlpha = 0.34 + pulse * 0.16;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            drawRoundRect(ctx, left + 0.5, top + 0.5, bgWidth - 1, bgHeight - 1, 6);
+            ctx.stroke();
+
+            if (msg.premiumEffect === "strike" || msg.premiumEffect === "lightning") {
+                ctx.globalAlpha = 0.26 + pulse * 0.24;
+                ctx.strokeStyle = "#fff36a";
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(left + 7, top + bgHeight - 4);
+                ctx.lineTo(left + bgWidth * 0.42, top + 3);
+                ctx.lineTo(left + bgWidth * 0.62, top + bgHeight - 3);
+                ctx.lineTo(left + bgWidth - 7, top + 4);
+                ctx.stroke();
+            } else if (msg.premiumEffect === "galaxy") {
+                ctx.fillStyle = "#ffffff";
+                for (var s = 0; s < 8; s++) {
+                    ctx.globalAlpha = 0.18 + (s % 3) * 0.08;
+                    ctx.fillRect(left + ((s * 37 + age / 30) % bgWidth), top + 4 + (s * 11 % Math.max(6, bgHeight - 8)), 1.4, 1.4);
+                }
+            } else if (msg.premiumEffect === "nuke") {
+                var blast = (age % 1200) / 1200;
+                ctx.globalAlpha = 0.28 * (1 - blast);
+                ctx.strokeStyle = "#fff3a8";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(left + bgWidth / 2, top + bgHeight / 2, 8 + blast * Math.max(18, bgWidth / 2), 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (msg.premiumEffect === "rainbow") {
+                ctx.globalAlpha = 0.35;
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (var r = 0; r <= Math.max(3, bgWidth / 12); r++) {
+                    var rx = left + r * 12;
+                    var ry = top + bgHeight - 4 + Math.sin(age / 120 + r) * 2;
+                    if (r === 0) ctx.moveTo(rx, ry);
+                    else ctx.lineTo(rx, ry);
+                }
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
         function drawNicknameAura(ctx, msg, x, y, width, height) {
             if (!msg || !msg.premiumEffect) return;
 
@@ -1672,6 +1785,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             if (y + lineHeight > maxY) break;
 
             // nama player
+            drawPremiumChatBackground(ctx, msg, paddingX, y, chatWidth - paddingX * 2, lines.length * lineHeight);
             drawNicknameAura(ctx, msg, nameX, y, nameWidth, lineHeight);
             ctx.fillStyle = getChatNameColor(msg);
             if (msg.premiumEffect) {
