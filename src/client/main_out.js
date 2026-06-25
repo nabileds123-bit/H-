@@ -1328,49 +1328,84 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 ctx.lineTo(rightX, y + height);
                 ctx.stroke();
             } else if (msg.premiumEffect === "strike") {
-                var strikeCycle = (age % 760) / 760;
-                var strikeAlpha = strikeCycle < 0.28 ? 1 - strikeCycle / 0.28 : 0.18 + pulse * 0.22;
-                var strikeX = rightX - 2;
-                var strikeTop = topY - 18;
+                var strikeCycle = (age % 680) / 680;
+                var flash = strikeCycle < 0.16 ? 1 : strikeCycle < 0.34 ? 1 - (strikeCycle - 0.16) / 0.18 : 0.16 + pulse * 0.18;
+                var strikeX = rightX + 5;
+                var strikeTop = topY - 28;
+                var strikeEndY = y + height + 3;
+                var jitter = Math.sin(Math.floor(age / 70) * 12.9898) * 4;
+                var bolt = [
+                    { x: strikeX - 17 + jitter, y: strikeTop },
+                    { x: strikeX - 6 - jitter * 0.4, y: topY - 16 },
+                    { x: strikeX - 13 + jitter * 0.6, y: topY - 5 },
+                    { x: strikeX + 1 - jitter * 0.5, y: y + 2 },
+                    { x: strikeX - 8 + jitter * 0.3, y: y + 8 },
+                    { x: strikeX + 8, y: strikeEndY }
+                ];
 
-                ctx.lineCap = "round";
-                ctx.lineJoin = "round";
-                ctx.strokeStyle = "#fff36a";
-                ctx.lineWidth = 3;
-                ctx.globalAlpha = strikeAlpha;
+                function drawBolt(points, color, lineWidth, alpha, blur) {
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.lineCap = "butt";
+                    ctx.lineJoin = "miter";
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = lineWidth;
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = blur;
+                    ctx.beginPath();
+                    ctx.moveTo(points[0].x, points[0].y);
+                    for (var bi = 1; bi < points.length; bi++) {
+                        ctx.lineTo(points[bi].x, points[bi].y);
+                    }
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                drawBolt(bolt, "#1bdfff", 7, 0.26 + flash * 0.2, 18);
+                drawBolt(bolt, "#fff36a", 4, 0.55 + flash * 0.3, 12);
+                drawBolt(bolt, "#ffffff", 1.8, 0.86 + flash * 0.14, 4);
+
+                var branchA = [
+                    bolt[2],
+                    { x: bolt[2].x - 14 - pulse * 4, y: bolt[2].y + 3 },
+                    { x: bolt[2].x - 7, y: bolt[2].y + 9 }
+                ];
+                var branchB = [
+                    bolt[3],
+                    { x: bolt[3].x + 13 + pulse * 3, y: bolt[3].y + 2 },
+                    { x: bolt[3].x + 5, y: bolt[3].y + 10 }
+                ];
+                var branchC = [
+                    bolt[4],
+                    { x: bolt[4].x - 10, y: bolt[4].y + 4 },
+                    { x: bolt[4].x - 3, y: bolt[4].y + 8 }
+                ];
+
+                drawBolt(branchA, "#fff36a", 2, 0.5 + flash * 0.35, 8);
+                drawBolt(branchA, "#ffffff", 0.9, 0.8, 3);
+                drawBolt(branchB, "#38c9ff", 2, 0.45 + flash * 0.3, 8);
+                drawBolt(branchB, "#ffffff", 0.9, 0.76, 3);
+                drawBolt(branchC, "#fff36a", 1.6, 0.4 + flash * 0.25, 7);
+
+                ctx.globalAlpha = 0.35 + flash * 0.32;
+                ctx.fillStyle = "#fff36a";
                 ctx.shadowColor = "#38c9ff";
-                ctx.shadowBlur = 14 + pulse * 10;
+                ctx.shadowBlur = 15 + flash * 12;
                 ctx.beginPath();
-                ctx.moveTo(strikeX - 9, strikeTop);
-                ctx.lineTo(strikeX + 2, y - 2);
-                ctx.lineTo(strikeX - 5, y + 6);
-                ctx.lineTo(strikeX + 8, y + height + 3);
-                ctx.stroke();
+                ctx.arc(strikeX + 8, strikeEndY - 1, 5 + flash * 5, 0, Math.PI * 2);
+                ctx.fill();
 
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 1.2;
-                ctx.globalAlpha = Math.min(1, strikeAlpha + 0.2);
-                ctx.beginPath();
-                ctx.moveTo(strikeX - 7, strikeTop + 2);
-                ctx.lineTo(strikeX + 1, y - 1);
-                ctx.lineTo(strikeX - 3, y + 5);
-                ctx.lineTo(strikeX + 5, y + height + 1);
-                ctx.stroke();
-
-                ctx.globalAlpha = 0.28 + pulse * 0.35;
-                ctx.strokeStyle = "rgba(56, 201, 255, .9)";
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.arc(strikeX + 2, y + height / 2, 8 + pulse * 5, 0, Math.PI * 2);
-                ctx.stroke();
-
-                ctx.globalAlpha = 0.7;
-                ctx.strokeStyle = "rgba(255, 243, 106, .85)";
+                ctx.globalAlpha = 0.5 + flash * 0.35;
+                ctx.strokeStyle = "rgba(255, 243, 106, .9)";
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
                 ctx.moveTo(x - 2, baseY);
-                ctx.lineTo(rightX + 8, baseY + Math.sin(age / 70) * 2);
+                for (i = 0; i <= Math.max(3, width / 8); i++) {
+                    ctx.lineTo(x + i * 8, baseY + Math.sin(age / 48 + i * 1.7) * 2.5);
+                }
                 ctx.stroke();
+
+                ctx.globalAlpha = 1;
             } else if (msg.premiumEffect === "fire") {
                 ctx.shadowColor = "#ff2200";
                 ctx.shadowBlur = 9;
