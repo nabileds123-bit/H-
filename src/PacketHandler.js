@@ -3,6 +3,10 @@ var userStore = require('./auth/userStore');
 var battleTier = require('./battleTier');
 
 function hexToColor(hex) {
+    if (String(hex || '').trim().toUpperCase() === 'BLACK') {
+        return { r: 0, g: 0, b: 0 };
+    }
+
     var match = /^#?([a-f0-9]{6})$/i.exec(hex || '');
     if (!match) return null;
 

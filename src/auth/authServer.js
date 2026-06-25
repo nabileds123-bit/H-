@@ -20,6 +20,7 @@ var MAX_GUILD_SKIN_BYTES = 200 * 1024;
 var MAX_SKIN_BODY_BYTES = 1024 * 1024;
 var GUILD_WITHDRAW_DISCORD_URL = 'https://discord.gg/gUsYm8AWE2';
 var CELL_COLORS = [
+    'BLACK',
     '#000000',
     '#36D2D6',
     '#800080',
@@ -89,6 +90,7 @@ function isValidPassword(value) {
 
 function normalizeCellColor(value) {
     var color = String(value || '').trim().toUpperCase();
+    if (color === '#BLACK') color = 'BLACK';
     return CELL_COLORS.indexOf(color) !== -1 ? color : null;
 }
 
@@ -1145,7 +1147,7 @@ function publicFriendProfile(user, status, gameServer) {
         level: parseInt(user.level, 10) || 1,
         accountType: user.accountType || 'Free',
         guildTag: user.guildTag || '',
-        cellColor: user.cellColor || '#6f9ee7',
+        cellColor: user.cellColor === 'BLACK' ? '#000000' : (user.cellColor || '#6f9ee7'),
         country_code: normalizeCountryCode(user.country_code || user.countryCode),
         lastLoginAt: user.lastLoginAt || user.updatedAt || user.createdAt || Date.now()
     };
