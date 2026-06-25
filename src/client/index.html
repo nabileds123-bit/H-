@@ -459,9 +459,10 @@ $(document).on('keyup', function(input) {
     #accountDetailDialog .spa-page-body {
         flex: 1;
         min-height: 0;
-        padding-bottom: 10px;
+        padding-bottom: 42px;
         font-size: 13px;
         color: #333;
+        overflow: hidden;
     }
 
     #accountDetailDialog .spa-page-body {
@@ -494,6 +495,34 @@ $(document).on('keyup', function(input) {
         right: 0;
         top: -16px;
         border-top: 1px solid #eee;
+    }
+
+    @media (max-width: 430px), (max-height: 620px) {
+        #guildDialog {
+            width: calc(100vw - 20px);
+            height: calc(100vh - 20px);
+            margin: 0;
+            padding: 5px 12px;
+        }
+
+        #guildDialog .dialog-footer {
+            left: 12px;
+            right: 12px;
+        }
+
+        .guild-detail-header {
+            grid-template-columns: 72px 1fr;
+        }
+
+        .guild-detail-logo {
+            width: 72px;
+            height: 72px;
+        }
+
+        .guild-detail-bio {
+            min-height: 72px;
+            max-height: 82px;
+        }
     }
 
     #guildListView {
@@ -1140,17 +1169,21 @@ $(document).on('keyup', function(input) {
 
     #guildDetailView {
         display: none;
-        height: 452px;
+        flex: 1;
+        height: auto;
         min-height: 0;
         flex-direction: column;
+        overflow: hidden;
     }
 
     .guild-detail-rule {
-        margin: 12px 0 20px 0;
+        flex: 0 0 auto;
+        margin: 10px 0 16px 0;
         border-top: 1px solid #eee;
     }
 
     .guild-detail-header {
+        flex: 0 0 auto;
         display: grid;
         grid-template-columns: 80px 1fr;
         gap: 8px;
@@ -1182,7 +1215,8 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-detail-bio {
-        min-height: 92px;
+        min-height: 76px;
+        max-height: 92px;
         padding: 8px 10px;
         background: #fff;
         color: #333;
@@ -1190,7 +1224,7 @@ $(document).on('keyup', function(input) {
         line-height: 1.35;
         white-space: pre-wrap;
         word-break: break-word;
-        overflow: hidden;
+        overflow-y: auto;
     }
 
     .guild-detail-bio.is-empty {
@@ -1199,6 +1233,7 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-detail-tabs {
+        flex: 0 0 auto;
         display: flex;
         align-items: flex-end;
         margin-top: 12px;
@@ -1230,11 +1265,17 @@ $(document).on('keyup', function(input) {
         display: none;
         flex: 1;
         min-height: 0;
-        padding-top: 16px;
+        padding-top: 12px;
+        overflow: hidden;
     }
 
     .guild-detail-pane.active {
         display: block;
+    }
+
+    #guildDetailMembers.guild-detail-pane.active {
+        display: flex;
+        flex-direction: column;
     }
 
     .guild-member-head,
@@ -1247,8 +1288,16 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-member-head {
+        flex: 0 0 auto;
         font-weight: bold;
         text-align: left;
+    }
+
+    #guildMemberList {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        border-bottom: 1px solid #eee;
     }
 
     .guild-member-head span:first-child {
@@ -1427,10 +1476,12 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-detail-actions {
-        margin-top: 2px;
-        padding-top: 1px;
+        flex: 0 0 auto;
+        margin-top: 8px;
+        padding-top: 8px;
         border-top: 1px solid #ddd;
         text-align: right;
+        background: #fff;
     }
 
     .guild-detail-actions .btn {
@@ -7196,44 +7247,39 @@ $(function () {
         if (!member || member.isSelf) return;
 
         if (action === 'promote' && guildViewerRole === 'leader' && member.role === 'member') {
-            member.role = 'staff';
-            persistActiveGuildMembers();
-            addGuildLog('promote', member.name, getCurrentGuildViewerName());
-            renderGuildMembers();
-            return;
-        }
-
-        if (action === 'demote' && guildViewerRole === 'leader' && member.role === 'staff') {
+            if (!confirm('Promote ' + member.name + ' menjadi Staff?')) return;
+        } else if (action === 'demote' && guildViewerRole === 'leader' && member.role === 'staff') {
             if (!confirm('Demote ' + member.name + ' menjadi Member?')) return;
-            member.role = 'member';
-            persistActiveGuildMembers();
-            addGuildLog('demote', member.name, getCurrentGuildViewerName());
-            renderGuildMembers();
+        } else if (action === 'kick' && (
+            (guildViewerRole === 'leader' && (member.role === 'member' || member.role === 'staff')) ||
+            (guildViewerRole === 'staff' && member.role === 'member')
+        )) {
+            if (!confirm('Kick ' + member.name + ' dari guild?')) return;
+        } else {
             return;
         }
 
-        if (action === 'kick') {
-            if (guildViewerRole === 'leader' && (member.role === 'member' || member.role === 'staff')) {
-                if (!confirm('Kick ' + member.name + ' dari guild?')) return;
-                guildMembers = guildMembers.filter(function(item) {
-                    return item.id !== member.id;
-                });
-                persistActiveGuildMembers();
-                addGuildLog('kick', member.name, getCurrentGuildViewerName());
-                renderGuildMembers();
+        postAuth('/api/guild/member-action', {
+            token: getAuthToken(),
+            action: action,
+            memberId: member.id
+        }, function(err, response) {
+            if (err) {
+                alert(err || 'Failed to update guild member.');
                 return;
             }
-
-            if (guildViewerRole === 'staff' && member.role === 'member') {
-                if (!confirm('Kick ' + member.name + ' dari guild?')) return;
-                guildMembers = guildMembers.filter(function(item) {
-                    return item.id !== member.id;
-                });
-                persistActiveGuildMembers();
-                addGuildLog('kick', member.name, getCurrentGuildViewerName());
+            if (response.user) storeAuthUser(response.user);
+            if (response.guild) {
+                upsertGuildListItem(response.guild);
+                openGuildDetailView(response.guild.name, response.guild.tag, getGuildLogoUrl(response.guild));
+            } else {
                 renderGuildMembers();
             }
-        }
+            addGuildLog(action, member.name, getCurrentGuildViewerName());
+            updateGuildUi();
+            refreshGuildInvites();
+            refreshNotifications();
+        });
     });
 
     $('#guildCreateLink').on('click', function (event) {

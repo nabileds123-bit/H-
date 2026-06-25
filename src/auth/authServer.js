@@ -1656,6 +1656,103 @@ function handleGuildLeave(req, res) {
     });
 }
 
+function handleGuildMemberAction(req, res) {
+    readBody(req, function(err, body) {
+        if (err) return sendJson(res, 400, { ok: false, message: 'Invalid request.' });
+
+        var user = users.findBySessionToken(String(body.token || ''));
+        if (!user) return sendJson(res, 401, { ok: false, message: 'You must login first.' });
+
+        var guild = findGuildByTag(user.guildTag);
+        if (!guild) return sendJson(res, 404, { ok: false, message: 'Guild not found.' });
+
+        var viewerRole = getGuildRole(user, guild);
+        if (viewerRole !== 'leader' && viewerRole !== 'staff') {
+            return sendJson(res, 403, { ok: false, message: 'You do not have permission.' });
+        }
+
+        var action = String(body.action || '').trim().toLowerCase();
+        var targetKey = String(body.memberId || body.targetUserId || body.username || body.target || '').trim();
+        if (action !== 'promote' && action !== 'demote' && action !== 'kick') {
+            return sendJson(res, 400, { ok: false, message: 'Invalid guild action.' });
+        }
+        if (!targetKey) {
+            return sendJson(res, 400, { ok: false, message: 'Target member is required.' });
+        }
+
+        var members = parseGuildMembers(guild);
+        var targetIndex = -1;
+        var targetKeyLower = targetKey.toLowerCase();
+        for (var i = 0; i < members.length; i++) {
+            var memberId = String(members[i].id || '').trim();
+            var memberName = String(members[i].name || '').trim();
+            if (memberId === targetKey || memberId.toLowerCase() === targetKeyLower || memberName.toLowerCase() === targetKeyLower) {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex === -1) {
+            return sendJson(res, 404, { ok: false, message: 'Guild member not found.' });
+        }
+
+        var target = members[targetIndex];
+        var targetRole = String(target.role || 'member').toLowerCase();
+        var targetName = String(target.name || '').trim();
+        var viewerName = String(user.username || '').trim().toLowerCase();
+        if (!targetName || targetName.toLowerCase() === viewerName) {
+            return sendJson(res, 400, { ok: false, message: 'You cannot manage yourself.' });
+        }
+        if (targetRole === 'leader') {
+            return sendJson(res, 403, { ok: false, message: 'Guild leader cannot be changed here.' });
+        }
+
+        if (action === 'promote') {
+            if (viewerRole !== 'leader' || targetRole !== 'member') {
+                return sendJson(res, 403, { ok: false, message: 'You do not have permission.' });
+            }
+            members[targetIndex].role = 'staff';
+        } else if (action === 'demote') {
+            if (viewerRole !== 'leader' || targetRole !== 'staff') {
+                return sendJson(res, 403, { ok: false, message: 'You do not have permission.' });
+            }
+            members[targetIndex].role = 'member';
+        } else if (action === 'kick') {
+            if (viewerRole === 'staff' && targetRole !== 'member') {
+                return sendJson(res, 403, { ok: false, message: 'Staff can only kick members.' });
+            }
+            if (viewerRole !== 'leader' && viewerRole !== 'staff') {
+                return sendJson(res, 403, { ok: false, message: 'You do not have permission.' });
+            }
+            members.splice(targetIndex, 1);
+
+            var targetUser = users.findByIdOrUsernameOrEmail(String(target.id || target.name || ''));
+            var guildTag = normalizeGuildTag(guild.tag || guild.id);
+            if (targetUser && normalizeGuildTag(targetUser.guildTag) === guildTag) {
+                users.updateUser(targetUser.id, {
+                    guildTag: '',
+                    guildSkinUrl: '',
+                    guildSkinPath: '',
+                    activeSkinType: targetUser.activeSkinType === 'guild' ? 'player' : targetUser.activeSkinType
+                });
+                removeUserPendingInvites(targetUser.id);
+            }
+        }
+
+        guild = adminStore.update('guilds', guild.id, {
+            members: members.length,
+            membersList: serializeGuildMembers(members)
+        }) || guild;
+
+        sendJson(res, 200, {
+            ok: true,
+            message: 'Guild member updated.',
+            guild: publicGuild(guild),
+            user: publicAuthUser(users.findByIdOrUsernameOrEmail(user.id))
+        });
+    });
+}
+
 function getGuildRewardMonth() {
     return statsStore.getJakartaDate().slice(0, 7);
 }
@@ -1840,6 +1937,11 @@ function handle(req, res, gameServer) {
 
     if (req.method === 'POST' && pathname === '/api/guild/leave') {
         handleGuildLeave(req, res);
+        return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/guild/member-action') {
+        handleGuildMemberAction(req, res);
         return true;
     }
 
