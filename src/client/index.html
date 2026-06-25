@@ -4526,7 +4526,7 @@ $(function () {
         }
 
         $('.tournament-players').html(rows.join(''));
-        $('.battle-online').text(count + '/' + required);
+        $('.battle-online').text(Math.min(count, required) + '/' + required);
         updateBattleStartAvailability();
     }
 
@@ -4637,6 +4637,17 @@ $(function () {
         battleLobbyRequest('/api/battle/lobby/status', handleBattleLobbyResponse);
     }
 
+    function resumeReadyBattleMatch() {
+        battleLobbyRequest('/api/battle/lobby/status', function(err, response) {
+            if (err || !response || !response.ok) return;
+            if (response.ready) {
+                handleBattleLobbyResponse(null, response);
+                return;
+            }
+            renderBattleLobbyStatus(response);
+        });
+    }
+
     function joinBattleLobbyQueue() {
         if (battleLobbyQueued) return;
 
@@ -4707,6 +4718,7 @@ $(function () {
         resetBattleLobbyEstimate();
         loadFriendInviteList();
         $('#tournament-modal').addClass('is-open');
+        resumeReadyBattleMatch();
     }
 
     function setBattlePlayLoading(isLoading) {
