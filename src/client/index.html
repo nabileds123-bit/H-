@@ -2315,6 +2315,17 @@ $(document).on('keyup', function(input) {
         vertical-align: middle;
     }
 
+    #profileCellColor.is-default-color {
+        background:
+            linear-gradient(45deg, #f5f5f5 25%, transparent 25%),
+            linear-gradient(-45deg, #f5f5f5 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #f5f5f5 75%),
+            linear-gradient(-45deg, transparent 75%, #f5f5f5 75%),
+            #222;
+        background-size: 8px 8px;
+        background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    }
+
     .cell-color-swatch {
         width: 24px;
         height: 28px;
@@ -3164,7 +3175,7 @@ $(document).on('keyup', function(input) {
                 </div>
                 <div class="account-row">
                     <div class="account-label">Nick:</div>
-                    <div class="account-value"><span id="accountNick">-</span><span class="cell-color-control"><span id="profileCellColor" title="Cell color is managed by admin" style="background-color:#000000;"></span><span id="cellColorPalette"><button type="button" class="cell-color-swatch is-selected" data-color="#000000" title="Random color" style="background-color:#000;"></button><button type="button" class="cell-color-swatch" data-color="#6FCA36" style="background-color: rgb(111, 202, 54);"></button><button type="button" class="cell-color-swatch" data-color="#4379EF" style="background-color: rgb(67, 121, 239);"></button><button type="button" class="cell-color-swatch" data-color="#98B6FD" style="background-color: rgb(152, 182, 253);"></button><button type="button" class="cell-color-swatch" data-color="#36D2D6" style="background-color: rgb(54, 210, 214);"></button><button type="button" class="cell-color-swatch" data-color="#6DE5B7" style="background-color: rgb(109, 229, 183);"></button><button type="button" class="cell-color-swatch" data-color="#41B136" style="background-color: rgb(65, 177, 54);"></button><button type="button" class="cell-color-swatch" data-color="#FBD348" style="background-color: rgb(251, 211, 72);"></button><button type="button" class="cell-color-swatch" data-color="#FFAE6A" style="background-color: rgb(255, 174, 106);"></button><button type="button" class="cell-color-swatch" data-color="#D61017" style="background-color: rgb(214, 16, 23);"></button><button type="button" class="cell-color-swatch" data-color="#D9A5FC" style="background-color: rgb(217, 165, 252);"></button></span></span></div>
+                    <div class="account-value"><span id="accountNick">-</span><span class="cell-color-control"><span id="profileCellColor" class="is-default-color" title="Default / Random color, managed by admin"></span><span id="cellColorPalette"><button type="button" class="cell-color-swatch is-selected" data-color="#000000" title="Default / Random color" style="background:repeating-linear-gradient(45deg,#222 0,#222 4px,#f5f5f5 4px,#f5f5f5 8px);"></button><button type="button" class="cell-color-swatch" data-color="#6FCA36" style="background-color: rgb(111, 202, 54);"></button><button type="button" class="cell-color-swatch" data-color="#4379EF" style="background-color: rgb(67, 121, 239);"></button><button type="button" class="cell-color-swatch" data-color="#98B6FD" style="background-color: rgb(152, 182, 253);"></button><button type="button" class="cell-color-swatch" data-color="#36D2D6" style="background-color: rgb(54, 210, 214);"></button><button type="button" class="cell-color-swatch" data-color="#6DE5B7" style="background-color: rgb(109, 229, 183);"></button><button type="button" class="cell-color-swatch" data-color="#41B136" style="background-color: rgb(65, 177, 54);"></button><button type="button" class="cell-color-swatch" data-color="#FBD348" style="background-color: rgb(251, 211, 72);"></button><button type="button" class="cell-color-swatch" data-color="#FFAE6A" style="background-color: rgb(255, 174, 106);"></button><button type="button" class="cell-color-swatch" data-color="#D61017" style="background-color: rgb(214, 16, 23);"></button><button type="button" class="cell-color-swatch" data-color="#D9A5FC" style="background-color: rgb(217, 165, 252);"></button></span></span></div>
                 </div>
                 <div id="accountSkinRow" class="account-row" style="display:none;">
                     <div class="account-label">Skin:</div>
@@ -3983,6 +3994,15 @@ $(function () {
         localStorage.setItem('authGuildTag', user.guildTag || '');
         localStorage.setItem('authGuildSkinUrl', user.guildSkinUrl || '');
         updateChatAccess();
+    }
+
+    function setProfileCellColorPreview(color) {
+        color = String(color || '#000000').toUpperCase();
+        var isDefault = color === '#000000';
+        $('#profileCellColor')
+            .toggleClass('is-default-color', isDefault)
+            .attr('title', isDefault ? 'Default / Random color, managed by admin' : 'Cell color is managed by admin')
+            .css('background-color', isDefault ? '' : color);
     }
 
     function refreshAuthUser(callback) {
@@ -7881,12 +7901,12 @@ $(function () {
         var color = $(this).data('color');
         $('#cellColorPalette .cell-color-swatch').removeClass('is-selected');
         $(this).addClass('is-selected');
-        $('#profileCellColor').css('background-color', color);
+        setProfileCellColorPreview(color);
     });
 
     var savedCellColor = localStorage.getItem('cellColor');
     if (savedCellColor) {
-        $('#profileCellColor').css('background-color', savedCellColor);
+        setProfileCellColorPreview(savedCellColor);
         $('#cellColorPalette .cell-color-swatch').removeClass('is-selected');
         $('#cellColorPalette .cell-color-swatch[data-color="' + savedCellColor + '"]').addClass('is-selected');
     }
