@@ -46,6 +46,7 @@ function normalizePremiumChatEffect(value) {
         bull: true,
         love: true,
         lightning: true,
+        strike: true,
         fire: true,
         star: true,
         crown: true,

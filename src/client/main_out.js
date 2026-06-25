@@ -1240,6 +1240,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             return {
                 love: "#ff4fa3",
                 lightning: "#38c9ff",
+                strike: "#fff36a",
                 fire: "#ff6b1a",
                 star: "#ffe66b",
                 crown: "#ffd84d",
@@ -1325,6 +1326,50 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 ctx.lineTo(x + width * .32, y + height + 2);
                 ctx.lineTo(x + width * .58, topY);
                 ctx.lineTo(rightX, y + height);
+                ctx.stroke();
+            } else if (msg.premiumEffect === "strike") {
+                var strikeCycle = (age % 760) / 760;
+                var strikeAlpha = strikeCycle < 0.28 ? 1 - strikeCycle / 0.28 : 0.18 + pulse * 0.22;
+                var strikeX = rightX - 2;
+                var strikeTop = topY - 18;
+
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+                ctx.strokeStyle = "#fff36a";
+                ctx.lineWidth = 3;
+                ctx.globalAlpha = strikeAlpha;
+                ctx.shadowColor = "#38c9ff";
+                ctx.shadowBlur = 14 + pulse * 10;
+                ctx.beginPath();
+                ctx.moveTo(strikeX - 9, strikeTop);
+                ctx.lineTo(strikeX + 2, y - 2);
+                ctx.lineTo(strikeX - 5, y + 6);
+                ctx.lineTo(strikeX + 8, y + height + 3);
+                ctx.stroke();
+
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1.2;
+                ctx.globalAlpha = Math.min(1, strikeAlpha + 0.2);
+                ctx.beginPath();
+                ctx.moveTo(strikeX - 7, strikeTop + 2);
+                ctx.lineTo(strikeX + 1, y - 1);
+                ctx.lineTo(strikeX - 3, y + 5);
+                ctx.lineTo(strikeX + 5, y + height + 1);
+                ctx.stroke();
+
+                ctx.globalAlpha = 0.28 + pulse * 0.35;
+                ctx.strokeStyle = "rgba(56, 201, 255, .9)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(strikeX + 2, y + height / 2, 8 + pulse * 5, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.globalAlpha = 0.7;
+                ctx.strokeStyle = "rgba(255, 243, 106, .85)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x - 2, baseY);
+                ctx.lineTo(rightX + 8, baseY + Math.sin(age / 70) * 2);
                 ctx.stroke();
             } else if (msg.premiumEffect === "fire") {
                 ctx.shadowColor = "#ff2200";
