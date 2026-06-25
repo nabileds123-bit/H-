@@ -1236,6 +1236,24 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             ctx.restore();
         }
 
+        function getPremiumEffectColor(effect) {
+            return {
+                love: "#ff4fa3",
+                lightning: "#38c9ff",
+                fire: "#ff6b1a",
+                star: "#ffe66b",
+                crown: "#ffd84d",
+                confetti: "#28d7ff",
+                waterfall: "#00a8ff",
+                rainbow: "#ff4fd8",
+                neon: "#38ffb8",
+                galaxy: "#b56dff",
+                ice: "#9eefff",
+                toxic: "#9dff38",
+                bull: "#ff1f1f"
+            }[effect] || "#ff1f1f";
+        }
+
         function drawNicknameAura(ctx, msg, x, y, width, height) {
             if (!msg || !msg.premiumEffect) return;
 
@@ -1385,6 +1403,107 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                     ctx.lineTo(wx, wy);
                 }
                 ctx.stroke();
+            } else if (msg.premiumEffect === "rainbow") {
+                var rainbow = ctx.createLinearGradient(x - 4, y, rightX, y);
+                rainbow.addColorStop(0, "#ff3b5c");
+                rainbow.addColorStop(0.2, "#ffce3a");
+                rainbow.addColorStop(0.4, "#7cff65");
+                rainbow.addColorStop(0.6, "#28d7ff");
+                rainbow.addColorStop(0.8, "#9f7cff");
+                rainbow.addColorStop(1, "#ff4fa3");
+                ctx.strokeStyle = rainbow;
+                ctx.lineWidth = 2;
+                ctx.shadowColor = "#ffffff";
+                ctx.shadowBlur = 8 + pulse * 5;
+                ctx.beginPath();
+                for (i = 0; i <= Math.max(3, width / 7); i++) {
+                    var rx = x - 3 + i * 7;
+                    var ry = baseY + Math.sin(age / 110 + i) * 3;
+                    if (i === 0) ctx.moveTo(rx, ry);
+                    else ctx.lineTo(rx, ry);
+                }
+                ctx.stroke();
+                for (i = 0; i < 6; i++) {
+                    ctx.fillStyle = ["#ff3b5c", "#ffce3a", "#7cff65", "#28d7ff", "#9f7cff", "#ff4fa3"][i];
+                    ctx.globalAlpha = 0.65 + pulse * 0.25;
+                    ctx.beginPath();
+                    ctx.arc(x + ((age / 18 + i * 19) % Math.max(26, width)), topY + 3 + Math.sin(age / 170 + i) * 5, 2.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else if (msg.premiumEffect === "neon") {
+                ctx.strokeStyle = pulse > .5 ? "#38ffb8" : "#00d8ff";
+                ctx.lineWidth = 1.8;
+                ctx.shadowColor = "#38ffb8";
+                ctx.shadowBlur = 10 + pulse * 9;
+                ctx.strokeRect(x - 4, y - 3, width + 8, height + 5);
+                ctx.beginPath();
+                ctx.moveTo(x - 2, baseY);
+                ctx.lineTo(rightX, baseY);
+                ctx.stroke();
+                ctx.fillStyle = "#ffffff";
+                for (i = 0; i < 3; i++) {
+                    var nx = x + ((age / 35 + i * width / 3) % Math.max(20, width));
+                    ctx.fillRect(nx, y - 4, 8, 1.5);
+                }
+            } else if (msg.premiumEffect === "galaxy") {
+                var galaxy = ctx.createLinearGradient(x, topY, rightX, baseY);
+                galaxy.addColorStop(0, "rgba(86, 72, 255, .65)");
+                galaxy.addColorStop(0.5, "rgba(181, 109, 255, .55)");
+                galaxy.addColorStop(1, "rgba(255, 79, 163, .25)");
+                ctx.fillStyle = galaxy;
+                ctx.shadowColor = "#b56dff";
+                ctx.shadowBlur = 9 + pulse * 6;
+                ctx.fillRect(x - 3, y - 2, width + 6, height + 4);
+                ctx.fillStyle = "#ffffff";
+                for (i = 0; i < 9; i++) {
+                    t = age / 420 + i * 1.37;
+                    var gx = centerX + Math.cos(t) * (width / 2 + 5);
+                    var gy = y + height / 2 + Math.sin(t * 1.6) * (height / 2 + 5);
+                    ctx.globalAlpha = 0.45 + ((i % 3) * 0.18);
+                    ctx.fillRect(gx, gy, 1.6, 1.6);
+                }
+                ctx.globalAlpha = 1;
+            } else if (msg.premiumEffect === "ice") {
+                ctx.strokeStyle = "rgba(158, 239, 255, .9)";
+                ctx.lineWidth = 1.5;
+                ctx.shadowColor = "#9eefff";
+                ctx.shadowBlur = 10 + pulse * 5;
+                for (i = 0; i < Math.max(4, Math.min(9, Math.floor(width / 11))); i++) {
+                    var ix = x + i * Math.max(9, width / 8);
+                    var iceH = 5 + Math.sin(age / 170 + i) * 3;
+                    ctx.beginPath();
+                    ctx.moveTo(ix, topY);
+                    ctx.lineTo(ix + 4, topY + iceH);
+                    ctx.lineTo(ix - 3, topY + iceH + 1);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+                ctx.beginPath();
+                ctx.moveTo(x - 3, baseY);
+                ctx.lineTo(rightX, baseY + Math.sin(age / 140) * 1.5);
+                ctx.stroke();
+            } else if (msg.premiumEffect === "toxic") {
+                ctx.fillStyle = "rgba(157, 255, 56, .22)";
+                ctx.shadowColor = "#9dff38";
+                ctx.shadowBlur = 9 + pulse * 7;
+                for (i = 0; i < 7; i++) {
+                    t = age / 210 + i;
+                    var bx = x + ((i * 13 + age / 20) % Math.max(24, width));
+                    var bubbleY = y + height / 2 + Math.sin(t) * (height / 2 + 5);
+                    ctx.beginPath();
+                    ctx.arc(bx, bubbleY, 2.5 + (i % 3), 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = "#9dff38";
+                    ctx.stroke();
+                }
+                ctx.strokeStyle = "rgba(157, 255, 56, .85)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x - 3, baseY);
+                for (i = 0; i <= Math.max(2, width / 8); i++) {
+                    ctx.lineTo(x + i * 8, baseY + Math.sin(age / 80 + i) * 2);
+                }
+                ctx.stroke();
             }
 
             ctx.restore();
@@ -1427,7 +1546,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             ctx.fillStyle = getChatNameColor(msg);
             if (msg.premiumEffect) {
                 ctx.save();
-                ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : msg.premiumEffect === "waterfall" ? "#00a8ff" : "#ff1f1f";
+                ctx.shadowColor = getPremiumEffectColor(msg.premiumEffect);
                 ctx.shadowBlur = 8;
             }
             ctx.fillText(nameText, nameX, y);
@@ -1439,7 +1558,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             ctx.fillStyle = getChatTextColor(msg);
             if (msg.premiumEffect) {
                 ctx.save();
-                ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : msg.premiumEffect === "waterfall" ? "#00a8ff" : "#ff1f1f";
+                ctx.shadowColor = getPremiumEffectColor(msg.premiumEffect);
                 ctx.shadowBlur = 6;
             }
             ctx.fillText(lines[0], msgX, y);
@@ -1456,7 +1575,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
                 ctx.fillStyle = getChatTextColor(msg);
                 if (msg.premiumEffect) {
                     ctx.save();
-                    ctx.shadowColor = msg.premiumEffect === "love" ? "#ff4fa3" : msg.premiumEffect === "lightning" ? "#38c9ff" : msg.premiumEffect === "fire" ? "#ff6b1a" : msg.premiumEffect === "star" ? "#ffe66b" : msg.premiumEffect === "crown" ? "#ffd84d" : msg.premiumEffect === "confetti" ? "#28d7ff" : msg.premiumEffect === "waterfall" ? "#00a8ff" : "#ff1f1f";
+                    ctx.shadowColor = getPremiumEffectColor(msg.premiumEffect);
                     ctx.shadowBlur = 6;
                 }
                 ctx.fillText(lines[j], paddingX, y);

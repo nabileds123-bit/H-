@@ -50,7 +50,12 @@ function normalizePremiumChatEffect(value) {
         star: true,
         crown: true,
         confetti: true,
-        waterfall: true
+        waterfall: true,
+        rainbow: true,
+        neon: true,
+        galaxy: true,
+        ice: true,
+        toxic: true
     }[value] ? value : '';
 }
 
