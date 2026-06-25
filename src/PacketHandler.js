@@ -818,13 +818,12 @@ this.merg = true;
                 break;
             }
 
-            var premiumChatColor = hexToColor(user.premiumChatColor);
             var premiumChatEffect = normalizePremiumChatEffect(user.premiumChatEffect);
             var premiumChatFlags = premiumChatEffect === 'bull' ? 64 : premiumChatEffect === 'love' ? 128 : 0;
             if (premiumChatEffect) {
                 message = CHAT_EFFECT_START + premiumChatEffect + CHAT_EFFECT_END + message;
             }
-            var packet = new Packet.Chat(this.socket.playerTracker, message, premiumChatFlags, premiumChatColor);
+            var packet = new Packet.Chat(this.socket.playerTracker, message, premiumChatFlags);
             this.gameServer.withWorld(this.socket.world, function() {
                 // Send to clients in the same world
                 for (var i = 0; i < this.clients.length; i++) {

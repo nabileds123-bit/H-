@@ -945,7 +945,7 @@ var INVERT_WHEEL  = false;   // true kalau mau kebalik (scroll up = zoom in)
             g = view.getUint8(offset++),
             b = view.getUint8(offset++),
             color = (r << 16 | g << 8 | b).toString(16);
-        while (color.length > 6) {
+        while (color.length < 6) {
             color = '0' + color;
         }
         color = '#' + color;
