@@ -219,6 +219,10 @@ function findBySessionToken(token) {
     var store = readStore();
 
     return store.users.find(function(user) {
+        if (user.banned === true || String(user.banned || '').toLowerCase() === 'true' || String(user.banned || '') === '1') {
+            return false;
+        }
+
         return user.sessionToken === token;
     }) || null;
 }
@@ -260,6 +264,7 @@ function createUser(data) {
         commandKick: false,
         commandSay: false,
         commandKillall: false,
+        commandBan: false,
         commandPlayerlist: false,
         commandStatus: false,
         premiumChatColor: '',
@@ -284,6 +289,8 @@ function createUser(data) {
         guildTag: '',
         guildSkinUrl: '',
         guildSkinPath: '',
+        banned: false,
+        banReason: '',
         country_code: String(data.country_code || data.countryCode || '').trim().toUpperCase(),
         friends: [],
         friendRequestsSent: [],

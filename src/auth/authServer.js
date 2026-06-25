@@ -42,6 +42,10 @@ function sendHtml(res, status, html) {
     res.end(html);
 }
 
+function isUserBanned(user) {
+    return user && (user.banned === true || String(user.banned || '').toLowerCase() === 'true' || String(user.banned || '') === '1');
+}
+
 function readBody(req, callback, maxBytes) {
     var body = '';
     var limit = maxBytes || 1024 * 32;
@@ -288,6 +292,13 @@ function handleLogin(req, res) {
 
         if (!user || !passwords.verifyPassword(password, user.passwordHash)) {
             return sendJson(res, 401, { ok: false, message: 'Username or password is wrong.' });
+        }
+
+        if (isUserBanned(user)) {
+            return sendJson(res, 403, {
+                ok: false,
+                message: user.banReason ? 'Account banned: ' + user.banReason : 'Account banned.'
+            });
         }
 
         if (!user.emailVerified && process.env.AUTH_BYPASS_EMAIL_VERIFICATION !== 'true') {

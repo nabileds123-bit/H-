@@ -69,6 +69,7 @@ function normalizeCommandName(command) {
     command = String(command || '').toLowerCase();
     if (command === 'point') return 'points';
     if (command === 'addpoints') return 'points';
+    if (command === 'unbanned') return 'unban';
     return command;
 }
 
@@ -100,6 +101,8 @@ function getCommandPermissionField(command) {
         merge: 'commandMerge',
         tp: 'commandTp',
         killall: 'commandKillall',
+        ban: 'commandBan',
+        unban: 'commandBan',
         points: 'commandPoint',
         name: 'commandName',
         split: 'commandSplit'
@@ -120,6 +123,9 @@ function isPlayerCommandMessage(text) {
         tp: true,
         say: true,
         killall: true,
+        ban: true,
+        unban: true,
+        unbanned: true,
         point: true,
         points: true,
         addpoints: true,
@@ -134,7 +140,16 @@ function parseCommandArgs(text) {
 }
 
 function sendCommandMessage(gameServer, player, message) {
-    return;
+    if (!player || !message) return;
+
+    if (gameServer && gameServer.sendSystemMessage) {
+        gameServer.sendSystemMessage(player, message);
+        return;
+    }
+
+    if (player.socket && player.socket.sendPacket) {
+        player.socket.sendPacket(new Packet.Message(message));
+    }
 }
 
 function getCommandTarget(gameServer, index) {
@@ -178,6 +193,43 @@ function findCommandPointUser(gameServer, identifier) {
     }
 
     return userStore.findByIdOrUsernameOrEmail(idText);
+}
+
+function findCommandUser(gameServer, identifier) {
+    var idText = String(identifier || '').trim();
+    var index = parseInt(idText, 10);
+
+    if (!isNaN(index) && String(index) === idText && gameServer && gameServer.clients && gameServer.clients[index]) {
+        var player = gameServer.clients[index].playerTracker;
+        if (player && player.authUser && player.authUser.id) {
+            return userStore.findByIdOrUsernameOrEmail(player.authUser.id);
+        }
+    }
+
+    return userStore.findByIdOrUsernameOrEmail(idText);
+}
+
+function closeLiveUserSockets(gameServer, userId) {
+    if (!gameServer) return 0;
+
+    var closed = 0;
+    var clients = gameServer.allClients || gameServer.clients || [];
+    clients.forEach(function(client) {
+        var player = client && client.playerTracker;
+        var authUser = player && player.authUser;
+        if (!authUser || String(authUser.id || '') !== String(userId || '')) return;
+
+        if (client.close) {
+            client.close();
+            closed++;
+        }
+    });
+
+    return closed;
+}
+
+function isUserBanned(user) {
+    return user && (user.banned === true || String(user.banned || '').toLowerCase() === 'true' || String(user.banned || '') === '1');
 }
 
 function syncLiveUserPoints(gameServer, userId, points) {
@@ -280,6 +332,51 @@ function executePlayerCommand(handler, user, rawText) {
         });
         syncLiveUserPoints(gameServer, updatedUser.id, nextPoints);
         sendCommandMessage(gameServer, sender, 'Points ' + updatedUser.username + ': ' + currentPoints + ' -> ' + nextPoints + ' (' + (amount > 0 ? '+' : '') + amount + ')');
+        return true;
+    }
+
+    if (command === 'ban') {
+        var targetUser = findCommandUser(gameServer, args[1]);
+        var reason = args.slice(2).join(' ').trim();
+
+        if (!targetUser) {
+            sendCommandMessage(gameServer, sender, 'Usage: /ban <index|username|email|id> <reason>');
+            return true;
+        }
+
+        if (user && String(targetUser.id || '') === String(user.id || '')) {
+            sendCommandMessage(gameServer, sender, 'Kamu tidak bisa ban akun sendiri.');
+            return true;
+        }
+
+        var bannedUser = userStore.updateUser(targetUser.id, {
+            banned: true,
+            banReason: reason || 'Banned by admin command',
+            bannedAt: Date.now(),
+            bannedBy: user.username || user.id || '',
+            sessionToken: '',
+            sessionCreatedAt: 0
+        });
+        var closed = closeLiveUserSockets(gameServer, targetUser.id);
+        sendCommandMessage(gameServer, sender, 'Banned ' + (bannedUser && bannedUser.username || targetUser.username || targetUser.id) + '. Closed sockets: ' + closed + '.');
+        return true;
+    }
+
+    if (command === 'unban') {
+        var targetUser = findCommandUser(gameServer, args[1]);
+
+        if (!targetUser) {
+            sendCommandMessage(gameServer, sender, 'Usage: /unban <username|email|id>');
+            return true;
+        }
+
+        var unbannedUser = userStore.updateUser(targetUser.id, {
+            banned: false,
+            banReason: '',
+            unbannedAt: Date.now(),
+            unbannedBy: user.username || user.id || ''
+        });
+        sendCommandMessage(gameServer, sender, 'Unbanned ' + (unbannedUser && unbannedUser.username || targetUser.username || targetUser.id) + '.');
         return true;
     }
 
@@ -664,6 +761,10 @@ this.merg = true;
                 }
 
                 user = token ? userStore.findBySessionToken(token) : null;
+                if (isUserBanned(user)) {
+                    if (this.socket.close) this.socket.close();
+                    break;
+                }
                 if (user) {
                     applyAuthUserToClient(this.socket.playerTracker, user);
                     if (!this.socket.playerTracker.getName()) {
@@ -748,6 +849,11 @@ PacketHandler.prototype.setNickname = function(newNick) {
     var usesTeams = gameMode && gameMode.haveTeams;
 
     if (user) {
+        if (isUserBanned(user)) {
+            if (this.socket.close) this.socket.close();
+            return;
+        }
+
         nick = user.username;
         applyAuthUserToClient(client, user);
 

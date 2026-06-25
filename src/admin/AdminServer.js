@@ -235,6 +235,7 @@ function normalizeUserChanges(body) {
         'commandKick',
         'commandSay',
         'commandKillall',
+        'commandBan',
         'commandPlayerlist',
         'commandStatus',
         'premiumChatColor',
