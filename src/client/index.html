@@ -426,6 +426,12 @@ $(document).on('keyup', function(input) {
         flex-direction: column;
     }
 
+    #guildDialog {
+        width: min(620px, calc(100vw - 32px));
+        height: min(650px, calc(100vh - 40px));
+        border-radius: 8px;
+    }
+
     #notificationDialog.is-open {
         display: flex;
         flex-direction: column;
@@ -463,6 +469,11 @@ $(document).on('keyup', function(input) {
         font-size: 13px;
         color: #333;
         overflow: hidden;
+    }
+
+    #guildDialog .spa-page-body {
+        display: flex;
+        flex-direction: column;
     }
 
     #accountDetailDialog .spa-page-body {
@@ -528,7 +539,7 @@ $(document).on('keyup', function(input) {
     #guildListView {
         display: flex;
         flex-direction: column;
-        height: 452px;
+        flex: 1;
         min-height: 0;
     }
 
@@ -1270,7 +1281,8 @@ $(document).on('keyup', function(input) {
     }
 
     .guild-detail-pane.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
     }
 
     #guildDetailMembers.guild-detail-pane.active {
@@ -1477,11 +1489,17 @@ $(document).on('keyup', function(input) {
 
     .guild-detail-actions {
         flex: 0 0 auto;
-        margin-top: 8px;
+        margin-top: 0;
         padding-top: 8px;
         border-top: 1px solid #ddd;
         text-align: right;
         background: #fff;
+    }
+
+    #guildDetailInfo,
+    #guildDetailStatistics,
+    #guildDetailLogs {
+        overflow-y: auto;
     }
 
     .guild-detail-actions .btn {
