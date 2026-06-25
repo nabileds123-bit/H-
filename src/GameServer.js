@@ -401,9 +401,10 @@ GameServer.prototype.start = function() {
     	
         function close(error) {
             console.log("[Game] Disconnect: %s:%d", this.socket.remoteAddress, this.socket.remotePort);
+            var battleFinished = this.server.handleBattleDisconnect(this.socket);
             this.server.clearBattleLobbyClient(
                 this.socket.battleLobbyClientId,
-                true,
+                !battleFinished,
                 this.socket.playerTracker && this.socket.playerTracker.authUser && this.socket.playerTracker.authUser.id
             );
             this.server.pauseTop1Stats(this.socket.playerTracker, this.socket.world, true);
@@ -679,6 +680,19 @@ GameServer.prototype.clearBattleLobbyClient = function(clientId, cancelReadyMatc
             }
         }
     }
+}
+
+GameServer.prototype.handleBattleDisconnect = function(socket) {
+    var player = socket && socket.playerTracker;
+    var world = socket && socket.world;
+    var mode = world && world.gameMode;
+
+    if (!player || !world || !this.isBattleModeRequest || !this.isBattleModeRequest(world.id)) return false;
+    if (!mode || typeof mode.finishBattleDisconnectMatch !== 'function') return false;
+
+    return this.withWorld(world, function() {
+        return mode.finishBattleDisconnectMatch(this, player);
+    });
 }
 
 GameServer.prototype.getBattleLobbyQueueCount = function(mode) {
@@ -2026,6 +2040,24 @@ GameServer.prototype.recordRankedBattleResult = function(player, result) {
     }
 }
 
+GameServer.prototype.recordRankedBattleOutcome = function(world, winners, losers) {
+    var mode = statsStore.normalizeBattleMode(world && world.id);
+    winners = Array.isArray(winners) ? winners : [];
+    losers = Array.isArray(losers) ? losers : [];
+
+    if (!world || !mode || world.rankedResultSaved || winners.length <= 0 || losers.length <= 0) return;
+
+    world.rankedResultSaved = true;
+    for (var w = 0; w < winners.length; w++) {
+        this.recordRankedPlayerResult(winners[w], mode === '2vs2' ? '2v2' : '1v1', 'win');
+        this.logBattleResultDebug(world, winners[w], 'win', 'ranked_written');
+    }
+    for (var l = 0; l < losers.length; l++) {
+        this.recordRankedPlayerResult(losers[l], mode === '2vs2' ? '2v2' : '1v1', 'lose');
+        this.logBattleResultDebug(world, losers[l], 'lose', 'ranked_written');
+    }
+}
+
 GameServer.prototype.updateMatchLeaderboardStats = function(world) {
     var now = Date.now();
     var leaderboard = world && world.leaderboard ? world.leaderboard : this.leaderboard;
@@ -2100,11 +2132,15 @@ GameServer.prototype.updateMatchLeaderboardStats = function(world) {
     }
 }
 
-GameServer.prototype.sendMatchResult = function(player, result) {
+GameServer.prototype.sendMatchResultPacket = function(player, result, xpResult, pointResult) {
     if (!player) return;
-    this.recordBattleResult(player, result);
-    var xpResult = this.applyMatchXp(player);
-    var pointResult = this.applyBattlePoints(player, result);
+    xpResult = xpResult || {
+        xpGain: 0,
+        xp: 0,
+        xpMax: this.getXpMax(1),
+        level: 1,
+        leveledUp: 0
+    };
 
     var payload = JSON.stringify({
         matchFinal: true,
@@ -2147,6 +2183,14 @@ GameServer.prototype.sendMatchResult = function(player, result) {
             return buf;
         }
     });
+}
+
+GameServer.prototype.sendMatchResult = function(player, result) {
+    if (!player) return;
+    this.recordBattleResult(player, result);
+    var xpResult = this.applyMatchXp(player);
+    var pointResult = this.applyBattlePoints(player, result);
+    this.sendMatchResultPacket(player, result, xpResult, pointResult);
 }
 
 GameServer.prototype.updateClients = function() {

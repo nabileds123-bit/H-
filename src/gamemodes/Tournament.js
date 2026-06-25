@@ -197,6 +197,8 @@ Tournament.prototype.updateEliminatedSpectators = function(target) {
 Tournament.prototype.sendPlayerMatchResult = function(gameServer, player, result) {
     var resultKey = this.matchResultKey || (player && player.matchStartTime) || '';
     if (!player || player.matchResultSent || (resultKey && player.matchResultKey === resultKey)) return;
+    var xpResult = null;
+    var pointResult = null;
 
     player.matchResultSent = true;
     player.matchResultKey = resultKey;
@@ -205,8 +207,9 @@ Tournament.prototype.sendPlayerMatchResult = function(gameServer, player, result
     }
     if (this.isBattleWorld(gameServer)) {
         if (gameServer.recordBattleResult) gameServer.recordBattleResult(player, result, this.getBattleMatchScore(gameServer, player));
-        if (gameServer.applyMatchXp) gameServer.applyMatchXp(player);
-        if (gameServer.applyBattlePoints) gameServer.applyBattlePoints(player, result);
+        if (gameServer.applyMatchXp) xpResult = gameServer.applyMatchXp(player);
+        if (gameServer.applyBattlePoints) pointResult = gameServer.applyBattlePoints(player, result);
+        if (gameServer.sendMatchResultPacket) gameServer.sendMatchResultPacket(player, result, xpResult, pointResult);
         return;
     }
     gameServer.sendMatchResult(player, result);
@@ -431,6 +434,71 @@ Tournament.prototype.endBattleTeamRound = function(gameServer, winningTeam) {
     if (this.battleMatchFinal) {
         this.finishBattleTeamMatchResults(gameServer, winningTeam);
     }
+};
+
+Tournament.prototype.finishBattleDisconnectMatch = function(gameServer, disconnectedPlayer) {
+    if (!this.isBattleWorld(gameServer) || this.gamePhase != 2 || !disconnectedPlayer) return false;
+
+    var world = gameServer && gameServer.activeWorld;
+    var clients = world && world.clients ? world.clients : [];
+    var isTeamBattle = this.isBattle2v2World(gameServer);
+    var losingTeam = disconnectedPlayer.battleTeam || '';
+    var participants = [];
+    var winners = [];
+    var losers = [];
+
+    for (var i = 0; i < this.contenders.length; i++) {
+        if (this.contenders[i] && participants.indexOf(this.contenders[i]) === -1) {
+            participants.push(this.contenders[i]);
+        }
+    }
+
+    for (var c = 0; c < clients.length; c++) {
+        var tracker = clients[c] && clients[c].playerTracker;
+        if (tracker && participants.indexOf(tracker) === -1) {
+            participants.push(tracker);
+        }
+    }
+
+    for (var p = 0; p < participants.length; p++) {
+        var player = participants[p];
+        if (!player) continue;
+
+        if (player === disconnectedPlayer || (isTeamBattle && losingTeam && player.battleTeam === losingTeam)) {
+            losers.push(player);
+        } else if (!isTeamBattle || (losingTeam && player.battleTeam && player.battleTeam !== losingTeam)) {
+            winners.push(player);
+        }
+    }
+
+    if (winners.length <= 0 || losers.length <= 0) return false;
+
+    this.winners = winners.slice(0);
+    this.winner = this.winners[0] || null;
+    this.eliminated = losers.slice(0);
+    var winnerKey = this.getBattleRoundKey(this.winner, isTeamBattle && this.winner ? this.winner.battleTeam : '');
+    if (winnerKey) {
+        this.battleScores[winnerKey] = Math.max(this.battleScores[winnerKey] || 0, this.battleWinsToFinish);
+    }
+    this.updateEliminatedSpectators(this.winner);
+    this.battleMatchFinal = true;
+    this.gamePhase = 3;
+    this.setPhaseTimer(this.endTime);
+
+    if (gameServer.recordRankedBattleOutcome) {
+        gameServer.recordRankedBattleOutcome(world, winners, losers);
+    }
+
+    for (var l = 0; l < losers.length; l++) {
+        this.sendPlayerMatchResult(gameServer, losers[l], 'lose');
+    }
+    for (var w = 0; w < winners.length; w++) {
+        this.sendPlayerMatchResult(gameServer, winners[w], 'win');
+    }
+
+    this.eliminated = [];
+    this.winners = winners.slice(0);
+    return true;
 };
 
 Tournament.prototype.cleanupBattleMatch = function(gameServer) {
