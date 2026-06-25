@@ -2,5 +2,6 @@
 data/admin.json
 data/adminConfig.json
 data/adminSessions.json
+data/stats.json
 data/users.json
 node_modules/

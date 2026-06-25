@@ -183,6 +183,16 @@ function finalizePendingTop1Stats() {
     return store;
 }
 
+function getReadableTop1Records(store) {
+    store = store || finalizePendingTop1Stats();
+    return (store.top1TimeRecords || []).concat(store.pendingTop1TimeRecords || []);
+}
+
+function getReadableGuildTop1Records(store) {
+    store = store || finalizePendingTop1Stats();
+    return (store.guildTop1TimeRecords || []).concat(store.pendingGuildTop1TimeRecords || []);
+}
+
 function dateToUtcMs(date) {
     return Date.parse(date + 'T00:00:00Z');
 }
@@ -422,7 +432,7 @@ function getTop1SummaryForUser(identifier, period) {
     if (!user) return result;
 
     var range = getPeriodRange(period);
-    finalizePendingTop1Stats().top1TimeRecords.forEach(function(record) {
+    getReadableTop1Records().forEach(function(record) {
         if (record.user_id !== user.userId || !inRange(record.record_date, range)) return;
         if (TOP1_MODES[record.mode]) {
             result[record.mode] += parseInt(record.top1_ms, 10) || 0;
@@ -500,7 +510,7 @@ function top1HighScore(mode, period, limit) {
     var range = getPeriodRange(period);
     var map = {};
 
-    finalizePendingTop1Stats().top1TimeRecords.forEach(function(record) {
+    getReadableTop1Records().forEach(function(record) {
         if (record.mode !== topMode || !inRange(record.record_date, range)) return;
         var recordUser = getUserInfo(record.user_id || record.username) || {};
         if (!map[record.user_id]) {
@@ -532,7 +542,7 @@ function guildTop1Records(guildId, period, limit) {
     var normalizedGuild = normalizeGuildId(guildId);
     var range = getPeriodRange(period);
 
-    return finalizePendingTop1Stats().guildTop1TimeRecords.filter(function(record) {
+    return getReadableGuildTop1Records().filter(function(record) {
         return normalizeGuildId(record.guild_id) === normalizedGuild &&
             inRange(record.record_date, range);
     }).sort(function(a, b) {
@@ -599,6 +609,7 @@ function guildStats(period) {
     period = normalizeGuildPeriod(period);
     var range = getPeriodRange(period);
     var store = finalizePendingTop1Stats();
+    var guildTop1Records = getReadableGuildTop1Records(store);
     var guilds = {};
     var guildAliases = {};
     var guildList = adminStore.list('guilds');
@@ -630,7 +641,7 @@ function guildStats(period) {
         guildAliases[normalizeGuildId(guild.name)] = id;
     });
 
-    store.guildTop1TimeRecords.forEach(function(record) {
+    guildTop1Records.forEach(function(record) {
         if (!record.guild_id || !inRange(record.record_date, range)) return;
         var guildKey = guildAliases[normalizeGuildId(record.guild_id)];
         if (!guildKey || !guilds[guildKey]) return;
